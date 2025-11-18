@@ -1,0 +1,652 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>491</width>
+    <height>734</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>ProfileCamera2D</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="controlTab">
+       <attribute name="title">
+        <string>Control</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_4">
+        <item row="1" column="0">
+         <widget class="QGroupBox" name="GroupBox_AcquisitionCommands">
+          <property name="title">
+           <string>Acquisition commands</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_25">
+           <item row="0" column="0">
+            <layout class="QGridLayout" name="gridLayout_24">
+             <item row="6" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_8">
+               <item>
+                <widget class="QCheckBox" name="CheckBox_ExternalStart">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>Enable</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="PushButton_ExternalStart">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>Set</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="6" column="0">
+              <widget class="QLabel" name="label_17">
+               <property name="text">
+                <string>External start:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>Capacity:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_6">
+               <item>
+                <widget class="QRadioButton" name="RadioButton_Adc16Bit">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>16 bit</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="RadioButton_Adc20Bit">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>20 bit</string>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="PushButton_AdcResolutionSet">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>Set</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="7" column="1">
+              <widget class="QPushButton" name="PushButton_WriteCapacities">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Write capacities (Write DDC232 configuration register)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_7">
+               <item>
+                <widget class="QPushButton" name="PushButton_ChipReset">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>Chips reset</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="PushButton_AlteraReset">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>Altera reset</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_34">
+               <property name="text">
+                <string>Chips enabled:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout">
+               <item>
+                <widget class="QSlider" name="HorizontalSlider_IntegrationTime">
+                 <property name="minimum">
+                  <number>2</number>
+                 </property>
+                 <property name="maximum">
+                  <number>32</number>
+                 </property>
+                 <property name="singleStep">
+                  <number>2</number>
+                 </property>
+                 <property name="value">
+                  <number>2</number>
+                 </property>
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="SpinBox_IntegrationTime">
+                 <property name="suffix">
+                  <string> ms</string>
+                 </property>
+                 <property name="minimum">
+                  <number>2</number>
+                 </property>
+                 <property name="maximum">
+                  <number>32</number>
+                 </property>
+                 <property name="singleStep">
+                  <number>2</number>
+                 </property>
+                 <property name="value">
+                  <number>2</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="PushButton_SetIntegrationTime">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>Set</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="1" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_4">
+               <item>
+                <widget class="QSlider" name="HorizontalSlider_CurrentDevice">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>1</number>
+                 </property>
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="SpinBox_CurrentDevice">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>1</number>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="10" column="1">
+              <widget class="QPushButton" name="PushButton_InitiateDevices">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Initiate chips</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>Integration time:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="11" column="1">
+              <widget class="QPushButton" name="PushButton_ExternalStartSingleShot">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Single shot</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
+               <item>
+                <widget class="QComboBox" name="ComboBox_AcquisitionCapacity">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="currentIndex">
+                  <number>2</number>
+                 </property>
+                 <item>
+                  <property name="text">
+                   <string>3 pF (000)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>12.5 pF (001)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>25 pF (010)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>37.5 pF (011)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>50 pF (100)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>62.5 pF (101)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>75 pF (110)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>87.5 pF (111)</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="PushButton_SetCapacity">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>Set</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="label_20">
+               <property name="text">
+                <string>Samples:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>ADC mode:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Current chip:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="1">
+              <widget class="QPushButton" name="PushButton_Acquisition">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Manual acquisition</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_10">
+               <item>
+                <widget class="QSlider" name="HorizontalSlider_Samples">
+                 <property name="minimum">
+                  <number>10</number>
+                 </property>
+                 <property name="maximum">
+                  <number>1000</number>
+                 </property>
+                 <property name="value">
+                  <number>40</number>
+                 </property>
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="SpinBox_Samples">
+                 <property name="minimum">
+                  <number>10</number>
+                 </property>
+                 <property name="maximum">
+                  <number>1000</number>
+                 </property>
+                 <property name="value">
+                  <number>110</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="PushButton_SetSamples">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>Set</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="0" column="1">
+              <layout class="QHBoxLayout" name="HorizontalLayout_DevicesEnabled">
+               <item>
+                <widget class="QCheckBox" name="CheckBox_AllDevicesEnabled">
+                 <property name="text">
+                  <string>All</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="PushButton_DevicesEnabled">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>Set</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QGroupBox" name="GroupBox_Device">
+          <property name="title">
+           <string>Device</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_3">
+           <item row="0" column="0">
+            <layout class="QGridLayout" name="gridLayout_2">
+             <item row="1" column="2" rowspan="3">
+              <widget class="QPushButton" name="PushButton_AcquisitionConnect">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Connect</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLineEdit" name="LineEdit_AcquisitionDeviceName">
+               <property name="inputMask">
+                <string/>
+               </property>
+               <property name="text">
+                <string>/dev/ft2232h_ic_b</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="3" rowspan="3">
+              <widget class="QPushButton" name="PushButton_AcquisitionDisconnect">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Disconnect</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Command:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_37">
+               <property name="text">
+                <string>IC number:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QRadioButton" name="RadioButton_Camera1">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
+                 <property name="text">
+                  <string>1</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                 <attribute name="buttonGroup">
+                  <string notr="true">ButtonGroup_CameraSelected</string>
+                 </attribute>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="RadioButton_Camera2">
+                 <property name="text">
+                  <string>2</string>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                 <attribute name="buttonGroup">
+                  <string notr="true">ButtonGroup_CameraSelected</string>
+                 </attribute>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="RadioButton_Camera3">
+                 <property name="text">
+                  <string>3</string>
+                 </property>
+                 <attribute name="buttonGroup">
+                  <string notr="true">ButtonGroup_CameraSelected</string>
+                 </attribute>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="2" column="0" rowspan="2">
+              <widget class="QLabel" name="label_36">
+               <property name="text">
+                <string>Data:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1" rowspan="2">
+              <widget class="QLineEdit" name="LineEdit_DataDeviceName">
+               <property name="text">
+                <string>/dev/ft2232h_ic_a</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="graphTab">
+       <attribute name="title">
+        <string>Graph</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_5">
+        <item row="0" column="0">
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <item>
+           <widget class="TCanvasWidget" name="RootCanvasWidget" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>1</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>100</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="PushButton_Update">
+            <property name="toolTip">
+             <string>Update histogram in qtweb widget</string>
+            </property>
+            <property name="text">
+             <string>Update</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>491</width>
+     <height>20</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>TCanvasWidget</class>
+   <extends>QWidget</extends>
+   <header>TCanvasWidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+ <buttongroups>
+  <buttongroup name="ButtonGroup_CameraSelected"/>
+ </buttongroups>
+</ui>
