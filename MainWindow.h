@@ -8,15 +8,31 @@
  * For the list of contributors see $ROOTSYS/README/CREDITS.             *
  *************************************************************************/
 
+/*
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ *
+ *
+ */
+
 #pragma once
 
-#include <QWidget>
-
-#include <QDateTime>
-#include <QByteArray>
 #include <QMainWindow>
-#include <QSerialPort> // Serial port
+
 #include <QOpcUaClient> // OPC UA client
+#include <QScopedArrayPointer>
 
 #include <list>
 #include <array>
@@ -24,6 +40,7 @@
 #include <memory>
 #include <chrono>
 
+#include "AbstractCamera.h"
 #include "typedefs.h"
 
 QT_BEGIN_NAMESPACE
@@ -34,24 +51,12 @@ class MainWindow;
 
 QT_END_NAMESPACE
 
-class QTimer;
 class QOpcUaClient;
 class QOpcUaProvider;
 class OpcUaModel;
 
 class TFile;
-class TTree;
-class TGraph;
-class TPad;
-class TCanvas;
-class TH2;
-class TH1;
-class TH2F;
-class TH1F;
-class TLine;
-class TGraphErrors;
-class TMultiGraph;
-class TF1;
+class CameraProfilesDialog;
 
 class MainWindow : public QMainWindow
 {
@@ -60,29 +65,33 @@ class MainWindow : public QMainWindow
 public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow() override;
+  AbstractCamera* cameraBegin() const { return this->camera[0]; }
+  AbstractCamera* cameraEnd() const { return this->camera[1]; }
+  AbstractCamera* getCamera(bool index = false) const { return this->camera[index]; }
 
-public slots:
-  void onUpdateButtonClicked();
+private slots:
+  void onConnectCamera();
+  void onDisconnectCamera();
 
 protected:
+  void getCamerasAvailable();
+
   Ui::MainWindow* ui{ nullptr };
- 
-  TH1F* hist{nullptr};  ///< histogram for display in TCanvas
-  QSerialPort* commandPort{ nullptr };
-  QSerialPort* dataPort{ nullptr };
-
-  std::chrono::steady_clock::time_point timeWaitingBegin, timeWaitingEnd;
-  QTimer* timeoutTimer{ nullptr }; /// extraction (spill) or initiation timeout
-
-  QByteArray commandResponseBuffer;
-  QByteArray dataResponseBuffer;
 
   TFile* rootFile{ nullptr };
   QString rootFileName;
-  ChannelsCountsMap channelsCountsA; // Side-A
-  ChannelsCountsMap channelsCountsB; // Side-B
 
   OpcUaModel* opcUaModelData{ nullptr };
   QOpcUaProvider* opcUaProvider{ nullptr };
   QOpcUaClient* opcUaClient{ nullptr };
+  AbstractCamera* camera[2]{ nullptr, nullptr };
+  CameraProfilesDialog* cameraDialog[2]{ nullptr, nullptr };
+
+  struct CameraDeviceData {
+    std::string id;
+    std::string dataDirectory;
+    std::string commandDeviceName;
+    std::string dataDeviceName;
+  };
+  std::list< CameraDeviceData > camerasAvalable;
 };

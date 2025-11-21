@@ -40,7 +40,10 @@ endif()
 add_executable(ProfileCamera2D
   MainWindow.ui
   MainWindow.cpp
+  AbstractCamera.cpp
+  FullCamera.cpp
   TCanvasWidget.cpp
+  CameraProfilesDialog.cpp
   main.cpp
 )
 
