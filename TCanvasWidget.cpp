@@ -36,6 +36,10 @@
 
 #include <TWebCanvas.h>
 
+#include <iostream>
+
+QT_BEGIN_NAMESPACE
+
 TCanvasWidget::TCanvasWidget(QWidget *parent)
   :
   QWidget(parent)
@@ -87,7 +91,7 @@ TCanvasWidget::TCanvasWidget(QWidget *parent)
   view = findChild< QWebEngineView* >("RootWebView");
   if (!view)
   {
-    fprintf(stderr, "FAIL TO FIND QWebEngineView - ROOT Qt5Web plugin does not work properly !!!!!\n");
+    std::cerr << "FAIL TO FIND QWebEngineView - ROOT Qt5Web plugin does not work properly !!!!!" << std::endl;
     exit(11);
   }
   view->resize(width(), height());
@@ -120,7 +124,7 @@ void TCanvasWidget::SetPrivateCanvasFields(bool on_init)
   }
   else
   {
-    fprintf(stderr, "ERROR: Cannot modify fCanvasID data member\n");
+    std::cerr << "ERROR: Cannot modify fCanvasID data member" << std::endl;
   }
 
   offset = TCanvas::Class()->GetDataMemberOffset("fMother");
@@ -134,14 +138,20 @@ void TCanvasWidget::SetPrivateCanvasFields(bool on_init)
    }
   else
   {
-    fprintf(stderr, "ERROR: Cannot set fMother data member in canvas\n");
+    std::cerr << "ERROR: Cannot set fMother data member in canvas" << std::endl;
   }
 }
 
 void TCanvasWidget::resizeEvent(QResizeEvent *event)
 {
- view->resize(width(), height());
- rootCanvas->SetCanvasSize(width(), height());
+  Q_UNUSED(event);
+  view->resize(width(), height());
+  rootCanvas->SetCanvasSize(width(), height());
+}
+
+void TCanvasWidget::paintEvent(QPaintEvent* event)
+{
+  Q_UNUSED(event);
 }
 
 void TCanvasWidget::activateEditor(TPad *pad, TObject *obj)
@@ -168,11 +178,13 @@ void TCanvasWidget::activateStatusLine()
   TCanvasImp *cimp = rootCanvas->GetCanvasImp();
   if (cimp)
   {
-    cimp->ShowStatusBar(kTRUE);
+    cimp->ShowStatusBar(kFALSE);
   }
 }
 
-TPad* TCanvasWidget::getPad() const
+TPad* TCanvasWidget::getPad(int subPadNumber) const
 {
-  return (rootCanvas) ? dynamic_cast< TPad* >(rootCanvas->GetPad(0)) : nullptr;
+  return (rootCanvas) ? dynamic_cast< TPad* >(rootCanvas->GetPad(subPadNumber)) : nullptr;
 }
+
+QT_END_NAMESPACE

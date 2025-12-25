@@ -32,6 +32,8 @@
 #include <QWidget>
 #include <QWebEngineView>
 
+QT_BEGIN_NAMESPACE
+
 class TCanvas;
 class TPad;
 class TObject;
@@ -44,8 +46,8 @@ public:
   ~TCanvasWidget() override;
 
   /// returns canvas shown in the widget
-  TCanvas* getCanvas() { return rootCanvas; }
-  TPad* getPad() const;
+  TCanvas* getCanvas() const { return rootCanvas; }
+  TPad* getPad(int subPadNumber = 0) const;
 
 signals:
   void CanvasUpdated();
@@ -60,7 +62,10 @@ public slots:
 
 protected:
   void resizeEvent(QResizeEvent *event) override;
+  void paintEvent(QPaintEvent* e) override;
   void SetPrivateCanvasFields(bool on_init);
   QWebEngineView* view{nullptr};  ///< qt webwidget to show
   TCanvas* rootCanvas{nullptr};
 };
+
+QT_END_NAMESPACE

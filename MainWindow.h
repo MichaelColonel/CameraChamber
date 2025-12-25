@@ -30,9 +30,15 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QList>
+#include <QMap>
+#include <QScopedArrayPointer>
+#include <QPointer>
 
 #include <QOpcUaClient> // OPC UA client
-#include <QScopedArrayPointer>
+
+#include <TFile.h>
+#include <TTree.h>
 
 #include <list>
 #include <array>
@@ -40,8 +46,9 @@
 #include <memory>
 #include <chrono>
 
-#include "AbstractCamera.h"
 #include "typedefs.h"
+
+#include "AbstractCamera.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -49,13 +56,14 @@ namespace Ui {
 class MainWindow;
 }
 
-QT_END_NAMESPACE
-
 class QOpcUaClient;
 class QOpcUaProvider;
 class OpcUaModel;
+class QCheckBox;
+class QAbstractButton;
+class QTimer;
+class QProgressDialog;
 
-class TFile;
 class CameraProfilesDialog;
 
 class MainWindow : public QMainWindow
@@ -65,33 +73,67 @@ class MainWindow : public QMainWindow
 public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow() override;
-  AbstractCamera* cameraBegin() const { return this->camera[0]; }
-  AbstractCamera* cameraEnd() const { return this->camera[1]; }
-  AbstractCamera* getCamera(bool index = false) const { return this->camera[index]; }
+
+  Q_INVOKABLE void log(const QString &text, const QString &context, QColor color);
+  void log(const QString &text, QColor color = Qt::black);
 
 private slots:
-  void onConnectCamera();
-  void onDisconnectCamera();
+  void onSelectedCameraChanged(const QString& cameraID);
+  void onConnectCameraClicked();
+  void onDisconnectCameraClicked();
+  void onChipsEnabledChanged();
+  void onChipResetClicked();
+  void onAlteraResetClicked();
+  void onAcquisitionAdcModeResolutionChanged(QAbstractButton*);
+  void onAcquisitionClicked();
+  void onOnceTimeExternalStartClicked();
+  void onWriteCapacitiesClicked();
+  void onSetIntegrationTimeClicked();
+  void onSetCapacityClicked();
+  void onSetChipsEnabledClicked();
+  void onSetSamplesClicked();
+  void onSetNumberOfChipsClicked();
+  void onSetAdcResolutionClicked();
+  void onSetExternalStartClicked();
+  void onInitiateCameraClicked();
+  void onCameraCommandWritten(const QByteArray& command);
+  void onCameraInitiationStarted();
+  void onCameraInitiationInProgress(int prog);
+  void onCameraInitiationFinished();
+  void onCameraFirstContactTimeout();
+  void onCameraFirstContactFinished();
+
+private:
+  void updateUiState();
 
 protected:
+  int chipsEnabledCode() const;
   void getCamerasAvailable();
+  QPointer< AbstractCamera > getCamera(const QString& cameraID) const;
+  QPointer< CameraProfilesDialog > getProfiles(const QString& cameraID) const;
+  QPointer< AbstractCamera > getCurrentCamera() const;
+  QPointer< CameraProfilesDialog > getCurrentProfiles() const;
 
   Ui::MainWindow* ui{ nullptr };
+  bool cameraConnectedFlag{ false };
 
-  TFile* rootFile{ nullptr };
+  QScopedPointer< QTimer > initiationTimer;
+  QScopedPointer< QProgressDialog > initiationProgress;
+
+  std::unique_ptr< TFile > rootFile;
+  QMap< QString, QScopedPointer< TTree > > rootCameraTreeMap;
+
   QString rootFileName;
 
   OpcUaModel* opcUaModelData{ nullptr };
   QOpcUaProvider* opcUaProvider{ nullptr };
   QOpcUaClient* opcUaClient{ nullptr };
-  AbstractCamera* camera[2]{ nullptr, nullptr };
-  CameraProfilesDialog* cameraDialog[2]{ nullptr, nullptr };
 
-  struct CameraDeviceData {
-    std::string id;
-    std::string dataDirectory;
-    std::string commandDeviceName;
-    std::string dataDeviceName;
-  };
-  std::list< CameraDeviceData > camerasAvalable;
+  QList< AbstractCamera::CameraDeviceData > camerasAvalable;
+
+  typedef QPair< QPointer< AbstractCamera >, QPointer< CameraProfilesDialog > > CameraDeviceProfilesPair;
+  typedef QMap< QString, CameraDeviceProfilesPair > CameraDeviceProfilesMap;
+  CameraDeviceProfilesMap cameraDeviceProfilesMap;
 };
+
+QT_END_NAMESPACE

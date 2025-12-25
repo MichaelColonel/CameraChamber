@@ -20,11 +20,41 @@
 #pragma once
 
 #include <QDialog>
+#include <QScopedPointer>
+
+#include "AbstractCamera.h"
+
+QT_BEGIN_NAMESPACE
+
+class CameraProfilesDialogPrivate;
 
 class CameraProfilesDialog : public QDialog
 {
   Q_OBJECT
 public:
-  CameraProfilesDialog(QWidget* parent = nullptr);
+  CameraProfilesDialog(const AbstractCamera::CameraDeviceData& cameraInfo, QWidget* parent = nullptr);
   virtual ~CameraProfilesDialog();
+  void setCameraDevice(QPointer< AbstractCamera > cam);
+
+public slots:
+  void onAcquisitionStarted();
+  void onAcquisitionFinished();
+  void onUpdateGraphClicked();
+  void onUpdateProfilesClicked();
+  void onPedestalBeginChanged(double pos);
+  void onPedestalEndChanged(double pos);
+  void onSignalBeginChanged(double pos);
+  void onSignalEndChanged(double pos);
+
+signals:
+  void logMessage(const QString& msg, const QString& context, QColor color);
+
+protected:
+  QScopedPointer< CameraProfilesDialogPrivate > d_ptr;
+
+private:
+  Q_DECLARE_PRIVATE(CameraProfilesDialog);
+  Q_DISABLE_COPY(CameraProfilesDialog);
 };
+
+QT_END_NAMESPACE

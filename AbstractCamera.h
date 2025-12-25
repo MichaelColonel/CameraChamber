@@ -22,10 +22,13 @@
 #include <QtSerialPort/QSerialPort>
 #include <QByteArray>
 #include <QObject>
+#include <QColor>
 
-#include <utility>
+#include <bitset>
 
 #include "typedefs.h"
+
+QT_BEGIN_NAMESPACE
 
 class QTimer;
 class QSettings;
@@ -33,10 +36,20 @@ class QSettings;
 class TGraph;
 class TGraphErrors;
 class TH1;
+class TH2;
+class TPad;
+
+class AbstractCameraPrivate;
 
 class AbstractCamera : public QObject {
   Q_OBJECT
 public:
+  struct CameraDeviceData {
+    QString id;
+    QString dataDirectory;
+    QString commandDeviceName;
+    QString dataDeviceName;
+  };
   static constexpr int RESOLUTION_16BIT = (1 << AdcResolutionType::ADC_16_BIT);
   static constexpr int RESOLUTION_18BIT = (1 << AdcResolutionType::ADC_18_BIT);
   static constexpr int RESOLUTION_20BIT = (1 << AdcResolutionType::ADC_20_BIT);
@@ -46,80 +59,118 @@ public:
   static constexpr int BITS = CHAR_BIT * 2;
   static constexpr int BUFFER_SIZE = 3;
 
-  AbstractCamera(const QString& commandPortDeviceName, const QString& dataPortDeviceName, QObject *parent = nullptr);
+  static constexpr std::array< double, CHAR_BIT > CHARGE_RANGE{ 12.5, 50., 100., 150., 200., 250., 300., 350. };
+  static constexpr std::array< double, CHAR_BIT > CAPACITY_RANGE{ 3.0, 12.5, 25., 37.5, 50., 62.5, 75., 87.5 };
+
+  AbstractCamera();
+  AbstractCamera(const CameraDeviceData& data, QObject *parent = nullptr);
   virtual ~AbstractCamera();
   bool connect();
   void disconnect();
   bool isDeviceAlreadyConnected(const QString& otherPort);
+  bool isDeviceAlreadyConnected();
+
+  bool isInitiationListEmpty() const;
+  QString getCommandPortError() const;
+  QString getDataPortError() const;
+  CameraDeviceData getCameraData() const;
+  // set pedestal and signal gate and update channel info map
+  void setPedestalSignalGate(int pedMin, int pedMax, int sigMin, int sigMax);
+  // get adc data to update raw counts time graph
+  bool getAdcData(int chip, int channel, std::vector< int >& adcData,
+    AdcTimeType dataType = AdcTimeType::INTEGRATOR_AB);
+  virtual TH2* createProfile2D(bool integral = false) = 0;
+  virtual void updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D) = 0;
+  virtual TGraph* createProfile(CameraProfileType profileType, bool withErrors = false);
+  virtual void updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors) = 0; // update profiles and histograms
+
+  int getChipsEnabledCode() const;
+  int getIntegrationTimeMs() const;
+  int getCapasityCode() const;
+  int getAdcResolutionMode() const;
+  int getAdcSamples() const;
+  bool getChipChannelInfo(int chip, int channel, ChannelInfoPair& info);
+  void getChipChannelInfo(std::map< ChipChannelPair, ChannelInfoPair >& infoMap);
+
+  QByteArray getSetIntegrationTimeCommand(int integrationTimeMs = 2) const;
+  QByteArray getSetCapacityCommand(int capacityCode = 3) const;
+  QByteArray getResetChipCommand() const;
+  QByteArray getResetAlteraCommand() const;
+  QByteArray getStartAcquisitionCommand() const;
+  QByteArray getSetAdcResolutionCommand(bool adc20Bit = false) const;
+  QByteArray getSetChipsEnabledCommand(int chipsEnabledCode = 0x0FFF) const;
+  QByteArray getSetNumberOfChipsCommand() const;
+  QByteArray getSetSamplesCommand(int numberOfSamples = 100) const;
+  QByteArray getSetExternalStartCommand(bool externalStart = false) const;
+  QByteArray getWriteChipsCapacitiesCommand() const;
+  QByteArray getFirstContactCommand() const;
+  QByteArray getListChipsEnabledCommand() const;
+  QByteArray getOnceTimeExternalStartCommand() const;
+
+  QString getChipsAddresses() const;
+  void setInitiationList(const QByteArrayList& initList);
+  virtual void processDataCounts(bool splitData = false,
+    IntegratorType integType = IntegratorType::A,
+    ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE);
 
 public slots:
   void onCommandPortDataReady();
+  void onCommandPortBytesWritten(qint64);
+  void onCommandPortError(QSerialPort::SerialPortError);
   void onDataPortDataReady();
+  void onDataPortBytesWritten(qint64);
+  void onDataPortError(QSerialPort::SerialPortError);
+  void writeCommand(const QByteArray& com);
+  void writeNextCommandFromInitiationList();
+  void writeLastCommandOnceAgain();
 
 signals:
+  void firmwareCommandBufferIsReset();
   void acquisitionStarted();
   void acquisitionFinished();
-  void commandWritten(QByteArray* command);
+  void commandWritten(const QByteArray& command);
+  void initiationStarted();
+  void initiationProgress(int prog);
+  void initiationFinished();
+  void logMessage(const QString& msg, const QString& context, QColor color);
 
 protected:
   void processRawData();
-  virtual void processDataCounts() = 0;
-  bool loadCalibration(const QString& cameraDirectory); // directory must contain ChipsPositions.json file and chips JSON files
+  bool loadCameraData(const QString& cameraDirectory); // directory must contain ChipsPositions.json file and chips JSON files
+  bool loadChipData(const QString& chipFile, int chipPosition); // chip file in camera directory
   bool loadCalibration(QSettings* settings);
   bool saveCalibration(QSettings* settings);
 
-  void updateGraph(int chip = 1, int strip = 1); // update raw counts time graph
-  void updateProfiles(); // update profiles and histograms
+  void setRefAdcCalibrationChipChannel(int chip, int channel);
+  void setRefAmpChipChannelVerticalProfile(int chip, int channel);
+  void setRefAmpChipChannelHorizontalProfile(int chip, int channel);
 
-  QString commandPortName;
-  QString dataPortName;
+  const std::array< int, 4 >& getPedestalSignalGate() const;
 
-  QSerialPort* commandPort{ nullptr };
-  QSerialPort* dataPort{ nullptr };
-  QTimer* timeoutTimer{ nullptr }; /// extraction (spill) or initiation timeout
+  const std::vector< int >& getChipsAddressesVector() const;
+  const std::vector< int >& getVerticalProfileChips() const;
+  const std::vector< int >& getHorizontalProfileChips() const;
+  const std::vector< double >& getVerticalProfile() const;
+  const std::vector< double >& getHorizontalProfile() const;
+  std::vector< double >& getVerticalProfile();
+  std::vector< double >& getHorizontalProfile();
+  const std::vector< double >& getVerticalProfileStripsNumbers() const;
+  const std::vector< double >& getHorizontalProfileStripsNumbers() const;
+  const std::vector< ChipChannelPair >& getVerticalProfileChipChannelStrips() const;
+  const std::vector< ChipChannelPair >& getHorizontalProfileChipChannelStrips() const;
+  const std::map< ChipChannelPair, ChannelInfoPair >& getChipChannelInfoMap() const;
 
-  QByteArray commandResponseBuffer;
-  QByteArray dataResponseBuffer;
+public:
+  template< size_t N > static void ReverseBits(std::bitset< N >& b);
+  static std::vector< double > GenerateStripsNumbers(size_t n, int init = 1);
+  static std::vector< double > GenerateFullProfileStripsBinsBorders(size_t n);
 
-  ChipChannelsCountsMap channelsCountsA; // Side-A
-  ChipChannelsCountsMap channelsCountsB; // Side-B
-
-  std::vector< int > chipsVerticalStripsVector;
-  std::vector< int > chipsHorizontalStripsVector;
-
-  std::pair< int, int > refCalibChipStrip = {1, 1};
-  std::pair< int, int > refCalibAmplChipStripVertical = { 1, 1 };
-  std::pair< int, int > refCalibAmplChipStripHorizontal = { 1, 1 };
-  std::array< int, 4 > pedestalSignalGateArray = { 1, 100, 101, 200 };
-
-  struct CameraResponse {
-    int ChipsEnabled{ -1 };
-    unsigned short ChipsEnabledCode{ 0x0FFF };
-    int IntegrationTimeCode{ 1 }; // Integration time code(0...15)
-    int AdcMode{ 16 }; // 16-bit or 20-bit (16 or 20)
-    int CapacityCode{ 7 }; // Capacity code (0...7)
-    bool ExternalStartState{ false };
-  } cameraResponse;
-
-  struct ChannelInfo {
-    double pedMeanA{ -1. };
-    double pedMeanB{ -1. };
-    double pedMom2A{ -1. };
-    double pedMom2B{ -1. };
-    double sigMeanA{ -1. };
-    double sigMeanB{ -1. };
-    double sigMom2A{ -1. };
-    double sigMom2B{ -1. };
-    double sigCountA{ -1. };
-    double sigCountB{ -1. };
-    double sigSumA{ -1. };
-    double sigSumB{ -1. };
-  };
-
-  TGraph* channelGraph{ nullptr };
-  TH1* channelSideHist[2]{ nullptr, nullptr };
-  TGraphErrors* profileGraph[2]{ nullptr, nullptr };
+protected:
+  QScopedPointer< AbstractCameraPrivate > d_ptr;
 
 private:
+  Q_DECLARE_PRIVATE(AbstractCamera);
   Q_DISABLE_COPY(AbstractCamera);
 };
+
+QT_END_NAMESPACE

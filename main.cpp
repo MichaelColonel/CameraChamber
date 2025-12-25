@@ -29,6 +29,7 @@
 
 #include <QTimer>
 #include <QApplication>
+#include <QScopedPointer>
 
 #include <TApplication.h>
 #include <TSystem.h>
@@ -47,31 +48,29 @@ int main(int argc, char **argv)
 #endif
 
    argc = 1; // hide all additional parameters from ROOT and Qt
-   TApplication app("Qt ROOT Application", &argc, argv); // ROOT application
+   TApplication rootApp("Qt ROOT Application", &argc, argv); // ROOT application
 
    char* argv2[3];
    argv2[0] = argv[0];
    argv2[1] = 0;
 
-   QApplication qtapp(argc, argv2); // Qt application
+   QApplication qtApp(argc, argv2); // Qt application
 
    // let run ROOT event loop
-   QTimer timer;
-   QObject::connect(&timer, &QTimer::timeout, [](){ gSystem->ProcessEvents(); });
-   timer.setSingleShot(false);
-   timer.start(4);
+   QScopedPointer< QTimer > timer(new QTimer());
+   QObject::connect(timer.data(), &QTimer::timeout, [](){ gSystem->ProcessEvents(); });
+   timer->setSingleShot(false);
+   timer->start(20);
 
    // main window
-   MainWindow* window = new MainWindow();
+   QScopedPointer< MainWindow > window(new MainWindow());
    window->show();
 
    window->setWindowTitle(QString("ProfileCamera2D ") + QT_VERSION_STR);
 
-   QObject::connect(&qtapp, SIGNAL(lastWindowClosed()), &qtapp, SLOT(quit()));
+   QObject::connect(&qtApp, SIGNAL(lastWindowClosed()), &qtApp, SLOT(quit()));
 
-   int res = qtapp.exec();
-
-   delete window;
+   int res = qtApp.exec();
 
    return res;
 }

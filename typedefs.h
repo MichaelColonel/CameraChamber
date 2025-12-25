@@ -33,10 +33,14 @@
 #define CHIPS_PER_PLANE 6
 #define CHIPS_VERTICAL_STRIPS_PLANE 6
 #define CHIPS_HORIZONTAL_STRIPS_PLANE 6
+#define CHIPS_PER_CAMERA (CHIPS_VERTICAL_STRIPS_PLANE + CHIPS_HORIZONTAL_STRIPS_PLANE)
 
 #define CHANNELS_PER_PLANE (CHANNELS_PER_CHIP * CHIPS_PER_PLANE)
 #define CHANNELS_VERTICAL_STRIPS_PLANE (CHIPS_VERTICAL_STRIPS_PLANE * CHIPS_PER_PLANE)
 #define CHANNELS_HORIZONTAL_STRIPS_PLANE (CHIPS_HORIZONTAL_STRIPS_PLANE * CHIPS_PER_PLANE)
+#define CHANNELS_PER_CAMERA (CHANNELS_VERTICAL_STRIPS_PLANE + CHANNELS_HORIZONTAL_STRIPS_PLANE)
+
+#define STRIP_STEP_PER_SIDE_MM 2.0
 
 typedef boost::accumulators::accumulator_set< \
   double, \
@@ -48,8 +52,9 @@ typedef boost::accumulators::accumulator_set< \
   > \
 > MeanDispAccumSet;
 
-typedef std::map< std::pair< int, int >, double > ChipChannelCalibrationMap;
-typedef std::array< std::pair< int, int >, CHANNELS_PER_PLANE > ChipChannelArray;
+typedef std::pair< int, int > ChipChannelPair;
+typedef std::map< ChipChannelPair, double > ChipChannelCalibrationMap;
+typedef std::array< ChipChannelPair, CHANNELS_PER_PLANE > ChipChannelArray;
 typedef std::map< int, std::array< std::vector< int >, CHANNELS_PER_CHIP > > ChipChannelsCountsMap;
 typedef std::pair< ChipChannelCalibrationMap, ChipChannelCalibrationMap > ChipChannelCalibrationMapPair;
 typedef std::map< int, ChipChannelCalibrationMapPair > AdcOffsetCalibrationMap; // ADC-Offset calibration
@@ -66,10 +71,16 @@ enum CameraProfileType : int {
   CameraProfileType_Last
 };
 
-enum ChannelSideType : int {
-  SIDE_A = 0,
-  SIDE_B,
-  ChannelSideType_Last
+enum IntegratorType : int {
+  A = 0,
+  B,
+  IntegratorType_Last
+};
+
+enum AdcTimeType : int {
+  INTEGRATOR_A,
+  INTEGRATOR_B,
+  INTEGRATOR_AB
 };
 
 enum AdcResolutionType : int {
@@ -78,3 +89,38 @@ enum AdcResolutionType : int {
   ADC_20_BIT = 20,
   AdcResolutionType_Last
 };
+
+enum ProfileRepresentationType : int {
+  MEAN, // mean ADC count
+  INTEGRAL, // integral ADC count
+  CHARGE // charge in pC
+};
+
+struct CameraResponse {
+  int ChipsEnabled{ -1 };
+  unsigned short ChipsEnabledCode{ 0x0FFF };
+  int IntegrationTimeCode{ 1 }; // Integration time code(0...15)
+  int AdcMode{ ADC_16_BIT }; // 16-bit or 20-bit (16 or 20)
+  int CapacityCode{ 7 }; // Capacity code (0...7)
+  int AdcSamples{ -1 };
+  bool ExternalStartState{ false };
+};
+
+struct ChannelInfo {
+  double PedMeanA{ -1. };
+  double PedMeanB{ -1. };
+  double PedMom2A{ -1. };
+  double PedMom2B{ -1. };
+  double SigMeanA{ -1. };
+  double SigMeanB{ -1. };
+  double SigMom2A{ -1. };
+  double SigMom2B{ -1. };
+  double SigCountA{ -1. };
+  double SigCountB{ -1. };
+  double SigSumA{ -1. };
+  double SigSumB{ -1. };
+  double Signal{ -1. };
+  double SignalNoAmp{ -1. };
+};
+
+typedef std::pair< struct ChannelInfo, struct ChannelInfo > ChannelInfoPair;
