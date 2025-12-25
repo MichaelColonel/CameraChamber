@@ -1,0 +1,74 @@
+{
+  "_comment": "Ionization camera chips and channels geometry - IC02",
+  "NumberOfChips": 12,
+  "ChipsPerPlane": 6,
+  "ChipsPerSide": 3,
+  "ChannelsPerChip" : 32,
+  "ChannelStepPerPlaneMM": 1.0,
+  "ChannelStepPerSideMM": 2.0,
+  "ChipChannels": [ 9, 10, 11, 12, 25, 26, 27, 28, 13, 14, 15, 16, 29, 30, 31, 32, 17, 18, 19, 20, 1, 2, 3, 4, 21, 22, 23, 24, 5, 6, 7, 8 ],
+  "VerticalChips": [ 11, 2, 12, 1 ],
+  "HorizontalChips": [ 6, 3, 5, 9, 4, 10 ],
+  "Chips": [
+    {
+      "Position": 1,
+      "Name": "1.12",
+      "ReverseChannels": 0
+    },
+    {
+      "Position": 2,
+      "Name": "2.8",
+      "ReverseChannels": 1
+    },
+    {
+      "Position": 3,
+      "Name": "2.3",
+      "ReverseChannels": 0
+    },
+    {
+      "Position": 4,
+      "Name": "2.9",
+      "ReverseChannels": 1
+    },
+    {
+      "Position": 5,
+      "Name": "1.6",
+      "ReverseChannels": 0
+    },
+    {
+      "Position": 6,
+      "Name": "2.10",
+      "ReverseChannels": 0
+    },
+    {
+      "Position": 7,
+      "Name": "X.X",
+      "ReverseChannels": 0
+    },
+    {
+      "Position": 8,
+      "Name": "X.X",
+      "ReverseChannels": 0
+    },
+    {
+      "Position": 9,
+      "Name": "1.9",
+      "ReverseChannels": 1
+    },
+    {
+      "Position": 10,
+      "Name": "1.1",
+      "ReverseChannels": 1
+    },
+    {
+      "Position": 11,
+      "Name": "1.7",
+      "ReverseChannels": 1
+    },
+    {
+      "Position": 12,
+      "Name": "1.10",
+      "ReverseChannels": 1
+    }
+  ]
+}
