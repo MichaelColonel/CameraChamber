@@ -53,6 +53,7 @@ add_executable(ProfileCamera2D
   Camera2.cpp
   TCanvasWidget.cpp
   CameraProfilesDialog.cpp
+  RootFileCameraProfilesDialog.cpp
   ChannelInfoTableModel.cpp
   main.cpp
 )

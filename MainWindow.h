@@ -102,6 +102,7 @@ private slots:
   void onCameraInitiationFinished();
   void onCameraFirstContactTimeout();
   void onCameraFirstContactFinished();
+  void onOpenRootFileActionTriggered();
 
 private:
   void updateUiState();

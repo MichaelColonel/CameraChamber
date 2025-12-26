@@ -42,13 +42,14 @@
 #include <QTimer>
 #include <QProgressDialog>
 #include <QMessageBox>
+#include <QFileDialog>
 
 #include <TROOT.h>
 
 #include "CameraProfilesDialog.h"
 #include "FullCamera.h"
 #include "Camera2.h"
-
+#include "RootFileCameraProfilesDialog.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -183,6 +184,9 @@ MainWindow::MainWindow(QWidget *parent)
 
   QObject::connect(this->initiationTimer.data(), SIGNAL(timeout()),
     this, SLOT(onCameraFirstContactTimeout()));
+
+  QObject::connect(this->ui->actionOpenRootFile, SIGNAL(triggered()),
+    this, SLOT(onOpenRootFileActionTriggered()));
 
   oldMessageHandler = qInstallMessageHandler(&messageHandler);
 
@@ -786,6 +790,41 @@ void MainWindow::onCameraFirstContactFinished()
   }
   this->cameraConnectedFlag = true;
   this->updateUiState();
+}
+
+void MainWindow::onOpenRootFileActionTriggered()
+{
+  QFileDialog* dialog = new QFileDialog(this, tr("Open ROOT File..."));
+  dialog->setAcceptMode(QFileDialog::AcceptOpen);
+  dialog->setFileMode(QFileDialog::ExistingFile);
+
+  QStringList filters;
+  filters << tr("ROOT Files *.root (*.root)");
+  dialog->setNameFilters(filters);
+
+  QStringList fileNames;
+  if (dialog->exec())
+  {
+    fileNames = dialog->selectedFiles();
+
+    if (!fileNames.isEmpty())
+    {
+      this->rootFileName = fileNames[0];
+    }
+  }
+  delete dialog;
+
+  if (this->rootFileName.isEmpty())
+  {
+    return;
+  }
+
+  QDialog* rootFileDialog = new RootFileCameraProfilesDialog(this->rootFileName, this);
+  if (rootFileDialog->exec())
+  {
+    ;
+  }
+  delete rootFileDialog;
 }
 
 QT_END_NAMESPACE
