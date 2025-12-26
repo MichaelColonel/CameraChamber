@@ -1253,6 +1253,12 @@ AbstractCamera::CameraDeviceData AbstractCamera::getCameraData() const
   return d->cameraData;
 }
 
+struct CameraResponse AbstractCamera::getCameraResponse() const
+{
+  Q_D(const AbstractCamera);
+  return d->cameraResponse;
+}
+
 int AbstractCamera::getChipsEnabledCode() const
 {
   Q_D(const AbstractCamera);

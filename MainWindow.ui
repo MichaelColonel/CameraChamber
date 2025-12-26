@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>482</width>
-    <height>724</height>
+    <width>476</width>
+    <height>769</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -88,7 +88,7 @@
        <string>Camera acquisition commands</string>
       </property>
       <property name="collapsed">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <layout class="QGridLayout" name="gridLayout_6">
        <item row="0" column="0">
@@ -465,6 +465,9 @@
        <string>Log</string>
       </property>
       <property name="checked">
+       <bool>true</bool>
+      </property>
+      <property name="collapsed">
        <bool>false</bool>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
@@ -549,7 +552,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>482</width>
+     <width>476</width>
      <height>20</height>
     </rect>
    </property>

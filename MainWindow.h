@@ -114,7 +114,7 @@ protected:
   QPointer< AbstractCamera > getCurrentCamera() const;
   QPointer< CameraProfilesDialog > getCurrentProfiles() const;
 
-  Ui::MainWindow* ui{ nullptr };
+  QScopedPointer< Ui::MainWindow > ui;//{ nullptr };
   bool cameraConnectedFlag{ false };
 
   QScopedPointer< QTimer > initiationTimer;

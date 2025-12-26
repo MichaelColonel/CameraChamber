@@ -98,10 +98,10 @@ enum ProfileRepresentationType : int {
 
 struct CameraResponse {
   int ChipsEnabled{ -1 };
-  unsigned short ChipsEnabledCode{ 0x0FFF };
-  int IntegrationTimeCode{ 1 }; // Integration time code(0...15)
-  int AdcMode{ ADC_16_BIT }; // 16-bit or 20-bit (16 or 20)
-  int CapacityCode{ 7 }; // Capacity code (0...7)
+  unsigned short ChipsEnabledCode{ 0 };
+  int IntegrationTimeCode{ -1 }; // Integration time code(0...15)
+  int AdcMode{ AdcResolutionType_Last }; // 16-bit or 20-bit (16 or 20)
+  int CapacityCode{ -1 }; // Capacity code (0...7)
   int AdcSamples{ -1 };
   bool ExternalStartState{ false };
 };

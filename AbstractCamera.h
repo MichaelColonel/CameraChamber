@@ -74,6 +74,7 @@ public:
   QString getCommandPortError() const;
   QString getDataPortError() const;
   CameraDeviceData getCameraData() const;
+  CameraResponse getCameraResponse() const;
   // set pedestal and signal gate and update channel info map
   void setPedestalSignalGate(int pedMin, int pedMax, int sigMin, int sigMax);
   // get adc data to update raw counts time graph

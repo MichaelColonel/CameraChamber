@@ -204,7 +204,7 @@ MainWindow::~MainWindow()
       dialog->close();
     }
   }
-  delete ui;
+//  delete ui;
 }
 
 void MainWindow::onConnectCameraClicked()
