@@ -19,10 +19,11 @@
 
 #pragma once
 
-#include <QtSerialPort/QSerialPort>
-#include <QByteArray>
 #include <QObject>
+#include <QByteArray>
 #include <QColor>
+
+#include <QtSerialPort/QSerialPort>
 
 #include <bitset>
 
@@ -38,6 +39,7 @@ class TGraphErrors;
 class TH1;
 class TH2;
 class TPad;
+class TTree;
 
 class AbstractCameraPrivate;
 
@@ -84,6 +86,7 @@ public:
   virtual void updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D) = 0;
   virtual TGraph* createProfile(CameraProfileType profileType, bool withErrors = false);
   virtual void updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors) = 0; // update profiles and histograms
+  bool processExternalData(TTree* rootFileTree);
 
   int getChipsEnabledCode() const;
   int getIntegrationTimeMs() const;
@@ -160,6 +163,7 @@ protected:
   const std::vector< ChipChannelPair >& getVerticalProfileChipChannelStrips() const;
   const std::vector< ChipChannelPair >& getHorizontalProfileChipChannelStrips() const;
   const std::map< ChipChannelPair, ChannelInfoPair >& getChipChannelInfoMap() const;
+  CameraProfileType getProfileBrokenChipChannelsStrips(int chip, std::vector< int >& strips) const;
 
 public:
   template< size_t N > static void ReverseBits(std::bitset< N >& b);

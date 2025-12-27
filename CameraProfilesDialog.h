@@ -36,7 +36,7 @@ public:
   virtual ~CameraProfilesDialog();
   void setCameraDevice(QPointer< AbstractCamera > cam);
 
-public slots:
+public Q_SLOTS:
   void onAcquisitionStarted();
   void onAcquisitionFinished();
   void onUpdateGraphClicked();
@@ -46,7 +46,7 @@ public slots:
   void onSignalBeginChanged(double pos);
   void onSignalEndChanged(double pos);
 
-signals:
+Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);
 
 protected:

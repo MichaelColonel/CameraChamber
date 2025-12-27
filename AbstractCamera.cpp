@@ -25,6 +25,7 @@
 
 #include <TH1.h>
 #include <TH2.h>
+#include <TTree.h>
 #include <TGraphErrors.h>
 
 #include <QDebug>
@@ -44,6 +45,7 @@ protected:
 public:
   AbstractCameraPrivate(AbstractCamera &object);
   virtual ~AbstractCameraPrivate();
+  CameraProfileType getProfileForChip(int chip) const;
   bool checkLastCommandWrittenAndRespose();
   bool checkLastCommandWrittenAndRespose(const QByteArray& responseBuffer);
 
@@ -82,6 +84,7 @@ public:
   std::map< ChipChannelPair, double > chipChannelCalibrationA; // ADC-Offset tangent chip calibration A
   std::map< ChipChannelPair, double > chipChannelCalibrationB; // ADC-Offset tangent chip calibration B
   std::map< ChipChannelPair, double > chipChannelCalibrationAmplitude; // amplitude sensitivity calibration
+  std::map< int, std::vector< int > > chipChannelsStripsBrokenMap;
 
   ChipChannelPair refAdcChipChannel = { 1, 1 };
   ChipChannelPair refAmpChipChannelVertical = { 1, 1 };
@@ -193,6 +196,22 @@ bool AbstractCameraPrivate::checkLastCommandWrittenAndRespose(const QByteArray& 
     }
   }
   return false;
+}
+
+CameraProfileType AbstractCameraPrivate::getProfileForChip(int chip) const
+{
+  const std::vector< int >& vProf = this->verticalProfileChipsVector;
+  const std::vector< int >& hProf = this->horizontalProfileChipsVector;
+
+  if (std::find(vProf.begin(), vProf.end(), chip) != vProf.end())
+  {
+    return CameraProfileType::PROFILE_VERTICAL;
+  }
+  else if (std::find(hProf.begin(), hProf.end(), chip) != hProf.end())
+  {
+    return CameraProfileType::PROFILE_HORIZONTAL;
+  }
+  return CameraProfileType::CameraProfileType_Last;
 }
 
 AbstractCamera::AbstractCamera()
@@ -834,6 +853,7 @@ bool AbstractCamera::loadCameraData(const QString &cameraDirectory)
   const rapidjson::Value& horizontalChips = doc["HorizontalChips"]; // chips for vertical profile
   const rapidjson::Value& chips = doc["Chips"]; // vector chips objects (calibration data)
   const rapidjson::Value& channelSpacingPerSideMM = doc["ChannelStepPerSideMM"]; // control value
+  const rapidjson::Value& brokenStrips = doc["BrokenChipChannelsStrips"]; // vector of broken strips objects
 
   if (channelSpacingPerSideMM.IsDouble())
   {
@@ -917,6 +937,41 @@ bool AbstractCamera::loadCameraData(const QString &cameraDirectory)
       if (position != -1 && reverseChannelsFlag != -1)
       {
         chipChannelsReverse.set(position - 1, static_cast< bool >(reverseChannelsFlag));
+      }
+    }
+  }
+
+  if (brokenStrips.IsArray())
+  {
+    for (rapidjson::SizeType i = 0; i < brokenStrips.Size(); i++)
+    {
+      int chip = -1;
+      std::vector< int > channelsStrips;
+      for (rapidjson::Value::ConstMemberIterator iter = brokenStrips[i].MemberBegin();
+        iter != brokenStrips[i].MemberEnd(); ++iter)
+      {
+        const rapidjson::Value& name = iter->name;
+        if (name.GetString() == std::string("Chip"))
+        {
+          const rapidjson::Value& brokenChipValue = iter->value;
+          chip = brokenChipValue.GetInt();
+        }
+        if (name.GetString() == std::string("ChannelsStrips"))
+        {
+          const rapidjson::Value& channelsStripsValue = iter->value;
+          if (channelsStripsValue.IsArray())
+          {
+            channelsStrips.reserve(channelsStripsValue.Size());
+            for (rapidjson::SizeType j = 0; j < channelsStripsValue.Size(); j++)
+            {
+              channelsStrips.push_back(channelsStripsValue[j].GetInt());
+            }
+          }
+        }
+      }
+      if (chip > 1 && channelsStrips.size())
+      {
+        d->chipChannelsStripsBrokenMap.insert({chip, channelsStrips});
       }
     }
   }
@@ -1631,6 +1686,75 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
     break;
   }
   return profile;
+}
+
+CameraProfileType AbstractCamera::getProfileBrokenChipChannelsStrips(int chip, std::vector< int >& strips) const
+{
+  Q_D(const AbstractCamera);
+  CameraProfileType prof = d->getProfileForChip(chip);
+  if (prof != CameraProfileType_Last)
+  {
+    for (const auto& [brokenChip, brokenChannels] : d->chipChannelsStripsBrokenMap)
+    {
+      if (brokenChip == chip && brokenChannels.size())
+      {
+        strips.resize(brokenChannels.size());
+        std::copy(brokenChannels.begin(), brokenChannels.end(), strips.begin());
+      }
+    }
+  }
+  return prof;
+}
+
+bool AbstractCamera::processExternalData(TTree *rootFileTree)
+{
+  Q_D(AbstractCamera);
+
+  if (!rootFileTree)
+  {
+    return false;
+  }
+  CameraResponse response;
+
+  ULong64_t bufferSize = 0;
+  std::vector< char > buffer;
+  std::vector< char >* bufferPtr = &buffer;
+
+  ULong64_t chipsAcquiredSize = 0;
+  std::vector< int > chipsAcquired;
+  std::vector< int >* chipsAcquiredPtr = &chipsAcquired;
+
+  unsigned int mode = -1;
+  int adcMode = -1;
+  rootFileTree->SetBranchAddress("respChipsEnabled", &response.ChipsEnabled);
+  rootFileTree->SetBranchAddress("respChipsEnabledCode", &response.ChipsEnabledCode);
+  rootFileTree->SetBranchAddress("respIntTime", &response.IntegrationTimeCode);
+  rootFileTree->SetBranchAddress("respCapacity", &response.CapacityCode);
+  rootFileTree->SetBranchAddress("respExtStart", &response.ExternalStartState);
+  rootFileTree->SetBranchAddress("respAdcMode", &response.AdcMode);
+  rootFileTree->SetBranchAddress("mode", &mode);
+  rootFileTree->SetBranchAddress("adcMode", &adcMode);
+  rootFileTree->SetBranchAddress("bufferSize", &bufferSize);
+  rootFileTree->SetBranchAddress("bufferVector", &bufferPtr);
+  rootFileTree->SetBranchAddress("chipsAcquired", &chipsAcquiredSize);
+  rootFileTree->SetBranchAddress("chipsAcquiredVector", &chipsAcquiredPtr);
+
+  Int_t nentries = static_cast<Int_t>(rootFileTree->GetEntries());
+
+  for (Int_t i = 0; i < nentries; i++)
+  {
+    rootFileTree->GetEntry(i);
+    if (bufferSize && bufferSize == buffer.size())
+    {
+      d->adcDataBuffer.resize(bufferSize);
+      std::copy(buffer.begin(), buffer.end(), d->adcDataBuffer.begin());
+    }
+    d->cameraResponse = response;
+    d->chipsAddressesVector = chipsAcquired;
+    this->processRawData();
+    d->adcDataBuffer.clear();
+  }
+  return true;
 }
 
 QT_END_NAMESPACE

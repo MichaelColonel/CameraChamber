@@ -38,6 +38,7 @@ protected:
 public:
   FullCameraPrivate(FullCamera &object);
   virtual ~FullCameraPrivate();
+  std::vector< int > getProfileBrokenChipChannelsStrips(CameraProfileType type, bool splitData = false) const;
 };
 
 FullCameraPrivate::FullCameraPrivate(FullCamera &object)
@@ -48,6 +49,133 @@ FullCameraPrivate::FullCameraPrivate(FullCamera &object)
 
 FullCameraPrivate::~FullCameraPrivate()
 {
+}
+
+std::vector< int > FullCameraPrivate::getProfileBrokenChipChannelsStrips(CameraProfileType type, bool splitData) const
+{
+  Q_Q(const FullCamera);
+
+  std::vector< int > profPos;
+
+  constexpr int SIZE = FullCamera::PROFILE_STRIPS;
+  std::array< ChipChannelPair, SIZE > VerticalProfileChipChannels; // for mixed channels between opposite chips
+  std::array< ChipChannelPair, SIZE > HorizontalProfileChipChannels; // for mixed channels between opposite chips
+
+  auto formChipStrip = [](const std::vector< ChipChannelPair >& chipStripMask,
+    std::array< ChipChannelPair, SIZE >& formStripMask)
+  {
+    if (chipStripMask.size() != formStripMask.size())
+    {
+      return;
+    }
+    const size_t half = chipStripMask.size() / 2;
+    for (size_t i = 0, j = 0; j < chipStripMask.size(); )
+    {
+      formStripMask[j++] = chipStripMask[half + i];
+      formStripMask[j++] = chipStripMask[i];
+      i++;
+    }
+  };
+
+  const std::vector< ChipChannelPair >& vertChipChannels = q->getVerticalProfileChipChannelStrips();
+  const std::vector< ChipChannelPair >& horizChipChannels = q->getHorizontalProfileChipChannelStrips();
+  if (vertChipChannels.size() != SIZE)
+  {
+    qWarning() << Q_FUNC_INFO << QObject::tr(": Wrong number of strips for vertical profile.\n Enabled: %1, acquired: %2").arg(vertChipChannels.size()).arg(SIZE);
+  }
+
+  if (horizChipChannels.size() != SIZE)
+  {
+    qWarning() << Q_FUNC_INFO << QObject::tr(": Wrong number of strips for vertical profile.\n Enabled: %1, acquired: %2").arg(vertChipChannels.size()).arg(SIZE);
+  }
+  // Fill mixed channels array of strip positions between opposite chips
+  formChipStrip(vertChipChannels, VerticalProfileChipChannels); // vertical profile
+  formChipStrip(horizChipChannels, HorizontalProfileChipChannels); // horizontal profile
+
+  std::map< ChipChannelPair, ChannelInfoPair > infoMap = q->getChipChannelInfoMap();
+  const std::vector< int >& vertProfChips = q->getVerticalProfileChips();
+  const std::vector< int >& horizProfChips = q->getHorizontalProfileChips();
+
+  // sort, split info map data for corresponding profile chip and channel
+  // to reconstruct vertical and horizontal profile
+  for (const auto& [chipChannelPair, channelInfoPair] : infoMap)
+  {
+    int chipStrip = -1; // valid value from 0...PROFILE_STRIPS-1
+    auto findChipChannelArray = [chipChannelPair](const std::array< ChipChannelPair, SIZE >& chipStripMask) -> int
+    {
+      auto iterPos = std::find(chipStripMask.begin(), chipStripMask.end(), chipChannelPair);
+      if (iterPos != chipStripMask.end())
+      {
+        return static_cast< int >(iterPos - chipStripMask.begin());
+      }
+      return -1;
+    };
+
+    auto findChipChannelVector = [chipChannelPair](const std::vector< ChipChannelPair >& chipStripMask) -> int
+    {
+      auto iterPos = std::find(chipStripMask.begin(), chipStripMask.end(), chipChannelPair);
+      if (iterPos != chipStripMask.end())
+      {
+        return static_cast< int >(iterPos - chipStripMask.begin());
+      }
+      return -1;
+    };
+
+    if (std::find(std::begin(vertProfChips), std::end(vertProfChips), chipChannelPair.first) != vertProfChips.end())
+    { // Horizontal strips (Vertical profile)
+      if (!splitData)
+      {
+        chipStrip = findChipChannelArray(VerticalProfileChipChannels);
+      }
+      else
+      {
+        chipStrip = findChipChannelVector(vertChipChannels);
+      }
+      // fill vertical profile
+      if (chipStrip >= 0 && chipStrip < SIZE)
+      {
+        std::vector< int > brokenChannelsStrips;
+        CameraProfileType prof = q->getProfileBrokenChipChannelsStrips(chipChannelPair.first, brokenChannelsStrips);
+        if (prof == type && prof == CameraProfileType::PROFILE_VERTICAL)
+        {
+          for (int broken : brokenChannelsStrips)
+          {
+            if (chipChannelPair.second == broken)
+            {
+              profPos.push_back(chipStrip);
+            }
+          }
+        }
+      }
+    }
+    else if (std::find(std::begin(horizProfChips), std::end(horizProfChips), chipChannelPair.first) != horizProfChips.end())
+    { // Vertical strips (Horizontal profile)
+      if (!splitData)
+      {
+        chipStrip = findChipChannelArray(HorizontalProfileChipChannels);
+      }
+      else
+      {
+        chipStrip = findChipChannelVector(horizChipChannels);
+      }
+      if (chipStrip >= 0 && chipStrip < SIZE)
+      {
+        std::vector< int > brokenChannelsStrips;
+        CameraProfileType prof = q->getProfileBrokenChipChannelsStrips(chipChannelPair.first, brokenChannelsStrips);
+        if (prof == type && prof == CameraProfileType::PROFILE_HORIZONTAL)
+        {
+          for (int broken : brokenChannelsStrips)
+          {
+            if (chipChannelPair.second == broken)
+            {
+              profPos.push_back(chipStrip);
+            }
+          }
+        }
+      }
+    }
+  }
+  return profPos;
 }
 
 FullCamera::FullCamera(const AbstractCamera::CameraDeviceData& data, QObject *parent)
@@ -137,7 +265,7 @@ void FullCamera::processDataCounts(bool splitData,
   for (const auto& [chipChannelPair, channelInfoPair] : infoMap)
   {
     const ChannelInfo& calibInfo = channelInfoPair.second;
-//    const ChannelInfo& info = channelInfoPair.first;
+    const ChannelInfo& info = channelInfoPair.first;
     int chipStrip = -1; // valid value from 0...PROFILE_STRIPS-1
     auto findChipChannelArray = [chipChannelPair](const std::array< ChipChannelPair, PROFILE_STRIPS >& chipStripMask) -> int
     {
@@ -226,6 +354,24 @@ void FullCamera::processDataCounts(bool splitData,
       }
     }
   }
+
+  // fix broken chip channels or strips
+  std::vector< int > broken = d->getProfileBrokenChipChannelsStrips(CameraProfileType::PROFILE_VERTICAL, splitData);
+  for (int pos : broken)
+  {
+    if (pos >= 0 && pos < PROFILE_STRIPS)
+    {
+      vertProf[pos] = (vertProf[pos - 1] + vertProf[pos + 1]) / 2.;
+    }
+  }
+  broken = d->getProfileBrokenChipChannelsStrips(CameraProfileType::PROFILE_HORIZONTAL, splitData);
+  for (int pos : broken)
+  {
+    if (pos >= 0 && pos < PROFILE_STRIPS)
+    {
+      horizProf[pos] = (horizProf[pos - 1] + horizProf[pos + 1]) / 2.;
+    }
+  }
 }
 
 void FullCamera::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors)
@@ -245,13 +391,20 @@ void FullCamera::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool 
   const std::vector< double >& vertProfData = this->getVerticalProfile();
   const std::vector< double >& horizProfData = this->getHorizontalProfile();
 
-  for (Int_t i = 0; i < vertProfData.size(); ++i)
+  if (vertProfile)
   {
-    vertProfile->SetPoint(i, Double_t(vertProfStrips[i]), Double_t(vertProfData[i]));
+    for (Int_t i = 0; i < vertProfData.size(); ++i)
+    {
+      vertProfile->SetPoint(i, Double_t(vertProfStrips[i]), Double_t(vertProfData[i]));
+    }
   }
-  for (Int_t i = 0; i < horizProfData.size(); ++i)
+
+  if (horizProf)
   {
-    horizProfile->SetPoint(i, Double_t(horizProfStrips[i]), Double_t(horizProfData[i]));
+    for (Int_t i = 0; i < horizProfData.size(); ++i)
+    {
+      horizProfile->SetPoint(i, Double_t(horizProfStrips[i]), Double_t(horizProfData[i]));
+    }
   }
 }
 
@@ -270,7 +423,7 @@ TH2* FullCamera::createProfile2D(bool integral)
   std::vector< double > vert = AbstractCamera::GenerateFullProfileStripsBinsBorders(yBins + 1);
   const double* yBinsBorders = vert.data();
 
-  const char* histName = (integral) ? "hist2D" : "histInteg2D";
+  const char* histName = (integral) ? "histInteg2D" : "hist2D";
   TH2* hist = new TH2F(histName, "Pseudo 2D Distribution", xBins, xBinsBorders, yBins, yBinsBorders);
   return hist;
 }
@@ -279,22 +432,32 @@ void FullCamera::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
 {
   Q_D(FullCamera);
 
-  if (!pseudo2D || !integPseudo2D)
+  if (!pseudo2D && !integPseudo2D)
   {
     return;
   }
   const std::vector< double >& vertProfData = this->getVerticalProfile();
   const std::vector< double >& horizProfData = this->getHorizontalProfile();
 
-  pseudo2D->Reset();
+  if (pseudo2D)
+  {
+    pseudo2D->Reset();
+  }
+
   for (Int_t row = 0; row < vertProfData.size(); ++row)
   {
     for (Int_t column = 0; column < horizProfData.size(); ++column)
     {
-      Double_t pixel =  horizProfData[column] * vertProfData[row];
+      Double_t pixel = horizProfData[column] * vertProfData[row];
 //      pseudo2D->SetBinContent(column, (horizProfData.size() - 1) - row, pixel);
-      pseudo2D->SetBinContent(column, (horizProfData.size() - 1) - row, pixel);
-      integPseudo2D->Fill(column, (horizProfData.size() - 1) - row, pixel);
+      if (pseudo2D)
+      {
+        pseudo2D->Fill(column, (horizProfData.size() - 1) - row, pixel);
+      }
+      if (integPseudo2D)
+      {
+        integPseudo2D->Fill(column, (horizProfData.size() - 1) - row, pixel);
+      }
     }
   }
 }

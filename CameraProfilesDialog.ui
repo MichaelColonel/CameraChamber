@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>950</width>
+    <width>1063</width>
     <height>678</height>
    </rect>
   </property>
@@ -26,7 +26,7 @@
       <string>Table of statistic information of channel pedestals and signals</string>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tabChannelGraph">
       <attribute name="title">

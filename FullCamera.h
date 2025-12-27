@@ -20,7 +20,6 @@
 #pragma once
 
 #include "AbstractCamera.h"
-#include <QObject>
 
 QT_BEGIN_NAMESPACE
 
@@ -38,8 +37,8 @@ public:
   void processDataCounts(bool splitData = false, IntegratorType integType = IntegratorType::A,
     ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE) override;
   TH2* createProfile2D(bool integral = false) override;
-  void updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D) override;
-  void updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors) override;
+  void updateProfiles2D(TH2* pseudo2D = nullptr, TH2* integPseudo2D = nullptr) override;
+  void updateProfiles(TGraph* vertProfile = nullptr, TGraph* horizProfile = nullptr, bool withErrors = false) override;
 
 protected:
   QScopedPointer< FullCameraPrivate > d_ptr;

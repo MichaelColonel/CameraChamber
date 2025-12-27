@@ -187,6 +187,7 @@ MainWindow::MainWindow(QWidget *parent)
 
   QObject::connect(this->ui->actionOpenRootFile, SIGNAL(triggered()),
     this, SLOT(onOpenRootFileActionTriggered()));
+  QObject::connect(this->ui->actionExit, &QAction::triggered, [this](){ this->close(); });
 
   oldMessageHandler = qInstallMessageHandler(&messageHandler);
 
@@ -478,7 +479,7 @@ int MainWindow::chipsEnabledCode() const
 
 void MainWindow::onChipsEnabledChanged()
 {
-  this->log(tr("Chips enabled code: %1").arg(this->chipsEnabledCode()));
+//  this->log(tr("Chips enabled code: %1").arg(this->chipsEnabledCode()));
 }
 
 QPointer< AbstractCamera > MainWindow::getCamera(const QString& cameraID) const

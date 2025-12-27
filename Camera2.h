@@ -20,7 +20,6 @@
 #pragma once
 
 #include "AbstractCamera.h"
-#include <QObject>
 
 QT_BEGIN_NAMESPACE
 

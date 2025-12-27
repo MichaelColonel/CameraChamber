@@ -22,6 +22,8 @@
 #include <QDialog>
 #include <QScopedPointer>
 
+class QListWidgetItem;
+
 QT_BEGIN_NAMESPACE
 
 class RootFileCameraProfilesDialogPrivate;
@@ -33,6 +35,22 @@ class RootFileCameraProfilesDialog : public QDialog
 public:
   explicit RootFileCameraProfilesDialog(const QString& rootFile, QWidget *parent = nullptr);
   virtual ~RootFileCameraProfilesDialog();
+
+public Q_SLOTS:
+  void onCurrentRootTreeItemChanged(QListWidgetItem* newItem,QListWidgetItem*);
+  void onUpdateGraphClicked();
+  void onUpdateProfilesClicked();
+  void onPedestalBeginChanged(double pos);
+  void onPedestalEndChanged(double pos);
+  void onSignalBeginChanged(double pos);
+  void onSignalEndChanged(double pos);
+  void onProfileFrameRangeValueChanged(int);
+  void onClearProfilesClicked();
+  void onPlayProfilesClicked();
+  void updateProfileFrame();
+
+Q_SIGNALS:
+  void logMessage(const QString& msg, const QString& context, QColor color);
 
 protected:
   QScopedPointer< RootFileCameraProfilesDialogPrivate > d_ptr;

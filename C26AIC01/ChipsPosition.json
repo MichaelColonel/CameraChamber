@@ -70,5 +70,11 @@
       "Name": "2.6",
       "ReverseChannels": 0
     }
+  ],
+  "BrokenChipChannelsStrips": [
+    {
+      "Chip": 4,
+      "ChannelsStrips": [ 9, 13, 14, 27 ]
+    }
   ]
 }
