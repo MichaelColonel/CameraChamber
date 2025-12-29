@@ -57,6 +57,7 @@ public:
   RootFileCameraProfilesDialogPrivate(RootFileCameraProfilesDialog &object);
   virtual ~RootFileCameraProfilesDialogPrivate();
   void processRootFile(const QString& filename);
+  AbstractCamera* getCamera() const { return this->camerasMap[this->cameraID].data(); }
 
   QMap< QString, QPointer< AbstractCamera > > camerasMap;
   std::unique_ptr< TFile > rootFile;
@@ -78,6 +79,7 @@ public:
   std::unique_ptr< TH2 > histPseudo2D;
   std::unique_ptr< TPad > padPseudo2D;
   QScopedPointer< QTimer > timer;
+  QString cameraID{ "Camera2" };
 };
 
 RootFileCameraProfilesDialogPrivate::RootFileCameraProfilesDialogPrivate(RootFileCameraProfilesDialog &object)
@@ -171,7 +173,7 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
   d->padChannel->Draw();
   d->padChannel->SetGrid();
   d->padChannel->cd();
-  d->graphChannel->Draw("APL*");
+  d->graphChannel->Draw("AL*");
 
   canvas = d->ui->RootCanvas_VerticalProfile->getCanvas();
   canvas->cd();
@@ -205,18 +207,24 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
     d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
   }
 
-  QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
+  AbstractCamera* cam = d->getCamera();
+  if (!cam)
+  {
+    return;
+  }
 
-  TGraph* prof = cam->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
-  d->graphVerticalProfile.reset(prof);
+  d->padVerticalProfile->cd();
+  TGraph* profv = cam->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
+  d->graphVerticalProfile.reset(profv);
   d->graphVerticalProfile->SetLineColor(kRed);
   d->graphVerticalProfile->SetLineWidth(2);
   d->graphVerticalProfile->SetMarkerColor(kBlue);
   d->graphVerticalProfile->SetTitle("Vertical profile;Strip position (mm);Charge (pC)");
   d->graphVerticalProfile->Draw("AL*");
 
-  prof = cam->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
-  d->graphHorizontalProfile.reset(prof);
+  d->padHorizontalProfile->cd();
+  TGraph* profh = cam->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
+  d->graphHorizontalProfile.reset(profh);
   d->graphHorizontalProfile->SetLineColor(kRed);
   d->graphHorizontalProfile->SetLineWidth(2);
   d->graphHorizontalProfile->SetMarkerColor(kBlue);
@@ -274,7 +282,7 @@ void RootFileCameraProfilesDialog::onCurrentRootTreeItemChanged(QListWidgetItem*
   TTree* spillTree = dynamic_cast< TTree* >(d->rootFile->Get(treeStdName.c_str()));
   if (spillTree)
   {
-    QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
+    QPointer< AbstractCamera > cam = d->camerasMap[d->cameraID];
     if (cam)
     {
       cam->processExternalData(spillTree);
@@ -290,7 +298,7 @@ void RootFileCameraProfilesDialog::onUpdateGraphClicked()
 
   int intTimeMs = -1;
   int nofSamples = -1;
-  QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
+  AbstractCamera* cam = d->getCamera();
 
   if (cam)
   {
@@ -337,7 +345,7 @@ void RootFileCameraProfilesDialog::onUpdateGraphClicked()
     d->graphChannel->SetPoint(i, i * intTimeMs, Double_t(adcValue));
     ++i;
   }
-  d->graphChannel->Draw("APL*");
+  d->graphChannel->Draw("AL*");
   d->padChannel->Modified();
   d->padChannel->Update();
 
@@ -355,7 +363,7 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
 {
   Q_D(RootFileCameraProfilesDialog);
 
-  QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
+  AbstractCamera* cam = d->getCamera();
 
   if (!cam)
   {
@@ -441,7 +449,8 @@ void RootFileCameraProfilesDialog::onPedestalBeginChanged(double pos)
   int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
   int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
   d->ui->HorizontalSlider_FramesRange->setRange(sigMin, sigMax);
-  QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
+
+  AbstractCamera* cam = d->getCamera();
   if (cam)
   {
     cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
@@ -476,7 +485,8 @@ void RootFileCameraProfilesDialog::onPedestalEndChanged(double pos)
   int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
   int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
   d->ui->HorizontalSlider_FramesRange->setRange(sigMin, sigMax);
-  QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
+
+  AbstractCamera* cam = d->getCamera();
   if (cam)
   {
     cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
@@ -511,7 +521,8 @@ void RootFileCameraProfilesDialog::onSignalBeginChanged(double pos)
   int sigMin = static_cast< int >(pos);
   int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
   d->ui->HorizontalSlider_FramesRange->setRange(sigMin, sigMax);
-  QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
+
+  AbstractCamera* cam = d->getCamera();
   if (cam)
   {
     cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
@@ -546,17 +557,17 @@ void RootFileCameraProfilesDialog::onSignalEndChanged(double pos)
   int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
   int sigMax = static_cast< int >(pos);
   d->ui->HorizontalSlider_FramesRange->setRange(sigMin, sigMax);
-  QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
+
+  AbstractCamera* cam = d->getCamera();
   if (cam)
   {
     cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
   }
 }
 
-void RootFileCameraProfilesDialog::onProfileFrameRangeValueChanged(int frame)
+void RootFileCameraProfilesDialog::onProfileFrameRangeValueChanged(int)
 {
   Q_D(RootFileCameraProfilesDialog);
-  qDebug() << Q_FUNC_INFO << frame;
 }
 
 void RootFileCameraProfilesDialog::onClearProfilesClicked()
@@ -576,16 +587,15 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
     return;
   }
 
-  QPointer< AbstractCamera > cam = d->camerasMap[QString("Camera1")];
-
+  AbstractCamera* cam = d->getCamera();
   if (!cam)
   {
     return;
   }
   int pedMin = static_cast< int >(d->ui->RangeWidget_Pedestal->minimumValue());
   int pedMax = static_cast< int >(d->ui->RangeWidget_Pedestal->maximumValue());
-  int sigMin = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() - 50);
-  int sigMax = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() + 50);
+  int sigMin = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() - 30);
+  int sigMax = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() + 30);
 
   cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
   cam->processDataCounts();
@@ -628,8 +638,10 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
   canvas = d->ui->RootCanvas_Profiles2D->getCanvas();
   canvas->cd();
   d->padPseudo2D->cd();
+//  d->histPseudo2D->GetZaxis()->SetRangeUser(-1., 15.);
   d->padPseudo2D->Modified();
   d->padPseudo2D->Update();
+
   d->ui->HorizontalSlider_FramesRange->setValue(d->ui->HorizontalSlider_FramesRange->value() + 30);
   d->timer->start();
 }

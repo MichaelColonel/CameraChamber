@@ -588,10 +588,16 @@
    <property name="text">
     <string>&amp;Open ROOT file...</string>
    </property>
+   <property name="toolTip">
+    <string>Open ROOT file</string>
+   </property>
   </action>
   <action name="actionCameraSettings">
    <property name="text">
     <string>Camera settings...</string>
+   </property>
+   <property name="toolTip">
+    <string>Camera settings</string>
    </property>
   </action>
   <action name="actionExit">
