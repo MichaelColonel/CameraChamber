@@ -141,10 +141,11 @@ std::vector< int > Camera2Private::getProfileBrokenChipChannelsStrips(CameraProf
 
   // sort, split info map data for corresponding profile chip and channel
   // to reconstruct vertical and horizontal profile
-  const std::vector< double >& vertProf = q->getVerticalProfile();
-  const std::vector< double >& horizProf = q->getHorizontalProfile();
-  for (const auto& [chipChannelPair, channelInfoPair] : infoMap)
+
+  for (const auto& chipChannelInfoPair : infoMap)
   {
+    const ChipChannelPair& chipChannelPair = chipChannelInfoPair.first;
+
     auto findChipStripArrayV = [chipChannelPair](const std::array< ChipChannelPair, VSIZE >& chipStripMask) -> int {
       auto iterPos = std::find(chipStripMask.begin(), chipStripMask.end(), chipChannelPair);
       if (iterPos != chipStripMask.end())
@@ -247,6 +248,16 @@ Camera2::Camera2(const AbstractCamera::CameraDeviceData& data, QObject *parent)
   d_ptr(new Camera2Private(*this))
 {
   Q_D(Camera2);
+  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
+  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
+  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
+  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
+
+  refAdcV = std::make_pair(3, 15); // vert prof
+  refAdcH = std::make_pair(1, 15); // horiz prof
+  refAmpV = std::make_pair(3, 15); // vert prof
+  refAmpH = std::make_pair(1, 15); // horiz prof
+
   std::vector< double > vertProf = this->getVerticalProfile();
   std::vector< double > horizProf = this->getHorizontalProfile();
   if (vertProf.size() != VERTICAL_PROFILE_STRIPS && horizProf.size() != HORIZONTAL_PROFILE_STRIPS)
@@ -345,8 +356,10 @@ void Camera2::processDataCounts(bool splitData,
   // to reconstruct vertical and horizontal profile
   std::vector< double >& vertProf = this->getVerticalProfile();
   std::vector< double >& horizProf = this->getHorizontalProfile();
-  for (const auto& [chipChannelPair, channelInfoPair] : infoMap)
+  for (const auto& chipChannelInfoPair : infoMap)
   {
+    const ChipChannelPair& chipChannelPair = chipChannelInfoPair.first;
+    const ChannelInfoPair& channelInfoPair = chipChannelInfoPair.second;
     const ChannelInfo& calibInfo = channelInfoPair.second;
 //    const ChannelInfo& info = channelInfoPair.first;
 
@@ -528,9 +541,11 @@ void Camera2::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool wit
     size_t xBins = horizProfData.size();
     std::vector< double > horiz = Camera2::GenerateHorizontalProfileStripsBinsBorders(xBins + 1);
     const double* xBinsBorders = horiz.data();
+    constexpr double step2 = STRIP_STEP_PER_SIDE_MM;
+    constexpr double step1 = step2 / 2.;
     for (Int_t i = 0; i < xBins; ++i)
     {
-      horizProfile->SetPoint(i, xBinsBorders[i], Double_t(horizProfData[i]));
+      horizProfile->SetPoint(i, xBinsBorders[i] + step1, Double_t(horizProfData[i]));
     }
   }
 }
@@ -552,18 +567,23 @@ void Camera2::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
   if (pseudo2D)
   {
     pseudo2D->Reset();
-  }
-  for (Int_t row = 0; row < vertProfData.size(); ++row)
-  {
-    for (Int_t column = 0; column < xBins; ++column)
+
+    for (Int_t row = 0; row < vertProfData.size(); ++row)
     {
-      Double_t pixel =  horizProfData[column] * vertProfData[row];
-      if (pseudo2D)
+      for (Int_t column = 0; column < xBins; ++column)
       {
+        Double_t pixel = horizProfData[column] * vertProfData[row];
         pseudo2D->Fill(xBinsBorders[column], (vertProfData.size() - 1) - row, pixel);
       }
-      if (integPseudo2D)
+    }
+  }
+  if (integPseudo2D)
+  {
+    for (Int_t row = 0; row < vertProfData.size(); ++row)
+    {
+      for (Int_t column = 0; column < xBins; ++column)
       {
+        Double_t pixel = horizProfData[column] * vertProfData[row];
         integPseudo2D->Fill(xBinsBorders[column], (vertProfData.size() - 1) - row, pixel);
       }
     }
@@ -584,8 +604,13 @@ TH2* Camera2::createProfile2D(bool integral)
   std::vector< double > vert = AbstractCamera::GenerateFullProfileStripsBinsBorders(yBins + 1);
   const double* yBinsBorders = vert.data();
 
-  const char* histName = (integral) ? "histInteg2D" : "hist2D";
-  TH2* hist = new TH2F(histName, "Pseudo 2D Distribution", xBins, xBinsBorders, yBins, yBinsBorders);
+  AbstractCamera::CameraDeviceData cameraData = this->getCameraData();
+  QString hist2Name = QString("h2_") + cameraData.id;
+  QString hist2IntegName = QString("hi2_") + cameraData.id;
+
+  QString histName = (integral) ? hist2IntegName : hist2Name;
+  QByteArray name = histName.toLatin1();
+  TH2* hist = new TH2D(name.data(), "Pseudo 2D Distribution", xBins, xBinsBorders, yBins, yBinsBorders);
   return hist;
 }
 

@@ -45,15 +45,18 @@ else()
 endif()
 
 add_executable(ProfileCamera2D
-  MainWindow.ui
-  CameraProfilesDialog.ui
   MainWindow.cpp
+  MainWindow.ui
   AbstractCamera.cpp
   FullCamera.cpp
   Camera2.cpp
   TCanvasWidget.cpp
   CameraProfilesDialog.cpp
+  CameraProfilesDialog.ui
   RootFileCameraProfilesDialog.cpp
+  RootFileCameraProfilesDialog.ui
+  SettingsDialog.cpp
+  SettingsDialog.ui
   ChannelInfoTableModel.cpp
   main.cpp
 )

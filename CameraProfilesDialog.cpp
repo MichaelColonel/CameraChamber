@@ -31,8 +31,6 @@
 #include <TLine.h>
 #include <TROOT.h>
 
-#include "FullCamera.h"
-#include "Camera2.h"
 #include "ChannelInfoTableModel.h"
 
 #include "typedefs.h"
@@ -334,8 +332,10 @@ CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceDat
 CameraProfilesDialog::~CameraProfilesDialog()
 {
   Q_D(CameraProfilesDialog);
+
   if (d->padChannel)
   {
+    d->padChannel->cd();
     if (d->linePedBegin)
     {
       d->padChannel->GetListOfPrimitives()->Remove(d->linePedBegin.get());
@@ -357,11 +357,18 @@ CameraProfilesDialog::~CameraProfilesDialog()
       d->padChannel->GetListOfPrimitives()->Remove(d->graphChannel.get());
     }
   }
+  d->padHist->cd();
   TH1I *hA = reinterpret_cast< TH1I* >(gDirectory->FindObject("hA"));
   d->padHist->GetListOfPrimitives()->Remove(hA);
 
   TH1I *hB = reinterpret_cast< TH1I* >(gDirectory->FindObject("hB"));
   d->padHist->GetListOfPrimitives()->Remove(hB);
+
+ // TH2 *h2D = reinterpret_cast< TH2* >(gDirectory->FindObject("hist2D"));
+ // d->padPseudo2D->GetListOfPrimitives()->Remove(h2D);
+
+ // TH2 *hInteg2D = reinterpret_cast< TH2* >(gDirectory->FindObject("histInteg2D"));
+ // d->padPseudoIntegral2D->GetListOfPrimitives()->Remove(hInteg2D);
 
   if (d->camera)
   {
@@ -422,6 +429,8 @@ void CameraProfilesDialog::setCameraDevice(QPointer< AbstractCamera > cam)
   d->padPseudo2D->Draw();
   d->padPseudo2D->cd();
   TH2* hist = d->camera->createProfile2D(false);
+//  QString newName = d->cameraID + QString(hist->GetName());
+//  hist->SetName(newName.toLatin1().data());
   d->histPseudo2D.reset(hist);
   d->histPseudo2D->GetXaxis()->SetTitle("Horizontal profile, mm");
   d->histPseudo2D->GetYaxis()->SetTitle("Vertical profile, mm");
@@ -434,6 +443,8 @@ void CameraProfilesDialog::setCameraDevice(QPointer< AbstractCamera > cam)
   d->padPseudoIntegral2D->Draw();
   d->padPseudoIntegral2D->cd();
   hist = d->camera->createProfile2D(true);
+//  newName = d->cameraID + QString(hist->GetName());
+//  hist->SetName(newName.toLatin1().data());
   hist->SetTitle("Pseudo integral 2D Distribution");
   d->histPseudoIntegral2D.reset(hist);
   d->histPseudoIntegral2D->GetXaxis()->SetTitle("Horizontal profile, mm");

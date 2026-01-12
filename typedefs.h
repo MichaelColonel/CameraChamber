@@ -22,25 +22,26 @@
 #include <array>
 #include <map>
 #include <utility>
+#include <bitset>
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/accumulators/statistics/mean.hpp>
 #include <boost/accumulators/statistics/moment.hpp>
 
-#define CHANNELS_PER_CHIP 32
+constexpr int CHANNELS_PER_CHIP = 32;
 
-#define CHIPS_PER_PLANE 6
-#define CHIPS_VERTICAL_STRIPS_PLANE 6
-#define CHIPS_HORIZONTAL_STRIPS_PLANE 6
-#define CHIPS_PER_CAMERA (CHIPS_VERTICAL_STRIPS_PLANE + CHIPS_HORIZONTAL_STRIPS_PLANE)
+constexpr int CHIPS_PER_PLANE = 6;
+constexpr int CHIPS_VERTICAL_STRIPS_PLANE = CHIPS_PER_PLANE;
+constexpr int CHIPS_HORIZONTAL_STRIPS_PLANE = CHIPS_PER_PLANE;
+constexpr int CHIPS_PER_CAMERA = CHIPS_VERTICAL_STRIPS_PLANE + CHIPS_HORIZONTAL_STRIPS_PLANE;
 
-#define CHANNELS_PER_PLANE (CHANNELS_PER_CHIP * CHIPS_PER_PLANE)
-#define CHANNELS_VERTICAL_STRIPS_PLANE (CHIPS_VERTICAL_STRIPS_PLANE * CHIPS_PER_PLANE)
-#define CHANNELS_HORIZONTAL_STRIPS_PLANE (CHIPS_HORIZONTAL_STRIPS_PLANE * CHIPS_PER_PLANE)
-#define CHANNELS_PER_CAMERA (CHANNELS_VERTICAL_STRIPS_PLANE + CHANNELS_HORIZONTAL_STRIPS_PLANE)
+constexpr int CHANNELS_PER_PLANE = CHANNELS_PER_CHIP * CHIPS_PER_PLANE;
+constexpr int CHANNELS_VERTICAL_STRIPS_PLANE = CHIPS_VERTICAL_STRIPS_PLANE * CHIPS_PER_PLANE;
+constexpr int CHANNELS_HORIZONTAL_STRIPS_PLANE = CHIPS_HORIZONTAL_STRIPS_PLANE * CHIPS_PER_PLANE;
+constexpr int CHANNELS_PER_CAMERA = CHANNELS_VERTICAL_STRIPS_PLANE + CHANNELS_HORIZONTAL_STRIPS_PLANE;
 
-#define STRIP_STEP_PER_SIDE_MM 2.0
+constexpr double STRIP_STEP_PER_SIDE_MM = 2.0;
 
 typedef boost::accumulators::accumulator_set< \
   double, \
@@ -78,9 +79,10 @@ enum IntegratorType : int {
 };
 
 enum AdcTimeType : int {
-  INTEGRATOR_A,
-  INTEGRATOR_B,
-  INTEGRATOR_AB
+  INTEGRATOR_A = IntegratorType::A,
+  INTEGRATOR_B = IntegratorType::B,
+  INTEGRATOR_AB,
+  AdcTimeType_Last
 };
 
 enum AdcResolutionType : int {
@@ -93,14 +95,15 @@ enum AdcResolutionType : int {
 enum ProfileRepresentationType : int {
   MEAN, // mean ADC count
   INTEGRAL, // integral ADC count
-  CHARGE // charge in pC
+  CHARGE, // charge in pC
+  ProfileRepresentationType_Last
 };
 
 struct CameraResponse {
-  int ChipsEnabled{ -1 };
-  unsigned short ChipsEnabledCode{ 0 };
+  int ChipsEnabled{ -1 }; // number of chips enabled
+  unsigned short ChipsEnabledCode{ 0 }; // 0x0FFF for 12 chips
   int IntegrationTimeCode{ -1 }; // Integration time code(0...15)
-  int AdcMode{ AdcResolutionType_Last }; // 16-bit or 20-bit (16 or 20)
+  AdcResolutionType AdcMode{ AdcResolutionType_Last }; // 16-bit or 20-bit (16 or 20)
   int CapacityCode{ -1 }; // Capacity code (0...7)
   int AdcSamples{ -1 };
   bool ExternalStartState{ false };
@@ -124,3 +127,12 @@ struct ChannelInfo {
 };
 
 typedef std::pair< struct ChannelInfo, struct ChannelInfo > ChannelInfoPair;
+
+struct AcquisitionParameters {
+  std::bitset< CHIPS_PER_CAMERA > ChipsEnabled{ 0x0FFF };
+  int CapacityCode{ 3 };
+  int AdcMode{ 16 };
+  int IntegrationTimeMs{ 4 };
+  int IntegrationSamples{ 300 };
+  bool ExternalStartFlag{ false };
+};

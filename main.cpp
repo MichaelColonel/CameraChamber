@@ -50,7 +50,7 @@ int main(int argc, char **argv)
    argc = 1; // hide all additional parameters from ROOT and Qt
    TApplication rootApp("Qt ROOT Application", &argc, argv); // ROOT application
 
-   char* argv2[3];
+   char* argv2[3] = {};
    argv2[0] = argv[0];
    argv2[1] = 0;
 

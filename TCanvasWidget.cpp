@@ -65,7 +65,6 @@ TCanvasWidget::TCanvasWidget(QWidget *parent)
   rootCanvas->SetCanvas(rootCanvas);
   rootCanvas->SetBatch(kTRUE); // mark canvas as batch
 
-//  gPad = rootCanvas;
   TPad* pad = dynamic_cast< TPad* >(rootCanvas->GetPad(0));
   if (pad)
   {
@@ -80,7 +79,7 @@ TCanvasWidget::TCanvasWidget(QWidget *parent)
   SetPrivateCanvasFields(true);
 
   web->SetCanCreateObjects(kFALSE); // not yet create objects on server side
-  web->SetUpdatedHandler([this]() { emit CanvasUpdated(); });
+  web->SetUpdatedHandler([this](){ emit CanvasUpdated(); });
   web->SetActivePadChangedHandler([this](TPad *pad){ emit SelectedPadChanged(pad); });
   web->SetPadClickedHandler([this](TPad *pad, int x, int y) { emit PadClicked(pad,x,y); });
   web->SetPadDblClickedHandler([this](TPad *pad, int x, int y) { emit PadDblClicked(pad,x,y); });

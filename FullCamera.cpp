@@ -98,8 +98,9 @@ std::vector< int > FullCameraPrivate::getProfileBrokenChipChannelsStrips(CameraP
 
   // sort, split info map data for corresponding profile chip and channel
   // to reconstruct vertical and horizontal profile
-  for (const auto& [chipChannelPair, channelInfoPair] : infoMap)
+  for (const auto& chipChannelInfoPair : infoMap)
   {
+    const ChipChannelPair& chipChannelPair = chipChannelInfoPair.first;
     int chipStrip = -1; // valid value from 0...PROFILE_STRIPS-1
     auto findChipChannelArray = [chipChannelPair](const std::array< ChipChannelPair, SIZE >& chipStripMask) -> int
     {
@@ -184,6 +185,16 @@ FullCamera::FullCamera(const AbstractCamera::CameraDeviceData& data, QObject *pa
   d_ptr(new FullCameraPrivate(*this))
 {
   Q_D(FullCamera);
+  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
+  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
+  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
+  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
+
+  refAdcV = std::make_pair(2, 15); // vert prof
+  refAdcH = std::make_pair(1, 15); // horiz prof
+  refAmpV = std::make_pair(2, 15); // vert prof
+  refAmpH = std::make_pair(1, 15); // horiz prof
+
   std::vector< double > vertProf = this->getVerticalProfile();
   std::vector< double > horizProf = this->getHorizontalProfile();
   if (vertProf.size() != PROFILE_STRIPS && horizProf.size() != PROFILE_STRIPS)
@@ -262,10 +273,12 @@ void FullCamera::processDataCounts(bool splitData,
   // to reconstruct vertical and horizontal profile
   std::vector< double >& vertProf = this->getVerticalProfile();
   std::vector< double >& horizProf = this->getHorizontalProfile();
-  for (const auto& [chipChannelPair, channelInfoPair] : infoMap)
+  for (const auto& chipChannelInfoPair : infoMap)
   {
+    const ChipChannelPair& chipChannelPair = chipChannelInfoPair.first;
+    const ChannelInfoPair& channelInfoPair = chipChannelInfoPair.second;
     const ChannelInfo& calibInfo = channelInfoPair.second;
-    const ChannelInfo& info = channelInfoPair.first;
+//    const ChannelInfo& info = channelInfoPair.first;
     int chipStrip = -1; // valid value from 0...PROFILE_STRIPS-1
     auto findChipChannelArray = [chipChannelPair](const std::array< ChipChannelPair, PROFILE_STRIPS >& chipStripMask) -> int
     {
@@ -423,8 +436,13 @@ TH2* FullCamera::createProfile2D(bool integral)
   std::vector< double > vert = AbstractCamera::GenerateFullProfileStripsBinsBorders(yBins + 1);
   const double* yBinsBorders = vert.data();
 
-  const char* histName = (integral) ? "histInteg2D" : "hist2D";
-  TH2* hist = new TH2F(histName, "Pseudo 2D Distribution", xBins, xBinsBorders, yBins, yBinsBorders);
+  AbstractCamera::CameraDeviceData cameraData = this->getCameraData();
+  QString hist2Name = QString("h2_") + cameraData.id;
+  QString hist2IntegName = QString("hi2_") + cameraData.id;
+
+  QString histName = (integral) ? hist2IntegName : hist2Name;
+  QByteArray name = histName.toLatin1();
+  TH2* hist = new TH2D(name.data(), "Pseudo 2D Distribution", xBins, xBinsBorders, yBins, yBinsBorders);
   return hist;
 }
 
@@ -442,20 +460,22 @@ void FullCamera::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
   if (pseudo2D)
   {
     pseudo2D->Reset();
-  }
-
-  for (Int_t row = 0; row < vertProfData.size(); ++row)
-  {
-    for (Int_t column = 0; column < horizProfData.size(); ++column)
+    for (Int_t row = 0; row < vertProfData.size(); ++row)
     {
-      Double_t pixel = horizProfData[column] * vertProfData[row];
-//      pseudo2D->SetBinContent(column, (horizProfData.size() - 1) - row, pixel);
-      if (pseudo2D)
+      for (Int_t column = 0; column < horizProfData.size(); ++column)
       {
+        Double_t pixel = horizProfData[column] * vertProfData[row];
         pseudo2D->Fill(column, (horizProfData.size() - 1) - row, pixel);
       }
-      if (integPseudo2D)
+    }
+  }
+  if (integPseudo2D)
+  {
+    for (Int_t row = 0; row < vertProfData.size(); ++row)
+    {
+      for (Int_t column = 0; column < horizProfData.size(); ++column)
       {
+        Double_t pixel = horizProfData[column] * vertProfData[row];
         integPseudo2D->Fill(column, (horizProfData.size() - 1) - row, pixel);
       }
     }

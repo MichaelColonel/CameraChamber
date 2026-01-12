@@ -39,6 +39,7 @@ class TGraphErrors;
 class TH1;
 class TH2;
 class TPad;
+class TDirectory;
 class TTree;
 
 class AbstractCameraPrivate;
@@ -58,7 +59,6 @@ public:
 
   static constexpr int ADC_WORDS_PER_CHANNEL = 2;
   static constexpr int ADC_CHANNELS_PER_CHUNK = ADC_WORDS_PER_CHANNEL * CHANNELS_PER_CHIP;
-  static constexpr int BITS = CHAR_BIT * 2;
   static constexpr int BUFFER_SIZE = 3;
 
   static constexpr std::array< double, CHAR_BIT > CHARGE_RANGE{ 12.5, 50., 100., 150., 200., 250., 300., 350. };
@@ -77,17 +77,23 @@ public:
   QString getDataPortError() const;
   CameraDeviceData getCameraData() const;
   CameraResponse getCameraResponse() const;
+  AcquisitionParameters getAcquisitionParameters();
+
   // set pedestal and signal gate and update channel info map
   void setPedestalSignalGate(int pedMin, int pedMax, int sigMin, int sigMax);
+  // set ROOT directory to save spill data trees
+  void setRootDirectory(TDirectory* dir);
+
   // get adc data to update raw counts time graph
   bool getAdcData(int chip, int channel, std::vector< int >& adcData,
     AdcTimeType dataType = AdcTimeType::INTEGRATOR_AB);
-  virtual TH2* createProfile2D(bool integral = false) = 0;
-  virtual void updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D) = 0;
-  virtual TGraph* createProfile(CameraProfileType profileType, bool withErrors = false);
-  virtual void updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors) = 0; // update profiles and histograms
-  bool processExternalData(TTree* rootFileTree);
 
+  virtual TGraph* createProfile(CameraProfileType profileType, bool withErrors = false);
+  virtual void updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors) = 0; // update profiles
+  virtual TH2* createProfile2D(bool integral = false) = 0;
+  virtual void updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D) = 0; // update profile histograms
+
+  bool processExternalData(TTree* rootFileTree);
   int getChipsEnabledCode() const;
   int getIntegrationTimeMs() const;
   int getCapasityCode() const;
@@ -116,6 +122,8 @@ public:
   virtual void processDataCounts(bool splitData = false,
     IntegratorType integType = IntegratorType::A,
     ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE);
+  bool loadCalibration(QSettings* settings);
+  bool saveCalibration(QSettings* settings);
 
 public slots:
   void onCommandPortDataReady();
@@ -142,8 +150,6 @@ protected:
   void processRawData();
   bool loadCameraData(const QString& cameraDirectory); // directory must contain ChipsPositions.json file and chips JSON files
   bool loadChipData(const QString& chipFile, int chipPosition); // chip file in camera directory
-  bool loadCalibration(QSettings* settings);
-  bool saveCalibration(QSettings* settings);
 
   void setRefAdcCalibrationChipChannel(int chip, int channel);
   void setRefAmpChipChannelVerticalProfile(int chip, int channel);
@@ -158,12 +164,18 @@ protected:
   const std::vector< double >& getHorizontalProfile() const;
   std::vector< double >& getVerticalProfile();
   std::vector< double >& getHorizontalProfile();
+  ChipChannelPair& getReferenceAdcVerticalChipChannel();
+  ChipChannelPair& getReferenceAdcHorizontalChipChannel();
+  ChipChannelPair& getReferenceAmplitudeVerticalChipChannel();
+  ChipChannelPair& getReferenceAmplitudeHorizontalChipChannel();
+
   const std::vector< double >& getVerticalProfileStripsNumbers() const;
   const std::vector< double >& getHorizontalProfileStripsNumbers() const;
   const std::vector< ChipChannelPair >& getVerticalProfileChipChannelStrips() const;
   const std::vector< ChipChannelPair >& getHorizontalProfileChipChannelStrips() const;
   const std::map< ChipChannelPair, ChannelInfoPair >& getChipChannelInfoMap() const;
   CameraProfileType getProfileBrokenChipChannelsStrips(int chip, std::vector< int >& strips) const;
+  std::vector< std::vector< double > >& getProfileFramesVector();
 
 public:
   template< size_t N > static void ReverseBits(std::bitset< N >& b);

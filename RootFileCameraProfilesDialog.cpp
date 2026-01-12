@@ -20,8 +20,15 @@
 #include <TGraph.h>
 #include <TH2.h>
 #include <TPad.h>
+#include <TWebPadPainter.h>
+#include <TWebCanvas.h>
 #include <TCanvas.h>
+#include <TFrame.h>
 #include <TLine.h>
+#include <TImage.h>
+#include <TImageDump.h>
+#include <TAttImage.h>
+#include <TSystem.h>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -34,12 +41,16 @@
 #include <QMap>
 #include <QString>
 #include <QTimer>
+#include <QSettings>
+#include <QProgressDialog>
 
 #include "RootFileCameraProfilesDialog.h"
 #include "ui_RootFileCameraProfilesDialog.h"
 
 #include "FullCamera.h"
 #include "Camera2.h"
+
+#include <sstream>
 
 QT_BEGIN_NAMESPACE
 
@@ -57,7 +68,7 @@ public:
   RootFileCameraProfilesDialogPrivate(RootFileCameraProfilesDialog &object);
   virtual ~RootFileCameraProfilesDialogPrivate();
   void processRootFile(const QString& filename);
-  AbstractCamera* getCamera() const { return this->camerasMap[this->cameraID].data(); }
+  AbstractCamera* getCamera() const { return (!this->cameraID.isEmpty()) ? this->camerasMap[this->cameraID].data() : nullptr; }
 
   QMap< QString, QPointer< AbstractCamera > > camerasMap;
   std::unique_ptr< TFile > rootFile;
@@ -79,6 +90,7 @@ public:
   std::unique_ptr< TH2 > histPseudo2D;
   std::unique_ptr< TPad > padPseudo2D;
   QScopedPointer< QTimer > timer;
+  std::unique_ptr< TFile > rootFramesFile;
   QString cameraID{ "Camera2" };
 };
 
@@ -88,15 +100,20 @@ RootFileCameraProfilesDialogPrivate::RootFileCameraProfilesDialogPrivate(RootFil
   ui(new Ui::RootFileCameraProfilesDialog),
   timer(new QTimer(&object))
 {
-
+  QSettings settings("ProfileCamera2D", "configure");
   AbstractCamera::CameraDeviceData data1, data2;
+
   data1.id = "Camera1";
   data1.dataDirectory = "C26AIC01";
-  this->camerasMap.insert(data1.id, new FullCamera(data1, &object));
+  AbstractCamera* fullCamera = new FullCamera(data1, &object);
+  this->camerasMap.insert(data1.id, fullCamera);
+  fullCamera->loadCalibration(&settings);
+
   data2.id = "Camera2";
   data2.dataDirectory = "C26AIC02";
-  this->camerasMap.insert(data2.id, new Camera2(data2, &object));
-
+  AbstractCamera* camera2 = new Camera2(data2, &object);
+  this->camerasMap.insert(data2.id, camera2);
+  camera2->loadCalibration(&settings);
 }
 
 RootFileCameraProfilesDialogPrivate::~RootFileCameraProfilesDialogPrivate()
@@ -138,9 +155,14 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
   Q_D(RootFileCameraProfilesDialog);
   d->ui->setupUi(this);
 
+  QSignalBlocker(d->ui->RangeWidget_Pedestal);
+  d->ui->RangeWidget_Pedestal->setValues(20., 190.);
+  QSignalBlocker(d->ui->RangeWidget_Signal);
+  d->ui->RangeWidget_Signal->setValues(199., 1070.);
+
   d->timer->setInterval(100);
 
-  this->setWindowTitle(tr("Process ROOT file data"));
+  this->setWindowTitle(tr("Process ROOT file data for [%1]").arg(d->cameraID));
   this->setWindowFlag(Qt::WindowMaximizeButtonHint, true);
 
   QObject::connect(d->ui->listWidget, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)),
@@ -180,33 +202,33 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
   d->padVerticalProfile = std::unique_ptr< TPad >(new TPad("pVerProf", "Grid", 0., 0., 1., 1.));
   d->padVerticalProfile->SetGrid();
   d->padVerticalProfile->Draw();
-  d->padVerticalProfile->cd();
 
   canvas = d->ui->RootCanvas_HorizontalProfile->getCanvas();
   canvas->cd();
   d->padHorizontalProfile = std::unique_ptr< TPad >(new TPad("pHorizProf", "Grid", 0., 0., 1., 1.));
   d->padHorizontalProfile->SetGrid();
   d->padHorizontalProfile->Draw();
-  d->padHorizontalProfile->cd();
 
   canvas = d->ui->RootCanvas_Profiles2D->getCanvas();
   canvas->cd();
   d->padPseudo2D = std::unique_ptr< TPad >(new TPad("pPs2D", "Grid", 0., 0., 1., 1.));
   d->padPseudo2D->SetGrid();
   d->padPseudo2D->Draw();
-
+/*
   d->padVerticalProfile->cd();
+  d->padVerticalProfile->Clear();
   if (d->padVerticalProfile && d->graphVerticalProfile)
   {
-    d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
+//    d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
   }
 
   d->padHorizontalProfile->cd();
+  d->padHorizontalProfile->Clear();
   if (d->padHorizontalProfile && d->graphHorizontalProfile)
   {
-    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
+//    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
   }
-
+*/
   AbstractCamera* cam = d->getCamera();
   if (!cam)
   {
@@ -233,8 +255,11 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
 
   d->padPseudo2D->cd();
   TH2 *h2D = cam->createProfile2D(false);
+  if (d->padPseudo2D && h2D)
+  {
+    d->padPseudo2D->GetListOfPrimitives()->Remove(d->histPseudo2D.get());
+  }
   d->histPseudo2D.reset(h2D);
-
   d->histPseudo2D->GetXaxis()->SetTitle("Horizontal profile, mm");
   d->histPseudo2D->GetYaxis()->SetTitle("Vertical profile, mm");
   d->histPseudo2D->Draw("COLZ");
@@ -246,22 +271,25 @@ RootFileCameraProfilesDialog::~RootFileCameraProfilesDialog()
 {
   Q_D(RootFileCameraProfilesDialog);
 
-  d->padVerticalProfile->cd();
+//  d->padVerticalProfile->cd();
+  d->padVerticalProfile->Clear();
   if (d->padVerticalProfile && d->graphVerticalProfile)
   {
-    d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
+//    d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
   }
 
-  d->padHorizontalProfile->cd();
+//  d->padHorizontalProfile->cd();
+  d->padHorizontalProfile->Clear();
   if (d->padHorizontalProfile && d->graphHorizontalProfile)
   {
-    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
+//    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
   }
 
-  d->padPseudo2D->cd();
+//  d->padPseudo2D->cd();
+  d->padPseudo2D->Clear();
   if (d->padPseudo2D && d->histPseudo2D)
   {
-    d->padPseudo2D->GetListOfPrimitives()->Remove(d->histPseudo2D.get());
+//    d->padPseudo2D->GetListOfPrimitives()->Remove(d->histPseudo2D.get());
   }
 }
 
@@ -278,8 +306,8 @@ void RootFileCameraProfilesDialog::onCurrentRootTreeItemChanged(QListWidgetItem*
     return;
   }
   QString treeName = newItem->text();
-  std::string treeStdName = treeName.toStdString();
-  TTree* spillTree = dynamic_cast< TTree* >(d->rootFile->Get(treeStdName.c_str()));
+  QByteArray treeNameByteArray = treeName.toLatin1();
+  TTree* spillTree = dynamic_cast< TTree* >(d->rootFile->Get(treeNameByteArray.data()));
   if (spillTree)
   {
     QPointer< AbstractCamera > cam = d->camerasMap[d->cameraID];
@@ -322,24 +350,20 @@ void RootFileCameraProfilesDialog::onUpdateGraphClicked()
 //    emit logMessage("ADC Side A and B are empty", d->camera->getCameraData().id, Qt::red);
     return;
   }
-  int rangeSizeAB = adcData.size();
 
-  TCanvas* canvas = d->ui->RootCanvas_ChannelGraph->getCanvas();
-  canvas->cd();
+  // Clear pad, reset channel graph
   d->padChannel->cd();
-  if (d->graphChannel)
-  {
-    d->padChannel->GetListOfPrimitives()->Remove(d->graphChannel.get());
-  }
+  d->padChannel->Clear();
 
-  Int_t i = 0;
-  d->graphChannel.reset(new TGraph(adcData.size()));
+  int rangeSizeAB = adcData.size();
+  d->graphChannel.reset(new TGraph(rangeSizeAB));
   d->graphChannel->SetTitle("Channel data;Time (ms);Amplitude");
   d->graphChannel->SetLineColor(kBlack);
   d->graphChannel->SetLineWidth(2);
   d->graphChannel->SetMarkerColor(kBlack);
   d->graphChannel->SetMarkerSize(1.4);
   d->graphChannel->SetMarkerStyle(2);
+  Int_t i = 0;
   for (int adcValue : adcData)
   {
     d->graphChannel->SetPoint(i, i * intTimeMs, Double_t(adcValue));
@@ -353,6 +377,7 @@ void RootFileCameraProfilesDialog::onUpdateGraphClicked()
   d->ui->RangeWidget_Pedestal->setSingleStep(intTimeMs);
   d->ui->RangeWidget_Signal->setRange(0., 2. * intTimeMs * rangeSizeAB);
   d->ui->RangeWidget_Signal->setSingleStep(intTimeMs);
+
   this->onPedestalBeginChanged(d->ui->RangeWidget_Pedestal->minimumValue());
   this->onPedestalEndChanged(d->ui->RangeWidget_Pedestal->maximumValue());
   this->onSignalBeginChanged(d->ui->RangeWidget_Signal->minimumValue());
@@ -377,18 +402,14 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
   int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
 
   cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
+  // process data and upgrade profiles graphs and 2d histos
   cam->processDataCounts();
-
   cam->updateProfiles(d->graphVerticalProfile.get(), d->graphHorizontalProfile.get(), false);
   cam->updateProfiles2D(d->histPseudo2D.get(), nullptr);
 
-  TCanvas* canvas = d->ui->RootCanvas_VerticalProfile->getCanvas();
-  canvas->cd();
+  // clear vertical profile pad, reset vertical profile graph
   d->padVerticalProfile->cd();
-  if (d->padVerticalProfile)
-  {
-    d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
-  }
+  d->padVerticalProfile->Clear();
   d->graphVerticalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_VERTICAL, false));
   d->graphVerticalProfile->SetLineColor(kRed);
   d->graphVerticalProfile->SetLineWidth(2);
@@ -398,13 +419,9 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
   d->padVerticalProfile->Modified();
   d->padVerticalProfile->Update();
 
-  canvas = d->ui->RootCanvas_HorizontalProfile->getCanvas();
-  canvas->cd();
+  // clear horizontal profile pad, reset horizontal profile graph
   d->padHorizontalProfile->cd();
-  if (d->padHorizontalProfile)
-  {
-    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
-  }
+  d->padHorizontalProfile->Clear();
   d->graphHorizontalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false));
   d->graphHorizontalProfile->SetLineColor(kRed);
   d->graphHorizontalProfile->SetLineWidth(2);
@@ -414,8 +431,8 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
   d->padHorizontalProfile->Modified();
   d->padHorizontalProfile->Update();
 
-  canvas = d->ui->RootCanvas_Profiles2D->getCanvas();
-  canvas->cd();
+
+  // update pseudo 2D histogram
   d->padPseudo2D->cd();
   d->padPseudo2D->Modified();
   d->padPseudo2D->Update();
@@ -584,6 +601,8 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
   if (d->ui->HorizontalSlider_FramesRange->value() == d->ui->HorizontalSlider_FramesRange->maximum())
   {
     this->onUpdateProfilesClicked();
+    d->rootFramesFile->Close();
+    d->rootFramesFile.release();
     return;
   }
 
@@ -594,62 +613,84 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
   }
   int pedMin = static_cast< int >(d->ui->RangeWidget_Pedestal->minimumValue());
   int pedMax = static_cast< int >(d->ui->RangeWidget_Pedestal->maximumValue());
-  int sigMin = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() - 30);
-  int sigMax = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() + 30);
+  int sigMin = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() - d->ui->SliderWidget_TimeFrameMargin->value());
+  int sigMax = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() + d->ui->SliderWidget_TimeFrameMargin->value());
 
   cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
   cam->processDataCounts();
 
-  cam->updateProfiles(d->graphVerticalProfile.get(), nullptr, false);
-  cam->updateProfiles2D(d->histPseudo2D.get(), nullptr);
+//  cam->updateProfiles(d->graphVerticalProfile.get(), d->graphHorizontalProfile.get(), false);
+//  cam->updateProfiles2D(d->histPseudo2D.get(), nullptr);
 
-  TCanvas* canvas = d->ui->RootCanvas_VerticalProfile->getCanvas();
-  canvas->cd();
-  d->padVerticalProfile->cd();
-  if (d->padVerticalProfile)
+  if (!d->ui->CheckBox_OffscreenProcess->isChecked())
   {
-    d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
-  }
-  d->graphVerticalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_VERTICAL, false));
-  d->graphVerticalProfile->SetLineColor(kRed);
-  d->graphVerticalProfile->SetLineWidth(2);
-  d->graphVerticalProfile->SetMarkerColor(kBlue);
-  d->graphVerticalProfile->SetTitle("Vertical profile;Strip position (mm);Charge (pC)");
-  d->graphVerticalProfile->Draw("AL*");
-  d->padVerticalProfile->Modified();
-  d->padVerticalProfile->Update();
+    // update vertical profile
+    d->padVerticalProfile->cd();
+    d->padVerticalProfile->Clear();
+    d->graphVerticalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_VERTICAL, false));
+    d->graphVerticalProfile->SetLineColor(kRed);
+    d->graphVerticalProfile->SetLineWidth(2);
+    d->graphVerticalProfile->SetMarkerColor(kBlue);
+    d->graphVerticalProfile->SetTitle("Vertical profile;Strip position (mm);Charge (pC)");
+    d->graphVerticalProfile->Draw("AL*");
+    d->padVerticalProfile->Modified();
+    d->padVerticalProfile->Update();
 
-  canvas = d->ui->RootCanvas_HorizontalProfile->getCanvas();
-  canvas->cd();
-  d->padHorizontalProfile->cd();
-  if (d->padHorizontalProfile)
-  {
-    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
+    // update horizontal profile
+    d->padHorizontalProfile->cd();
+    d->padHorizontalProfile->Clear();
+    d->graphHorizontalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false));
+    d->graphHorizontalProfile->SetLineColor(kRed);
+    d->graphHorizontalProfile->SetLineWidth(2);
+    d->graphHorizontalProfile->SetMarkerColor(kBlue);
+    d->graphHorizontalProfile->SetTitle("Horizontal profile;Strip position (mm);Charge (pC)");
+    d->graphHorizontalProfile->Draw("AL*");
+    d->padHorizontalProfile->Modified();
+    d->padHorizontalProfile->Update();
   }
-  d->graphHorizontalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false));
-  d->graphHorizontalProfile->SetLineColor(kRed);
-  d->graphHorizontalProfile->SetLineWidth(2);
-  d->graphHorizontalProfile->SetMarkerColor(kBlue);
-  d->graphHorizontalProfile->SetTitle("Horizontal profile;Strip position (mm);Charge (pC)");
-  d->graphHorizontalProfile->Draw("AL*");
-  d->padHorizontalProfile->Modified();
-  d->padHorizontalProfile->Update();
 
-  canvas = d->ui->RootCanvas_Profiles2D->getCanvas();
-  canvas->cd();
+  // update pseudo 2D histogram
   d->padPseudo2D->cd();
-//  d->histPseudo2D->GetZaxis()->SetRangeUser(-1., 15.);
-  d->padPseudo2D->Modified();
-  d->padPseudo2D->Update();
+  if (d->ui->CheckBox_ChargeRange->isChecked())
+  {
+    d->histPseudo2D->GetZaxis()->SetRangeUser(d->ui->RangeWidget_ChargeRange->minimumValue(),
+      d->ui->RangeWidget_ChargeRange->maximumValue());
+  }
+  cam->updateProfiles2D(d->histPseudo2D.get(), nullptr);
+  if (!d->ui->CheckBox_OffscreenProcess->isChecked())
+  {
+    d->padPseudo2D->Modified();
+    d->padPseudo2D->Update();
+  }
 
-  d->ui->HorizontalSlider_FramesRange->setValue(d->ui->HorizontalSlider_FramesRange->value() + 30);
+  QString titleString = QString::number(d->ui->HorizontalSlider_FramesRange->value());
+  std::string titleStdString = "frame_" + titleString.toStdString();
+//  d->rootFramesFile->cd();
+//  d->histPseudo2D->Write(titleStdString.c_str());
+  d->rootFramesFile->WriteTObject(d->histPseudo2D.get(), titleStdString.c_str());
+
+  d->ui->HorizontalSlider_FramesRange->setValue(d->ui->HorizontalSlider_FramesRange->value() + d->ui->SliderWidget_TimeFrameStep->value());
   d->timer->start();
 }
 
 void RootFileCameraProfilesDialog::onPlayProfilesClicked()
 {
   Q_D(RootFileCameraProfilesDialog);
+  if (d->ui->CheckBox_OffscreenProcess->isChecked())
+  {
+    d->timer->setInterval(10);
+  }
+  else
+  {
+    d->timer->setInterval(100);
+  }
   d->timer->start();
+
+  QDateTime dateTime = QDateTime::currentDateTime();
+  std::stringstream sstream;
+  sstream << "/tmp/Frames_" << d->cameraID.toStdString() << '_' << dateTime.toString("ddMMyyyy_hhmmss").toStdString() << ".root";
+  std::string name = sstream.str();
+  d->rootFramesFile.reset(new TFile(name.c_str(), "RECREATE"));
 }
 
 QT_END_NAMESPACE

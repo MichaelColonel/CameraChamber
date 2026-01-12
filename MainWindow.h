@@ -38,7 +38,7 @@
 #include <QOpcUaClient> // OPC UA client
 
 #include <TFile.h>
-#include <TTree.h>
+#include <TDirectory.h>
 
 #include <list>
 #include <array>
@@ -110,6 +110,8 @@ private:
 protected:
   int chipsEnabledCode() const;
   void getCamerasAvailable();
+  void updateAcquisitionParameters(AbstractCamera* cameraDevice);
+
   QPointer< AbstractCamera > getCamera(const QString& cameraID) const;
   QPointer< CameraProfilesDialog > getProfiles(const QString& cameraID) const;
   QPointer< AbstractCamera > getCurrentCamera() const;
@@ -121,8 +123,10 @@ protected:
   QScopedPointer< QTimer > initiationTimer;
   QScopedPointer< QProgressDialog > initiationProgress;
 
+  // ROOT file for cameras data
   std::unique_ptr< TFile > rootFile;
-  QMap< QString, QScopedPointer< TTree > > rootCameraTreeMap;
+  // map for camera ID and directory pointer for each connected, active camera
+  std::map< std::string, TDirectory* > rootCameraDirectoryMap;
 
   QString rootFileName;
 
