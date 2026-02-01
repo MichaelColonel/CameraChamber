@@ -62,18 +62,26 @@ QVariant ChannelInfoTableModel::data(const QModelIndex& index, int role) const
     }
     int chipIndex = index.row() / CHANNELS_PER_CHIP;
     int channelIndex = index.row() - (chipIndex * CHANNELS_PER_CHIP);
-    QPair< int, int > chipChannel(chipIndex + 1, channelIndex + 1);
-    const ChannelInfoPair& infoPair = this->infoMap[chipChannel];
+    ChipChannelPair chipChannel(chipIndex + 1, channelIndex + 1);
+    int i = 0;
+    for (auto iter = this->infoMap.begin(); iter != this->infoMap.end(); ++iter, ++i)
+    {
+      if (i == index.row())
+      {
+        chipChannel = (*iter).first;
+      }
+    }
+    const ChannelInfoPair& infoPair = this->infoMap.at(chipChannel);
     const ChannelInfo& rawInfo = infoPair.first;
     const ChannelInfo& calibInfo = infoPair.second;
     QVariant res;
     switch (index.column())
     {
     case 0:
-      res = QString::number(chipIndex + 1);
+      res = QString::number(chipChannel.first); // chipIndex + 1
       break;
     case 1:
-      res = QString::number(channelIndex + 1);
+      res = QString::number(chipChannel.second); // channelIndex + 1
       break;
     case 2:
       res = QString::number(rawInfo.PedMeanA);
@@ -174,9 +182,9 @@ void ChannelInfoTableModel::setChipChannelInfo(const std::map< ChipChannelPair, 
 {
   this->beginResetModel();
   this->infoMap.clear();
-  for (const auto& [keyPair, info] : newInfoMap)
+  for (const auto& chipChannelInfoPair : newInfoMap)
   {
-    this->infoMap.insert(qMakePair(keyPair.first, keyPair.second), info);
+    this->infoMap.insert(chipChannelInfoPair);
   }
   this->endResetModel();
 }

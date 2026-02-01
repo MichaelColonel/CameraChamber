@@ -44,14 +44,18 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSettings>
+#include <QDateTime>
 
 #include <TROOT.h>
 #include <TTree.h>
 
-#include "CameraProfilesDialog.h"
 #include "FullCamera.h"
 #include "Camera2.h"
+#include "CameraUtils.h"
+
 #include "RootFileCameraProfilesDialog.h"
+#include "CameraProfilesDialog.h"
+#include "SettingsDialog.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -142,7 +146,7 @@ MainWindow::MainWindow(QWidget *parent)
   this->ui->PlainTextEdit_Log->setReadOnly(true);
   this->ui->PlainTextEdit_Log->setLineWrapMode(QPlainTextEdit::NoWrap);
 
-  for (int i = 0; i < CHIPS_PER_PLANE * 2; ++i)
+  for (int i = 0; i < CHIPS_PER_CAMERA; ++i)
   {
     this->ui->CheckableComboBox_ChipsEnabled->addItem(tr("%1").arg(i + 1));
     QModelIndex index = this->ui->CheckableComboBox_ChipsEnabled->model()->index(i, 0);
@@ -151,7 +155,7 @@ MainWindow::MainWindow(QWidget *parent)
 
   QObject::connect(this->ui->CheckableComboBox_ChipsEnabled, SIGNAL(checkedIndexesChanged()),
     this, SLOT(onChipsEnabledChanged()));
-  QObject::connect(this->ui->ComboBox_Cameras, SIGNAL(currentIndexChanged(QString)),
+  QObject::connect(this->ui->ComboBox_Cameras, SIGNAL(currentTextChanged(QString)),
     this, SLOT(onSelectedCameraChanged(QString)));
   QObject::connect(this->ui->PushButton_ConnectCamera, SIGNAL(clicked()),
     this, SLOT(onConnectCameraClicked()));
@@ -189,6 +193,9 @@ MainWindow::MainWindow(QWidget *parent)
 
   QObject::connect(this->ui->actionOpenRootFile, SIGNAL(triggered()),
     this, SLOT(onOpenRootFileActionTriggered()));
+  QObject::connect(this->ui->actionCameraSettings, SIGNAL(triggered()),
+    this, SLOT(onCameraSettingsActionTriggered()));
+
   QObject::connect(this->ui->actionExit, &QAction::triggered, [this](){ this->close(); });
 
   oldMessageHandler = qInstallMessageHandler(&messageHandler);
@@ -212,7 +219,7 @@ MainWindow::~MainWindow()
     var1 = float(i) * 1.1f;
     data->Fill();
   }
-  camera1->WriteTObject(data, "Camera1 spill data");
+  camera1->WriteTObject(data);
   camera1->Close();
   file->Close();
   delete file;
@@ -225,7 +232,7 @@ MainWindow::~MainWindow()
     if (camera && camera->isDeviceAlreadyConnected())
     {
       QSettings settings("ProfileCamera2D", "configure");
-      camera->saveCalibration(&settings);
+      camera->saveSettings(&settings);
       camera->disconnect();
     }
     if (dialog)
@@ -233,7 +240,6 @@ MainWindow::~MainWindow()
       dialog->close();
     }
   }
-
 }
 
 void MainWindow::onConnectCameraClicked()
@@ -245,9 +251,10 @@ void MainWindow::onConnectCameraClicked()
   QPointer< AbstractCamera > cameraDevice;
   QPointer< CameraProfilesDialog > cameraProfiles;
 
-  for (AbstractCamera::CameraDeviceData data : this->camerasAvalable)
+  auto camerasAvailable = CameraUtils::getCamerasData();
+  for (const AbstractCamera::CameraDeviceData& data : camerasAvailable)
   {
-    if (cameraID == data.id)
+    if (cameraID == data.ID)
     {
       cameraData = data;
       break;
@@ -256,8 +263,8 @@ void MainWindow::onConnectCameraClicked()
   cameraDevice = this->getCamera(cameraID);
   cameraProfiles = this->getProfiles(cameraID);
 
-  QString& commandDeviceName = cameraData.commandDeviceName;
-  QString& dataDeviceName = cameraData.dataDeviceName;
+  QString& commandDeviceName = cameraData.CommandDeviceName;
+  QString& dataDeviceName = cameraData.DataDeviceName;
   if (cameraDevice)
   {
     bool commandConnected = cameraDevice->isDeviceAlreadyConnected(commandDeviceName);
@@ -291,11 +298,12 @@ void MainWindow::onConnectCameraClicked()
           QDateTime dt = QDateTime::currentDateTime();
           name += QString(QChar('_')) + dt.toString("ddMMyyyy_hhmmss") + QString(".root");
         }
-        this->rootFile.reset(new TFile(name.toLatin1().data(), "RECREATE"));
+        // Create ROOT file
+        this->rootFile = std::make_unique< TFile >(name.toLatin1().data(), "RECREATE");
       }
       QSettings settings("ProfileCamera2D", "configure");
       this->cameraDeviceProfilesMap.insert(cameraID, qMakePair(cameraDevice, cameraProfiles));
-      cameraDevice->loadCalibration(&settings);
+      cameraDevice->loadSettings(&settings);
       cameraProfiles->setCameraDevice(cameraDevice);
 
       QObject::connect(cameraDevice.data(), SIGNAL(logMessage(QString,QString,QColor)),
@@ -314,6 +322,10 @@ void MainWindow::onConnectCameraClicked()
         this, SLOT(onCameraCommandWritten(QByteArray)));
       QObject::connect(cameraDevice.data(), SIGNAL(firmwareCommandBufferIsReset()),
         this, SLOT(onCameraFirstContactFinished()));
+      QObject::connect(cameraDevice.data(), SIGNAL(acquisitionStarted()),
+        this, SLOT(onCameraAcquisitionStarted()));
+      QObject::connect(cameraDevice.data(), SIGNAL(acquisitionFinished()),
+        this, SLOT(onCameraAcquisitionFinished()));
     }
   }
   else if (cameraDevice && connected && !commandDeviceName.isEmpty() && !dataDeviceName.isEmpty())
@@ -324,15 +336,11 @@ void MainWindow::onConnectCameraClicked()
   if (cameraDevice && cameraDevice->connect())
   {
     this->updateAcquisitionParameters(cameraDevice.data());
-    // create TDirectory
+    // create TDirectory for camera data
     if (this->rootFile)
     {
-      TDirectory* dir = this->rootFile->mkdir(cameraID.toLatin1().data());
-      if (dir)
-      {
-        this->rootCameraDirectoryMap.insert(std::make_pair(cameraID.toStdString(), dir));
-        cameraDevice->setRootDirectory(dir);
-      }
+      TDirectory* dir = this->rootFile->mkdir(cameraID.toLatin1().data(), "camera data", kTRUE);
+      cameraDevice->setRootDirectory(dir);
     }
     // Camera connect
     if (cameraProfiles)
@@ -366,6 +374,10 @@ void MainWindow::onConnectCameraClicked()
       this, SLOT(onCameraCommandWritten(QByteArray)));
     QObject::disconnect(cameraDevice.data(), SIGNAL(firmwareCommandBufferIsReset()),
       this, SLOT(onCameraFirstContactFinished()));
+    QObject::disconnect(cameraDevice.data(), SIGNAL(acquisitionStarted()),
+      this, SLOT(onCameraAcquisitionStarted()));
+    QObject::disconnect(cameraDevice.data(), SIGNAL(acquisitionFinished()),
+      this, SLOT(onCameraAcquisitionFinished()));
 
     this->cameraConnectedFlag = false;
     this->ui->CheckBox_ShowCameraProfiles->setChecked(false);
@@ -392,12 +404,15 @@ void MainWindow::onDisconnectCameraClicked()
   if (cameraProfiles)
   {
     cameraProfiles->close();
-    QObject::disconnect(cameraDevice.data(), SIGNAL(logMessage(QString,QString,QColor)),
-      this, SLOT(log(QString,QString,QColor)));
     QObject::disconnect(cameraProfiles.data(), SIGNAL(logMessage(QString,QString,QColor)),
       this, SLOT(log(QString,QString,QColor)));
     QObject::disconnect(this->ui->CheckBox_ShowCameraProfiles, SIGNAL(toggled(bool)),
       cameraProfiles.data(), SLOT(setVisible(bool)));
+  }
+  if (cameraDevice)
+  {
+    QObject::disconnect(cameraDevice.data(), SIGNAL(logMessage(QString,QString,QColor)),
+      this, SLOT(log(QString,QString,QColor)));
     QObject::disconnect(cameraDevice.data(), SIGNAL(initiationStarted()),
       this, SLOT(onCameraInitiationStarted()));
     QObject::disconnect(cameraDevice.data(), SIGNAL(initiationProgress(int)),
@@ -408,11 +423,8 @@ void MainWindow::onDisconnectCameraClicked()
       this, SLOT(onCameraCommandWritten(QByteArray)));
     QObject::disconnect(cameraDevice.data(), SIGNAL(firmwareCommandBufferIsReset()),
       this, SLOT(onCameraFirstContactFinished()));
-  }
-  if (cameraDevice)
-  {
     QSettings settings("ProfileCamera2D", "configure");
-    cameraDevice->saveCalibration(&settings);
+    cameraDevice->saveSettings(&settings);
     cameraDevice->disconnect();
     this->cameraConnectedFlag = false;
     this->updateUiState();
@@ -420,11 +432,7 @@ void MainWindow::onDisconnectCameraClicked()
     this->cameraDeviceProfilesMap.remove(cameraID);
     this->log(tr("%1 has been disconnected!").arg(cameraID));
   }
-  if (this->cameraDeviceProfilesMap.isEmpty())
-  {
-    this->rootFile->Close();
-    this->rootFile.release();
-  }
+
   this->ui->CheckBox_ShowCameraProfiles->setChecked(false);
 }
 
@@ -443,12 +451,12 @@ void MainWindow::onSelectedCameraChanged(const QString &cameraID)
   if (present)
   {
     auto cameraDevice = this->getCamera(cameraID);
-    if (cameraDevice.data() && cameraDevice->isDeviceAlreadyConnected())
+    if (cameraDevice && cameraDevice->isDeviceAlreadyConnected())
     {
       this->getProfiles(cameraID)->show();
       connected = true;
     }
-    this->updateAcquisitionParameters(cameraDevice.data());
+    this->updateAcquisitionParameters(cameraDevice);
   }
   this->cameraConnectedFlag = connected;
   this->updateUiState();
@@ -474,7 +482,7 @@ void MainWindow::updateUiState()
   this->ui->PushButton_InitiateCamera->setEnabled(this->cameraConnectedFlag);
   this->ui->PushButton_OnceTimeExternalStart->setEnabled(this->cameraConnectedFlag);
 
-  this->ui->CollapsibleButton_RunParameters->setEnabled(this->cameraConnectedFlag);
+//  this->ui->CollapsibleButton_RunParameters->setEnabled(this->cameraConnectedFlag);
 }
 
 void MainWindow::updateAcquisitionParameters(AbstractCamera* cameraDevice)
@@ -485,63 +493,32 @@ void MainWindow::updateAcquisitionParameters(AbstractCamera* cameraDevice)
   }
 
   AcquisitionParameters params = cameraDevice->getAcquisitionParameters();
+  std::bitset< CHIPS_PER_CAMERA > chipsEnabled = params.ChipsEnabled;
+  AbstractCamera::ReverseBits< CHIPS_PER_CAMERA >(chipsEnabled); // important for GUI
   for (int i = 0; i < CHIPS_PER_CAMERA; ++i)
   {
     QModelIndex index = this->ui->CheckableComboBox_ChipsEnabled->model()->index(i, 0);
-    Qt::CheckState state = params.ChipsEnabled.test(i) ? Qt::Checked : Qt::Unchecked;
+    Qt::CheckState state = chipsEnabled.test(i) ? Qt::Checked : Qt::Unchecked;
     this->ui->CheckableComboBox_ChipsEnabled->setCheckState(index, state);
   }
+  this->ui->SliderWidget_IntegrationTime->setValue(double(params.IntegrationTimeMs));
+  this->ui->SliderWidget_Samples->setValue(double(params.IntegrationSamples));
+  this->ui->CheckBox_ExternalStart->setChecked(params.ExternalStartFlag);
+  this->ui->ComboBox_AcquisitionCapacity->setCurrentIndex(params.CapacityCode);
+  this->ui->RadioButton_Adc16Bit->setChecked(params.AdcMode == AdcResolutionType::ADC_16_BIT);
 }
 
 void MainWindow::getCamerasAvailable()
 {
-  // Load JSON descriptor file
-  FILE *fp = fopen("Cameras.json", "r");
-  if (!fp)
-  {
-    this->log(tr("Can't open JSON file \"Cameras.json\""), QString(), Qt::red);
-    return;
-  }
-  const size_t size = 100000;
-  std::unique_ptr< char[] > buffer(new char[size]);
-  rapidjson::FileReadStream fs(fp, buffer.get(), size);
-
-  rapidjson::Document d;
-  if (d.ParseStream(fs).HasParseError())
-  {
-    this->log(tr("Can't parse JSON file\"Cameras.json\""), QString(), Qt::red);
-    fclose(fp);
-    return;
-  }
-  fclose(fp);
-
-  const rapidjson::Value& cameraValues = d["Cameras"];
-  if (cameraValues.IsArray())
-  {
-    this->camerasAvalable.clear();
-    for (rapidjson::SizeType i = 0; i < cameraValues.Size(); i++) // Uses SizeType instead of size_t
-    {
-      AbstractCamera::CameraDeviceData cameraData;
-      const rapidjson::Value& camera = cameraValues[i];
-      if (!camera.IsObject())
-      {
-        continue;
-      }
-      cameraData.id = QString(camera["ID"].GetString());
-      cameraData.dataDirectory = QString(camera["directory"].GetString());
-      cameraData.commandDeviceName = QString(camera["command-device"].GetString());
-      cameraData.dataDeviceName = QString(camera["data-device"].GetString());
-      this->camerasAvalable.push_back(cameraData);
-    }
-  }
+  QStringList cameraIDs = CameraUtils::getCameraIDs();
   this->ui->ComboBox_Cameras->clear();
-  for (const auto& cameraData : this->camerasAvalable)
+  for (const QString& id : cameraIDs)
   {
-    this->ui->ComboBox_Cameras->addItem(cameraData.id);
+    this->ui->ComboBox_Cameras->addItem(id);
   }
 }
 
-int MainWindow::chipsEnabledCode() const
+int MainWindow::getChipsEnabledCode() const
 {
   std::bitset< CHIPS_PER_CAMERA > enabled;
   for (size_t i = 0; i < CHIPS_PER_CAMERA; ++i)
@@ -555,53 +532,67 @@ int MainWindow::chipsEnabledCode() const
 
 void MainWindow::onChipsEnabledChanged()
 {
-//  this->log(tr("Chips enabled code: %1").arg(this->chipsEnabledCode()));
+//  this->log(tr("Chips enabled code: %1").arg(this->getChipsEnabledCode()));
 }
 
-QPointer< AbstractCamera > MainWindow::getCamera(const QString& cameraID) const
+AbstractCamera* MainWindow::getCamera(const QString& cameraID) const
 {
+  if (cameraID.isEmpty())
+  {
+    return nullptr;
+  }
   const CameraDeviceProfilesPair& pair = this->cameraDeviceProfilesMap[cameraID];
-  return pair.first;
+  return pair.first.data();
 }
 
-QPointer< CameraProfilesDialog > MainWindow::getProfiles(const QString& cameraID) const
+CameraProfilesDialog* MainWindow::getProfiles(const QString& cameraID) const
 {
+  if (cameraID.isEmpty())
+  {
+      return nullptr;
+  }
   const CameraDeviceProfilesPair& pair = this->cameraDeviceProfilesMap[cameraID];
-  return pair.second;
+  return pair.second.data();
 }
 
-QPointer< AbstractCamera > MainWindow::getCurrentCamera() const
+AbstractCamera* MainWindow::getCurrentCamera() const
 {
-  QString commandDeviceName, dataDeviceName;
+//  QString commandDeviceName, dataDeviceName;
   QString cameraID = this->ui->ComboBox_Cameras->currentText();
 
-  for (const auto& data : this->camerasAvalable)
+  auto camerasData = CameraUtils::getCamerasData();
+  bool found = false;
+  for (const AbstractCamera::CameraDeviceData& data : camerasData)
   {
-    if (cameraID == data.id)
+    if (cameraID == data.ID)
     {
-      commandDeviceName = data.commandDeviceName;
-      dataDeviceName = data.dataDeviceName;
+//      commandDeviceName = data.CommandDeviceName;
+//      dataDeviceName = data.DataDeviceName;
+      found = true;
       break;
     }
   }
-  return this->getCamera(cameraID);
+  return (found ? this->getCamera(cameraID) : nullptr);
 }
 
-QPointer< CameraProfilesDialog > MainWindow::getCurrentProfiles() const
+CameraProfilesDialog* MainWindow::getCurrentProfiles() const
 {
-  QString commandDeviceName, dataDeviceName;
+//  QString commandDeviceName, dataDeviceName;
   QString cameraID = this->ui->ComboBox_Cameras->currentText();
 
-  for (const auto& data : this->camerasAvalable)
+  auto camerasData = CameraUtils::getCamerasData();
+  bool found = false;
+  for (const AbstractCamera::CameraDeviceData& data : camerasData)
   {
-    if (cameraID == data.id)
+    if (cameraID == data.ID)
     {
-      commandDeviceName = data.commandDeviceName;
-      dataDeviceName = data.dataDeviceName;
+//      commandDeviceName = data.CommandDeviceName;
+//      dataDeviceName = data.DataDeviceName;
+      found = true;
       break;
     }
   }
-  return this->getProfiles(cameraID);
+  return (found ? this->getProfiles(cameraID) : nullptr);
 }
 
 void MainWindow::onChipResetClicked()
@@ -697,7 +688,7 @@ void MainWindow::onSetChipsEnabledClicked()
   auto camera = this->getCurrentCamera();
   if (camera)
   {
-    int chipsCode = this->chipsEnabledCode();
+    int chipsCode = this->getChipsEnabledCode();
     QByteArray com = camera->getSetChipsEnabledCommand(chipsCode);
     camera->writeCommand(com);
   }
@@ -754,7 +745,7 @@ void MainWindow::onInitiateCameraClicked()
   com = camera->getSetNumberOfChipsCommand();
   initCommands.append(com); // write number of chips == 12
 
-  int chipsEnabled = this->chipsEnabledCode();
+  int chipsEnabled = this->getChipsEnabledCode();
   com = camera->getSetChipsEnabledCommand(chipsEnabled);
   initCommands.append(com); // write enabled chips
 
@@ -767,19 +758,19 @@ void MainWindow::onInitiateCameraClicked()
   initCommands.append(com); // write integration time
 
   int capacityIndex = this->ui->ComboBox_AcquisitionCapacity->currentIndex();
-  com = camera->getSetCapacityCommand(capacityIndex); // chip capacity
-  initCommands.append(com);
+  com = camera->getSetCapacityCommand(capacityIndex);
+  initCommands.append(com); // write chip capacity
 
   bool adc20Bit = this->ui->RadioButton_Adc20Bit->isChecked(); // ADC Resolution (16 or 20 bit)
-  com = camera->getSetAdcResolutionCommand(adc20Bit); // chip capacity
-  initCommands.append(com);
+  com = camera->getSetAdcResolutionCommand(adc20Bit);
+  initCommands.append(com); // write ADC resolution
 
-  com = camera->getWriteChipsCapacitiesCommand(); // write chips capacities (write DDC232 configureation register)
-  initCommands.append(com);
+  com = camera->getWriteChipsCapacitiesCommand();
+  initCommands.append(com); // write chips capacities (write DDC232 configureation register)
 
   bool extStart = this->ui->CheckBox_ExternalStart->isChecked(); // external start flag
-  com = camera->getSetExternalStartCommand(extStart); // write beam extraction interrupts
-  initCommands.append(com);
+  com = camera->getSetExternalStartCommand(extStart);
+  initCommands.append(com); // write beam extraction interrupts
 
   com = camera->getListChipsEnabledCommand(); // write list of chips enabled
   initCommands.append(com); // write list of chips enabled
@@ -798,7 +789,7 @@ void MainWindow::onCameraCommandWritten(const QByteArray&)
   auto camera = this->getCurrentCamera();
   if (camera && !camera->isInitiationListEmpty())
   {
-    QTimer::singleShot(100, camera.data(), SLOT(writeNextCommandFromInitiationList()));
+    QTimer::singleShot(100, camera, SLOT(writeNextCommandFromInitiationList()));
   }
 }
 
@@ -807,7 +798,7 @@ void MainWindow::onCameraInitiationStarted()
   auto camera = this->getCurrentCamera();
   if (camera && !camera->isInitiationListEmpty())
   {
-    QTimer::singleShot(100, camera.data(), SLOT(writeNextCommandFromInitiationList()));
+    QTimer::singleShot(100, camera, SLOT(writeNextCommandFromInitiationList()));
   }
 }
 
@@ -826,6 +817,30 @@ void MainWindow::onCameraInitiationFinished()
   {
     this->initiationProgress->close();
   }
+}
+
+void MainWindow::onCameraAcquisitionStarted()
+{
+  AbstractCamera* cam = qobject_cast< AbstractCamera* >(this->sender());
+  if (!cam)
+  {
+    return;
+  }
+  AbstractCamera::CameraDeviceData data = cam->getCameraData();
+  QString msg = tr("%1 acquisition is started").arg(data.ID);
+  this->log(msg, Qt::blue);
+}
+
+void MainWindow::onCameraAcquisitionFinished()
+{
+  AbstractCamera* cam = qobject_cast< AbstractCamera* >(this->sender());
+  if (!cam)
+  {
+    return;
+  }
+  AbstractCamera::CameraDeviceData data = cam->getCameraData();
+  QString msg = tr("%1 acquisition is finished").arg(data.ID);
+  this->log(msg, Qt::blue);
 }
 
 void MainWindow::log(const QString &text, const QString &context, QColor color)
@@ -902,6 +917,16 @@ void MainWindow::onOpenRootFileActionTriggered()
     ;
   }
   delete rootFileDialog;
+}
+
+void MainWindow::onCameraSettingsActionTriggered()
+{
+  QDialog* settingsDialog = new SettingsDialog(this->getCurrentCamera(), this);
+  if (settingsDialog->exec())
+  {
+    ;
+  }
+  delete settingsDialog;
 }
 
 QT_END_NAMESPACE

@@ -58,65 +58,68 @@ TCanvasWidget::TCanvasWidget(QWidget *parent)
 
   static int wincnt = 1;
 
-  rootCanvas = new TCanvas(kFALSE);
-  rootCanvas->SetName(Form("Canvas%d", wincnt++));
-  rootCanvas->SetTitle("Test Canvas");
-  rootCanvas->ResetBit(TCanvas::kShowEditor);
-  rootCanvas->SetCanvas(rootCanvas);
-  rootCanvas->SetBatch(kTRUE); // mark canvas as batch
+  this->rootCanvas = new TCanvas(kFALSE);
+  this->rootCanvas->SetName(Form("Canvas%d", wincnt++));
+  this->rootCanvas->SetTitle("ROOT Canvas");
+  this->rootCanvas->ResetBit(TCanvas::kShowEditor);
+  this->rootCanvas->SetCanvas(this->rootCanvas);
+  this->rootCanvas->SetBatch(kTRUE); // mark canvas as batch
 
-  TPad* pad = dynamic_cast< TPad* >(rootCanvas->GetPad(0));
+  TPad* pad = dynamic_cast< TPad* >(this->rootCanvas->GetPad(0));
   if (pad)
   {
     pad->Clear();
     pad->cd();
   }
   bool read_only = gEnv->GetValue("WebGui.FullCanvas", (Int_t) 1) == 0;
-  TWebCanvas* web = new TWebCanvas(rootCanvas, "title", 0, 0, 800, 600, read_only);
+  TWebCanvas* web = new TWebCanvas(this->rootCanvas, "title", 0, 0, 800, 600, read_only);
 
-  rootCanvas->SetCanvasImp(web);
+  this->rootCanvas->SetCanvasImp(web);
 
   SetPrivateCanvasFields(true);
 
   web->SetCanCreateObjects(kFALSE); // not yet create objects on server side
   web->SetUpdatedHandler([this](){ emit CanvasUpdated(); });
   web->SetActivePadChangedHandler([this](TPad *pad){ emit SelectedPadChanged(pad); });
-  web->SetPadClickedHandler([this](TPad *pad, int x, int y) { emit PadClicked(pad,x,y); });
-  web->SetPadDblClickedHandler([this](TPad *pad, int x, int y) { emit PadDblClicked(pad,x,y); });
+  web->SetPadClickedHandler([this](TPad *pad, int x, int y) { emit PadClicked(pad, x, y); });
+  web->SetPadDblClickedHandler([this](TPad *pad, int x, int y) { emit PadDblClicked(pad, x, y); });
   auto where = ROOT::RWebDisplayArgs::GetQt5EmbedQualifier(this, "noopenui", QT_VERSION);
 
   web->ShowWebWindow(where);
 
-  view = findChild< QWebEngineView* >("RootWebView");
-  if (!view)
+  this->view = findChild< QWebEngineView* >("RootWebView");
+  if (!this->view)
   {
     std::cerr << "FAIL TO FIND QWebEngineView - ROOT Qt5Web plugin does not work properly !!!!!" << std::endl;
     exit(11);
   }
-  view->resize(width(), height());
-  rootCanvas->SetCanvasSize(width(), height());
+  this->view->resize(width(), height());
+  this->rootCanvas->SetCanvasSize(width(), height());
 }
 
 TCanvasWidget::~TCanvasWidget()
 {
-  if (rootCanvas)
+  if (this->rootCanvas)
   {
     SetPrivateCanvasFields(false);
-    gROOT->GetListOfCanvases()->Remove(rootCanvas);
-
-    rootCanvas->Close();
-    delete rootCanvas;
-    rootCanvas = nullptr;
+    gROOT->GetListOfCanvases()->Remove(this->rootCanvas);
+    this->rootCanvas->Close();
+    delete this->rootCanvas;
+    this->rootCanvas = nullptr;
   }
 }
 
 void TCanvasWidget::SetPrivateCanvasFields(bool on_init)
 {
+  if (!this->rootCanvas)
+  {
+    return;
+  }
   Long_t offset = TCanvas::Class()->GetDataMemberOffset("fCanvasID");
   if (offset > 0)
   {
-    Int_t *id = (Int_t *)((char*) rootCanvas + offset);
-    if (*id == rootCanvas->GetCanvasID())
+    Int_t *id = (Int_t *)((char *)this->rootCanvas + offset);
+    if (*id == this->rootCanvas->GetCanvasID())
     {
       *id = on_init ? 111222333 : -1;
     }
@@ -129,10 +132,10 @@ void TCanvasWidget::SetPrivateCanvasFields(bool on_init)
   offset = TCanvas::Class()->GetDataMemberOffset("fMother");
   if (offset > 0)
   {
-    TPad **moth = (TPad **)((char*) rootCanvas + offset);
-    if (*moth == rootCanvas->GetMother())
+    TPad **moth = (TPad **)((char *)this->rootCanvas + offset);
+    if (*moth == this->rootCanvas->GetMother())
     {
-      *moth = on_init ? rootCanvas : nullptr;
+      *moth = on_init ? this->rootCanvas : nullptr;
     }
    }
   else
@@ -143,9 +146,13 @@ void TCanvasWidget::SetPrivateCanvasFields(bool on_init)
 
 void TCanvasWidget::resizeEvent(QResizeEvent *event)
 {
+  if (!this->rootCanvas || !this->view)
+  {
+    return;
+  }
   Q_UNUSED(event);
-  view->resize(width(), height());
-  rootCanvas->SetCanvasSize(width(), height());
+  this->view->resize(width(), height());
+  this->rootCanvas->SetCanvasSize(width(), height());
 }
 
 void TCanvasWidget::paintEvent(QPaintEvent* event)
@@ -155,7 +162,11 @@ void TCanvasWidget::paintEvent(QPaintEvent* event)
 
 void TCanvasWidget::activateEditor(TPad *pad, TObject *obj)
 {
-  TWebCanvas *cimp = dynamic_cast< TWebCanvas* >(rootCanvas->GetCanvasImp());
+  if (!this->rootCanvas)
+  {
+    return;
+  }
+  TWebCanvas *cimp = dynamic_cast< TWebCanvas* >(this->rootCanvas->GetCanvasImp());
   if (cimp)
   {
     cimp->ShowEditor(kTRUE);
@@ -165,7 +176,11 @@ void TCanvasWidget::activateEditor(TPad *pad, TObject *obj)
 
 void TCanvasWidget::setEditorVisible(bool flag)
 {
-  TCanvasImp *cimp = rootCanvas->GetCanvasImp();
+  if (!this->rootCanvas)
+  {
+    return;
+  }
+  TCanvasImp *cimp = this->rootCanvas->GetCanvasImp();
   if (cimp)
   {
     cimp->ShowEditor(flag);
@@ -174,7 +189,11 @@ void TCanvasWidget::setEditorVisible(bool flag)
 
 void TCanvasWidget::activateStatusLine()
 {
-  TCanvasImp *cimp = rootCanvas->GetCanvasImp();
+  if (!this->rootCanvas)
+  {
+    return;
+  }
+  TCanvasImp *cimp = this->rootCanvas->GetCanvasImp();
   if (cimp)
   {
     cimp->ShowStatusBar(kFALSE);
@@ -183,7 +202,7 @@ void TCanvasWidget::activateStatusLine()
 
 TPad* TCanvasWidget::getPad(int subPadNumber) const
 {
-  return (rootCanvas) ? dynamic_cast< TPad* >(rootCanvas->GetPad(subPadNumber)) : nullptr;
+  return (this->rootCanvas) ? dynamic_cast< TPad* >(this->rootCanvas->GetPad(subPadNumber)) : nullptr;
 }
 
 QT_END_NAMESPACE

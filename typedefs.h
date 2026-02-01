@@ -129,10 +129,42 @@ struct ChannelInfo {
 typedef std::pair< struct ChannelInfo, struct ChannelInfo > ChannelInfoPair;
 
 struct AcquisitionParameters {
-  std::bitset< CHIPS_PER_CAMERA > ChipsEnabled{ 0x0FFF };
-  int CapacityCode{ 3 };
-  int AdcMode{ 16 };
-  int IntegrationTimeMs{ 4 };
-  int IntegrationSamples{ 300 };
+  static constexpr int DEFAULT_CHIPS_ENABLED_CODE = 0x0FFF;
+  static constexpr int DEFAULT_CAPACITY_CODE = 3;
+  static constexpr int MAX_CAPACITY_CODE = 7;
+  static constexpr int DEFAULT_INTEGRATION_TIME_MS = 4;
+  static constexpr int MIN_INTEGRATION_TIME_MS = 2;
+  static constexpr int MAX_INTEGRATION_TIME_MS = 32;
+  static constexpr int DEFAULT_SAMPLES = 300;
+  static constexpr int MIN_SAMPLES = 10;
+  static constexpr int MAX_SAMPLES = 1000;
+  static constexpr int DEFAULT_ADC_MODE = AdcResolutionType::ADC_16_BIT;
+  std::bitset< CHIPS_PER_CAMERA > ChipsEnabled{ DEFAULT_CHIPS_ENABLED_CODE };
+  int CapacityCode{ DEFAULT_CAPACITY_CODE };
+  AdcResolutionType AdcMode{ AdcResolutionType::ADC_16_BIT };
+  int IntegrationTimeMs{ DEFAULT_INTEGRATION_TIME_MS };
+  int IntegrationSamples{ DEFAULT_SAMPLES };
   bool ExternalStartFlag{ false };
+
+  void setCameraResponse(const CameraResponse& resp)
+  {
+    this->AdcMode = resp.AdcMode;
+    this->CapacityCode = resp.CapacityCode;
+    this->IntegrationTimeMs = (resp.IntegrationTimeCode + 1) * 2;
+    this->IntegrationSamples = resp.AdcSamples;
+    this->ExternalStartFlag = resp.ExternalStartState;
+    this->ChipsEnabled = std::bitset< CHIPS_PER_CAMERA >(resp.ChipsEnabledCode);
+  }
+  CameraResponse getCameraResponse() const
+  {
+    CameraResponse resp;
+    resp.AdcMode = this->AdcMode;
+    resp.CapacityCode = this->CapacityCode;
+    resp.ChipsEnabledCode = this->ChipsEnabled.to_ulong();
+    resp.ChipsEnabled = this->ChipsEnabled.count();
+    resp.IntegrationTimeCode = (this->IntegrationTimeMs / 2) - 1;
+    resp.AdcSamples = this->IntegrationSamples;
+    resp.ExternalStartState = this->ExternalStartFlag;
+    return resp;
+  }
 };

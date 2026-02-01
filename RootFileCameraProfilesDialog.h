@@ -37,7 +37,7 @@ public:
   virtual ~RootFileCameraProfilesDialog();
 
 public Q_SLOTS:
-  void onCurrentRootTreeItemChanged(QListWidgetItem* newItem,QListWidgetItem*);
+//  void onCurrentRootTreeItemChanged(QListWidgetItem* newItem,QListWidgetItem*); // not used
   void onUpdateGraphClicked();
   void onUpdateProfilesClicked();
   void onPedestalBeginChanged(double pos);
@@ -48,6 +48,7 @@ public Q_SLOTS:
   void onClearProfilesClicked();
   void onPlayProfilesClicked();
   void updateProfileFrame();
+  void onCameraSpillsModelIndexClicked(const QModelIndex& index);
 
 Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);

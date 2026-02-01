@@ -48,11 +48,13 @@ class AbstractCamera : public QObject {
   Q_OBJECT
 public:
   struct CameraDeviceData {
-    QString id;
-    QString dataDirectory;
-    QString commandDeviceName;
-    QString dataDeviceName;
+    QString ID;
+    QString DataDirectory;
+    QString CommandDeviceName;
+    QString DataDeviceName;
   };
+  typedef QList< CameraDeviceData > CameraDataList;
+
   static constexpr int RESOLUTION_16BIT = (1 << AdcResolutionType::ADC_16_BIT);
   static constexpr int RESOLUTION_18BIT = (1 << AdcResolutionType::ADC_18_BIT);
   static constexpr int RESOLUTION_20BIT = (1 << AdcResolutionType::ADC_20_BIT);
@@ -64,8 +66,8 @@ public:
   static constexpr std::array< double, CHAR_BIT > CHARGE_RANGE{ 12.5, 50., 100., 150., 200., 250., 300., 350. };
   static constexpr std::array< double, CHAR_BIT > CAPACITY_RANGE{ 3.0, 12.5, 25., 37.5, 50., 62.5, 75., 87.5 };
 
-  AbstractCamera();
-  AbstractCamera(const CameraDeviceData& data, QObject *parent = nullptr);
+  explicit AbstractCamera();
+  explicit AbstractCamera(const CameraDeviceData& data, QObject *parent = nullptr);
   virtual ~AbstractCamera();
   bool connect();
   void disconnect();
@@ -77,7 +79,7 @@ public:
   QString getDataPortError() const;
   CameraDeviceData getCameraData() const;
   CameraResponse getCameraResponse() const;
-  AcquisitionParameters getAcquisitionParameters();
+  AcquisitionParameters getAcquisitionParameters() const;
 
   // set pedestal and signal gate and update channel info map
   void setPedestalSignalGate(int pedMin, int pedMax, int sigMin, int sigMax);
@@ -102,6 +104,9 @@ public:
   bool getChipChannelInfo(int chip, int channel, ChannelInfoPair& info);
   void getChipChannelInfo(std::map< ChipChannelPair, ChannelInfoPair >& infoMap);
 
+  ChipChannelPair getReferenceChipChannel(bool adcAmp = false, CameraProfileType profileType = CameraProfileType::PROFILE_VERTICAL) const;
+  bool setReferenceChipChannel(const ChipChannelPair& pair, bool adcAmp = false, CameraProfileType profileType = CameraProfileType::PROFILE_VERTICAL);
+
   QByteArray getSetIntegrationTimeCommand(int integrationTimeMs = 2) const;
   QByteArray getSetCapacityCommand(int capacityCode = 3) const;
   QByteArray getResetChipCommand() const;
@@ -122,8 +127,8 @@ public:
   virtual void processDataCounts(bool splitData = false,
     IntegratorType integType = IntegratorType::A,
     ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE);
-  bool loadCalibration(QSettings* settings);
-  bool saveCalibration(QSettings* settings);
+  bool loadSettings(QSettings* settings);
+  bool saveSettings(QSettings* settings);
 
 public slots:
   void onCommandPortDataReady();
@@ -151,9 +156,9 @@ protected:
   bool loadCameraData(const QString& cameraDirectory); // directory must contain ChipsPositions.json file and chips JSON files
   bool loadChipData(const QString& chipFile, int chipPosition); // chip file in camera directory
 
-  void setRefAdcCalibrationChipChannel(int chip, int channel);
-  void setRefAmpChipChannelVerticalProfile(int chip, int channel);
-  void setRefAmpChipChannelHorizontalProfile(int chip, int channel);
+//  void setRefAdcCalibrationChipChannel(int chip, int channel);
+//  void setRefAmpChipChannelVerticalProfile(int chip, int channel);
+//  void setRefAmpChipChannelHorizontalProfile(int chip, int channel);
 
   const std::array< int, 4 >& getPedestalSignalGate() const;
 
@@ -179,6 +184,7 @@ protected:
 
 public:
   template< size_t N > static void ReverseBits(std::bitset< N >& b);
+  template< size_t N > static std::vector< double > GenerateStripsNumbers(int init = 1);
   static std::vector< double > GenerateStripsNumbers(size_t n, int init = 1);
   static std::vector< double > GenerateFullProfileStripsBinsBorders(size_t n);
 

@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1306</width>
-    <height>730</height>
+    <width>1402</width>
+    <height>939</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,127 +24,59 @@
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
-    <widget class="QListWidget" name="listWidget">
+    <widget class="QListView" name="ListView_CameraSpills">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-    </widget>
-   </item>
-   <item row="1" column="0" colspan="3">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Close</set>
+     <property name="minimumSize">
+      <size>
+       <width>200</width>
+       <height>0</height>
+      </size>
      </property>
     </widget>
    </item>
-   <item row="0" column="2">
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
-      <widget class="TCanvasWidget" name="RootCanvas_Profiles2D" native="true">
+   <item row="0" column="1">
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_14">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>500</width>
-         <height>500</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="ctkCollapsibleButton" name="CollapsibleButton">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Frame parameters</string>
+        <string>Channel:</string>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <layout class="QGridLayout" name="gridLayout_3">
-          <item row="0" column="1">
-           <widget class="ctkSliderWidget" name="SliderWidget_TimeFrameMargin">
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="value">
-             <double>10.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="ctkSliderWidget" name="SliderWidget_TimeFrameStep">
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="value">
-             <double>10.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="ctkRangeWidget" name="RangeWidget_ChargeRange">
-            <property name="minimum">
-             <double>-10.000000000000000</double>
-            </property>
-            <property name="suffix">
-             <string> pC</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>Margin:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_2">
-            <property name="text">
-             <string>Step:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QCheckBox" name="CheckBox_ChargeRange">
-            <property name="text">
-             <string>Range:</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item row="0" column="1">
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="3" column="0" colspan="4">
-      <widget class="TCanvasWidget" name="RootCanvas_ChannelGraph" native="true">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_13">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Chip:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3" rowspan="3">
+      <widget class="QPushButton" name="PushButton_UpdateChannelGraph">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Update graph</string>
        </property>
       </widget>
      </item>
@@ -193,10 +125,36 @@
        </item>
       </layout>
      </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_35">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Chips enabled:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1" colspan="2">
+      <widget class="QLineEdit" name="LineEdit_EnabledChips">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
      <item row="4" column="0" colspan="4">
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
         <widget class="QGroupBox" name="groupBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="title">
           <string>Pedestal</string>
          </property>
@@ -209,14 +167,11 @@
             <property name="singleStep">
              <double>2.000000000000000</double>
             </property>
-            <property name="minimum">
-             <double>20.000000000000000</double>
-            </property>
             <property name="maximum">
              <double>2000.000000000000000</double>
             </property>
             <property name="maximumValue">
-             <double>190.000000000000000</double>
+             <double>0.000000000000000</double>
             </property>
             <property name="suffix">
              <string> ms</string>
@@ -231,6 +186,12 @@
        </item>
        <item>
         <widget class="QGroupBox" name="groupBox_2">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="title">
           <string>Signal</string>
          </property>
@@ -243,17 +204,11 @@
             <property name="singleStep">
              <double>2.000000000000000</double>
             </property>
-            <property name="minimum">
-             <double>0.000000000000000</double>
-            </property>
             <property name="maximum">
              <double>2000.000000000000000</double>
             </property>
-            <property name="minimumValue">
-             <double>99.000000000000000</double>
-            </property>
             <property name="maximumValue">
-             <double>1070.000000000000000</double>
+             <double>0.000000000000000</double>
             </property>
             <property name="suffix">
              <string> ms</string>
@@ -281,6 +236,40 @@
        </item>
       </layout>
      </item>
+     <item row="5" column="0" colspan="4">
+      <layout class="QHBoxLayout" name="horizontalLayout_6">
+       <item>
+        <widget class="TCanvasWidget" name="RootCanvas_HorizontalProfile" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="TCanvasWidget" name="RootCanvas_VerticalProfile" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="TCanvasWidget" name="RootCanvas_Profiles2D" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>300</width>
+           <height>300</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
      <item row="1" column="1" colspan="2">
       <widget class="ctkSliderWidget" name="SliderWidget_Channel">
        <property name="decimals">
@@ -294,83 +283,106 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_35">
+     <item row="10" column="0" colspan="4">
+      <widget class="ctkCollapsibleButton" name="CollapsibleButton">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+        <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Chips enabled:</string>
+        <string>Frame parameters</string>
        </property>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="1" column="1">
+           <widget class="ctkSliderWidget" name="SliderWidget_TimeFrameStep">
+            <property name="decimals">
+             <number>0</number>
+            </property>
+            <property name="value">
+             <double>10.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="ctkSliderWidget" name="SliderWidget_TimeFrameMargin">
+            <property name="decimals">
+             <number>0</number>
+            </property>
+            <property name="value">
+             <double>10.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="CheckBox_ChargeRange">
+            <property name="text">
+             <string>Range:</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Step:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="ctkRangeWidget" name="RangeWidget_ChargeRange">
+            <property name="minimum">
+             <double>-10.000000000000000</double>
+            </property>
+            <property name="suffix">
+             <string> pC</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Margin:</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_14">
+     <item row="3" column="0" colspan="4">
+      <widget class="TCanvasWidget" name="RootCanvas_ChannelGraph" native="true">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="text">
-        <string>Channel:</string>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>300</height>
+        </size>
        </property>
       </widget>
-     </item>
-     <item row="0" column="3" rowspan="3">
-      <widget class="QPushButton" name="PushButton_UpdateChannelGraph">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Update graph</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1" colspan="2">
-      <widget class="QLineEdit" name="LineEdit_EnabledChips">
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_13">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Chip:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0" colspan="4">
-      <layout class="QHBoxLayout" name="horizontalLayout_6">
-       <item>
-        <widget class="TCanvasWidget" name="RootCanvas_HorizontalProfile" native="true"/>
-       </item>
-       <item>
-        <widget class="TCanvasWidget" name="RootCanvas_VerticalProfile" native="true">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-        </widget>
-       </item>
-      </layout>
      </item>
     </layout>
+   </item>
+   <item row="1" column="0" colspan="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Close</set>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

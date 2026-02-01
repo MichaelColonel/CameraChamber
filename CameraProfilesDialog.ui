@@ -331,7 +331,7 @@
          <item>
           <widget class="TCanvasWidget" name="RootCanvas_Integrated2D" native="true">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -347,7 +347,7 @@
          <item>
           <widget class="TCanvasWidget" name="RootCanvas_Current2D" native="true">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -361,6 +361,52 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item row="1" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_5">
+         <item>
+          <widget class="QCheckBox" name="CheckBox_ManualChargeRange">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>Manual charge range</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="ctkRangeWidget" name="RangeWidget_ChargeRange">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="minimum">
+            <double>-10.000000000000000</double>
+           </property>
+           <property name="minimumValue">
+            <double>-0.010000000000000</double>
+           </property>
+           <property name="maximumValue">
+            <double>10.000000000000000</double>
+           </property>
+           <property name="prefix">
+            <string/>
+           </property>
+           <property name="suffix">
+            <string> pC</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="PushButton_ResetIntegral2D">
+         <property name="text">
+          <string>Reset integral 2D</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -469,6 +515,22 @@
     <hint type="destinationlabel">
      <x>888</x>
      <y>117</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>CheckBox_ManualChargeRange</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>RangeWidget_ChargeRange</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>93</x>
+     <y>614</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>607</x>
+     <y>614</y>
     </hint>
    </hints>
   </connection>

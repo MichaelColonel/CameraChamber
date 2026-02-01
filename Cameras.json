@@ -17,6 +17,12 @@
             "directory": "C26AIC03",
             "data-device": "/dev/ft2232h_ic03_a",
             "command-device": "/dev/ft2232h_ic03_b"
+        },
+        {
+            "ID": "Camera4",
+            "directory": "C26AIC04",
+            "data-device": "/dev/ft2232h_ic04_a",
+            "command-device": "/dev/ft2232h_ic04_b"
         }
     ]
 }

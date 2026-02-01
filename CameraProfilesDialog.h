@@ -32,7 +32,7 @@ class CameraProfilesDialog : public QDialog
 {
   Q_OBJECT
 public:
-  CameraProfilesDialog(const AbstractCamera::CameraDeviceData& cameraInfo, QWidget* parent = nullptr);
+  explicit CameraProfilesDialog(const AbstractCamera::CameraDeviceData& cameraInfo, QWidget* parent = nullptr);
   virtual ~CameraProfilesDialog();
   void setCameraDevice(QPointer< AbstractCamera > cam);
 
@@ -45,6 +45,7 @@ public Q_SLOTS:
   void onPedestalEndChanged(double pos);
   void onSignalBeginChanged(double pos);
   void onSignalEndChanged(double pos);
+  void onResetIntegralPseudo2dClicked();
 
 Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);

@@ -35,18 +35,12 @@
 #include <QScopedArrayPointer>
 #include <QPointer>
 
-#include <QOpcUaClient> // OPC UA client
+// #include <QOpcUaClient> // OPC UA client
 
 #include <TFile.h>
 #include <TDirectory.h>
 
-#include <list>
-#include <array>
-#include <map>
 #include <memory>
-#include <chrono>
-
-#include "typedefs.h"
 
 #include "AbstractCamera.h"
 
@@ -102,39 +96,37 @@ private slots:
   void onCameraInitiationFinished();
   void onCameraFirstContactTimeout();
   void onCameraFirstContactFinished();
+  void onCameraAcquisitionStarted();
+  void onCameraAcquisitionFinished();
   void onOpenRootFileActionTriggered();
+  void onCameraSettingsActionTriggered();
 
 private:
   void updateUiState();
 
 protected:
-  int chipsEnabledCode() const;
+  int getChipsEnabledCode() const;
   void getCamerasAvailable();
   void updateAcquisitionParameters(AbstractCamera* cameraDevice);
 
-  QPointer< AbstractCamera > getCamera(const QString& cameraID) const;
-  QPointer< CameraProfilesDialog > getProfiles(const QString& cameraID) const;
-  QPointer< AbstractCamera > getCurrentCamera() const;
-  QPointer< CameraProfilesDialog > getCurrentProfiles() const;
+  AbstractCamera* getCamera(const QString& cameraID) const;
+  CameraProfilesDialog* getProfiles(const QString& cameraID) const;
+  AbstractCamera* getCurrentCamera() const;
+  CameraProfilesDialog* getCurrentProfiles() const;
 
-  QScopedPointer< Ui::MainWindow > ui;//{ nullptr };
+  QScopedPointer< Ui::MainWindow > ui;
   bool cameraConnectedFlag{ false };
 
   QScopedPointer< QTimer > initiationTimer;
   QScopedPointer< QProgressDialog > initiationProgress;
 
-  // ROOT file for cameras data
-  std::unique_ptr< TFile > rootFile;
-  // map for camera ID and directory pointer for each connected, active camera
-  std::map< std::string, TDirectory* > rootCameraDirectoryMap;
-
+  // ROOT file name for cameras data
   QString rootFileName;
+  std::unique_ptr< TFile > rootFile;
 
-  OpcUaModel* opcUaModelData{ nullptr };
-  QOpcUaProvider* opcUaProvider{ nullptr };
-  QOpcUaClient* opcUaClient{ nullptr };
-
-  QList< AbstractCamera::CameraDeviceData > camerasAvalable;
+//  OpcUaModel* opcUaModelData{ nullptr };
+//  QOpcUaProvider* opcUaProvider{ nullptr };
+//  QOpcUaClient* opcUaClient{ nullptr };
 
   typedef QPair< QPointer< AbstractCamera >, QPointer< CameraProfilesDialog > > CameraDeviceProfilesPair;
   typedef QMap< QString, CameraDeviceProfilesPair > CameraDeviceProfilesMap;

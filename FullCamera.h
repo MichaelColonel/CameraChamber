@@ -31,7 +31,7 @@ class FullCamera : public AbstractCamera
 public:
   // Vertically oriented strips => horizontal profile
   static constexpr int PROFILE_STRIPS = CHANNELS_PER_PLANE;
-  FullCamera(const AbstractCamera::CameraDeviceData& data, QObject* parent = nullptr);
+  explicit FullCamera(const AbstractCamera::CameraDeviceData& data, QObject* parent = nullptr);
   ~FullCamera() override;
 public:
   void processDataCounts(bool splitData = false, IntegratorType integType = IntegratorType::A,

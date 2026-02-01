@@ -69,7 +69,6 @@ int main(int argc, char **argv)
    window->setWindowTitle(QString("ProfileCamera2D ") + QT_VERSION_STR);
 
    QObject::connect(&qtApp, SIGNAL(lastWindowClosed()), &qtApp, SLOT(quit()));
-
    int res = qtApp.exec();
 
    return res;

@@ -18,6 +18,9 @@
  */
 
 #include <QPointer>
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
 
 #include "CameraProfilesDialog.h"
 #include "ui_CameraProfilesDialog.h"
@@ -55,7 +58,6 @@ public:
   void updateHistSideA(int chipIndex, int channelIndex, AdcTimeType dataType);
   void updateHistSideB(int chipIndex, int channelIndex, AdcTimeType dataType);
 
-  QString cameraID;
   QPointer< AbstractCamera > camera;
   QScopedPointer< ChannelInfoTableModel > chipChannelInfoModel;
 
@@ -77,6 +79,9 @@ public:
   std::unique_ptr< TLine > lineSigEnd;
 
   std::unique_ptr< TPad > padHist;
+  std::unique_ptr< TH1 > histA;
+  std::unique_ptr< TH1 > histB;
+
   std::unique_ptr< TH2 > histPseudo2D;
   std::unique_ptr< TH2 > histPseudoIntegral2D;
 };
@@ -135,7 +140,7 @@ size_t CameraProfilesDialogPrivate::updateChannelGraph(int chipIndex, int channe
   if (!res)
   {
 //    qWarning() << Q_FUNC_INFO << "ADC data is invalid";
-    emit q->logMessage("ADC data is invalid", this->camera->getCameraData().id, Qt::red);
+    emit q->logMessage("ADC data is invalid", this->camera->getCameraData().ID, Qt::red);
     return 0;
   }
 
@@ -147,7 +152,7 @@ size_t CameraProfilesDialogPrivate::updateChannelGraph(int chipIndex, int channe
     this->padChannel->GetListOfPrimitives()->Remove(this->graphChannel.get());
   }
 
-  this->graphChannel.reset(new TGraph(chipChannelAdcData.size()));
+  this->graphChannel = std::make_unique< TGraph >(chipChannelAdcData.size());
   this->graphChannel->SetTitle("Channel data;Time (ms);Amplitude");
   Int_t i = 0;
   for (int adcValue : chipChannelAdcData)
@@ -189,21 +194,20 @@ void CameraProfilesDialogPrivate::updateHistSideA(int chipIndex, int channelInde
   this->padHist->cd();
   std::vector< int > chipChannelAdcData;
   bool res = this->camera->getAdcData(chipIndex, channelIndex, chipChannelAdcData, AdcTimeType::INTEGRATOR_A);
-  TH1I *hA = reinterpret_cast< TH1I* >(gDirectory->FindObject("hA"));
-  this->padHist->GetListOfPrimitives()->Remove(hA);
-  if (res && hA)
+  this->padHist->GetListOfPrimitives()->Remove(this->histA.get());
+  if (res && this->histA)
   {
-    hA->Reset();
+    this->histA->Reset();
     if (dataType != AdcTimeType::INTEGRATOR_B)
     {
       for (int adcCount : chipChannelAdcData)
       {
-        hA->Fill(Double_t(adcCount));
+        this->histA->Fill(Double_t(adcCount));
       }
     }
     if (dataType == AdcTimeType::INTEGRATOR_A || dataType == AdcTimeType::INTEGRATOR_AB)
     {
-      hA->Draw();
+      this->histA->Draw();
     }
   }
 }
@@ -231,25 +235,24 @@ void CameraProfilesDialogPrivate::updateHistSideB(int chipIndex, int channelInde
   this->padHist->cd();
   std::vector< int > chipChannelAdcData;
   bool res = this->camera->getAdcData(chipIndex, channelIndex, chipChannelAdcData, AdcTimeType::INTEGRATOR_B);
-  TH1I *hB = reinterpret_cast< TH1I* >(gDirectory->FindObject("hB"));
-  this->padHist->GetListOfPrimitives()->Remove(hB);
-  if (res && hB)
+  this->padHist->GetListOfPrimitives()->Remove(this->histB.get());
+  if (res && this->histB)
   {
-    hB->Reset();
+    this->histB->Reset();
     if (dataType != AdcTimeType::INTEGRATOR_A)
     {
       for (int adcCount : chipChannelAdcData)
       {
-        hB->Fill(Double_t(adcCount));
+        this->histB->Fill(Double_t(adcCount));
       }
     }
     if (dataType == AdcTimeType::INTEGRATOR_B)
     {
-      hB->Draw();
+      this->histB->Draw();
     }
     else if (dataType == AdcTimeType::INTEGRATOR_AB)
     {
-      hB->Draw("SAME");
+      this->histB->Draw("SAME");
     }
   }
 }
@@ -262,7 +265,7 @@ CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceDat
 {
   Q_D(CameraProfilesDialog);
   d->ui->setupUi(this);
-  this->setWindowTitle(tr("Camera Profiles & Data Dialog : [%1]").arg(info.id));
+  this->setWindowTitle(tr("Camera Profiles & Data Dialog : [%1]").arg(info.ID));
   this->setWindowFlag(Qt::WindowMaximizeButtonHint, true);
 
   d->ui->TableView_ChannelsInfo->setModel(d->chipChannelInfoModel.data());
@@ -278,39 +281,31 @@ CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceDat
 
   constexpr Int_t histResolution = AbstractCamera::RESOLUTION_16BIT / 4;
   TCanvas* canvasHist = d->ui->RootCanvas_ChannelHist->getCanvas();
-
-  TH1* hist;
   canvasHist->cd();
-  TH1I *hA = reinterpret_cast< TH1I* >(gDirectory->FindObject("hA"));
-  if (!hA)
-  {
-    hist = new TH1I("hA", "Side-A", histResolution, -1000., Double_t(AbstractCamera::RESOLUTION_16BIT) - 1001.);
-  }
-  else
-  {
-    hist = hA;
-  }
-//  hist = new TH1I("hA", "Side-A", 1100, -100., 1000.);
   d->padHist = std::unique_ptr< TPad >(new TPad("pSide", "Grid", 0., 0., 1., 1.));
   d->padHist->SetGrid();
   d->padHist->Draw();
   d->padHist->cd();
+
+  QString nameHistA = QString("hA_") + info.ID;
+  QString nameHistB = QString("hB_") + info.ID;
+  const char* nameA = nameHistA.toLatin1().data();
+  const char* nameB = nameHistB.toLatin1().data();
+
+  TH1* hist = new TH1I(nameA, "ADC counts",
+    histResolution, -1000., Double_t(AbstractCamera::RESOLUTION_16BIT) - 1001.);
+  hist->SetDirectory(nullptr);
+  d->histA.reset(hist);
   hist->SetFillColor(kRed);
   hist->SetFillStyle(3001);
   hist->Draw();
   hist->GetXaxis()->SetTitle("ADC");
   hist->GetYaxis()->SetTitle("Events");
 
-  TH1I *hB = reinterpret_cast< TH1I* >(gDirectory->FindObject("hB"));
-  if (!hB)
-  {
-    hist = new TH1I("hB", "Side-B", histResolution, -1000., Double_t(AbstractCamera::RESOLUTION_16BIT) - 1001.);
-  }
-  else
-  {
-    hist = hB;
-  }
-//  hist = new TH1I("hB", "Side-B", 1100, -100., 1000.);
+  hist = new TH1I(nameB, "ADC counts",
+    histResolution, -1000., Double_t(AbstractCamera::RESOLUTION_16BIT) - 1001.);
+  hist->SetDirectory(nullptr);
+  d->histB.reset(hist);
   hist->SetFillColor(kBlue);
   hist->SetFillStyle(3001);
   hist->Draw("SAME");
@@ -319,6 +314,8 @@ CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceDat
     this, SLOT(onUpdateGraphClicked()));
   QObject::connect(d->ui->PushButton_UpdateProfiles, SIGNAL(clicked()),
     this, SLOT(onUpdateProfilesClicked()));
+  QObject::connect(d->ui->PushButton_ResetIntegral2D, SIGNAL(clicked()),
+    this, SLOT(onResetIntegralPseudo2dClicked()));
   QObject::connect(d->ui->RangeWidget_Pedestal, SIGNAL(minimumValueChanged(double)),
     this, SLOT(onPedestalBeginChanged(double)));
   QObject::connect(d->ui->RangeWidget_Pedestal, SIGNAL(maximumValueChanged(double)),
@@ -357,18 +354,6 @@ CameraProfilesDialog::~CameraProfilesDialog()
       d->padChannel->GetListOfPrimitives()->Remove(d->graphChannel.get());
     }
   }
-  d->padHist->cd();
-  TH1I *hA = reinterpret_cast< TH1I* >(gDirectory->FindObject("hA"));
-  d->padHist->GetListOfPrimitives()->Remove(hA);
-
-  TH1I *hB = reinterpret_cast< TH1I* >(gDirectory->FindObject("hB"));
-  d->padHist->GetListOfPrimitives()->Remove(hB);
-
- // TH2 *h2D = reinterpret_cast< TH2* >(gDirectory->FindObject("hist2D"));
- // d->padPseudo2D->GetListOfPrimitives()->Remove(h2D);
-
- // TH2 *hInteg2D = reinterpret_cast< TH2* >(gDirectory->FindObject("histInteg2D"));
- // d->padPseudoIntegral2D->GetListOfPrimitives()->Remove(hInteg2D);
 
   if (d->camera)
   {
@@ -429,8 +414,7 @@ void CameraProfilesDialog::setCameraDevice(QPointer< AbstractCamera > cam)
   d->padPseudo2D->Draw();
   d->padPseudo2D->cd();
   TH2* hist = d->camera->createProfile2D(false);
-//  QString newName = d->cameraID + QString(hist->GetName());
-//  hist->SetName(newName.toLatin1().data());
+  hist->SetDirectory(nullptr);
   d->histPseudo2D.reset(hist);
   d->histPseudo2D->GetXaxis()->SetTitle("Horizontal profile, mm");
   d->histPseudo2D->GetYaxis()->SetTitle("Vertical profile, mm");
@@ -443,8 +427,7 @@ void CameraProfilesDialog::setCameraDevice(QPointer< AbstractCamera > cam)
   d->padPseudoIntegral2D->Draw();
   d->padPseudoIntegral2D->cd();
   hist = d->camera->createProfile2D(true);
-//  newName = d->cameraID + QString(hist->GetName());
-//  hist->SetName(newName.toLatin1().data());
+  hist->SetDirectory(nullptr);
   hist->SetTitle("Pseudo integral 2D Distribution");
   d->histPseudoIntegral2D.reset(hist);
   d->histPseudoIntegral2D->GetXaxis()->SetTitle("Horizontal profile, mm");
@@ -465,7 +448,7 @@ void CameraProfilesDialog::onPedestalBeginChanged(double pos)
   {
     d->padChannel->GetListOfPrimitives()->Remove(d->linePedBegin.get());
   }
-  d->linePedBegin.reset(new TLine(pos, d->graphChannel->GetMinimum(), pos, d->graphChannel->GetMaximum()));
+  d->linePedBegin = std::make_unique< TLine >(pos, d->graphChannel->GetMinimum(), pos, d->graphChannel->GetMaximum());
   d->padChannel->cd();
   d->linePedBegin->SetLineColor(kBlue);
   d->linePedBegin->SetLineStyle(7);
@@ -495,7 +478,7 @@ void CameraProfilesDialog::onPedestalEndChanged(double pos)
   {
     d->padChannel->GetListOfPrimitives()->Remove(d->linePedEnd.get());
   }
-  d->linePedEnd.reset(new TLine(pos, d->graphChannel->GetMinimum(), pos, d->graphChannel->GetMaximum()));
+  d->linePedEnd = std::make_unique< TLine >(pos, d->graphChannel->GetMinimum(), pos, d->graphChannel->GetMaximum());
   d->padChannel->cd();
   d->linePedEnd->SetLineColor(kBlue);
   d->linePedEnd->SetLineStyle(7);
@@ -519,7 +502,7 @@ void CameraProfilesDialog::onSignalBeginChanged(double pos)
   {
     d->padChannel->GetListOfPrimitives()->Remove(d->lineSigBegin.get());
   }
-  d->lineSigBegin.reset(new TLine(pos, d->graphChannel->GetMinimum(), pos, d->graphChannel->GetMaximum()));
+  d->lineSigBegin = std::make_unique< TLine >(pos, d->graphChannel->GetMinimum(), pos, d->graphChannel->GetMaximum());
   d->padChannel->cd();
   d->lineSigBegin->SetLineColor(kRed);
   d->lineSigBegin->SetLineStyle(7);
@@ -543,7 +526,7 @@ void CameraProfilesDialog::onSignalEndChanged(double pos)
   {
     d->padChannel->GetListOfPrimitives()->Remove(d->lineSigEnd.get());
   }
-  d->lineSigEnd.reset(new TLine(pos, d->graphChannel->GetMinimum(), pos, d->graphChannel->GetMaximum()));
+  d->lineSigEnd = std::make_unique< TLine >(pos, d->graphChannel->GetMinimum(), pos, d->graphChannel->GetMaximum());
   d->padChannel->cd();
   d->lineSigEnd->SetLineColor(kRed);
   d->lineSigEnd->SetLineStyle(7);
@@ -575,6 +558,7 @@ void CameraProfilesDialog::onAcquisitionFinished()
     chipsStr = d->camera->getChipsAddresses();
   }
   d->ui->LineEdit_EnabledChips->setText(chipsStr);
+//  this->onUpdateProfilesClicked();
   QApplication::restoreOverrideCursor();
 }
 
@@ -608,7 +592,7 @@ void CameraProfilesDialog::onUpdateGraphClicked()
   if (!adcDataSize)
   {
 //    qWarning() << Q_FUNC_INFO << "ADC data is empty";
-    emit logMessage("ADC data is empty", d->camera->getCameraData().id, Qt::red);
+    emit logMessage("ADC data is empty", d->camera->getCameraData().ID, Qt::red);
     return;
   }
 
@@ -650,7 +634,12 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   d->camera->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
   d->camera->processDataCounts();
   d->camera->getChipChannelInfo(infoMap);
-
+  if (!infoMap.size())
+  {
+//    qWarning() << Q_FUNC_INFO << "Camera data is empty";
+    emit logMessage("Camera data is empty", "", Qt::red);
+    return;
+  }
   d->camera->updateProfiles(d->graphVerticalProfile.get(), d->graphHorizontalProfile.get(), false);
   d->camera->updateProfiles2D(d->histPseudo2D.get(), d->histPseudoIntegral2D.get());
 
@@ -689,6 +678,11 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   canvas = d->ui->RootCanvas_Current2D->getCanvas();
   canvas->cd();
   d->padPseudo2D->cd();
+  if (d->ui->CheckBox_ManualChargeRange->isChecked())
+  {
+    d->histPseudo2D->GetZaxis()->SetRangeUser(d->ui->RangeWidget_ChargeRange->minimumValue(),
+      d->ui->RangeWidget_ChargeRange->maximumValue());
+  }
   d->padPseudo2D->Modified();
   d->padPseudo2D->Update();
 
@@ -699,6 +693,43 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   d->padPseudoIntegral2D->Update();
 
   d->chipChannelInfoModel->setChipChannelInfo(infoMap);
+
+  // dump info into temporary text file
+  auto cameraData = d->camera->getCameraData();
+  QString dataFileName = QDir::tempPath() + QString(QDir::separator()) + cameraData.ID + "_infodump.txt";
+  QScopedPointer< QFile > dataFile(new QFile(dataFileName));
+  bool res = dataFile->open(QIODevice::WriteOnly | QIODevice::Text);
+  if (!res)
+  {
+    return;
+  }
+  QTextStream dataFileStream(dataFile.get()); // dump info to temp file for amplitude calibration
+  using MapConstIter = std::map< ChipChannelPair, ChannelInfoPair >::const_iterator;
+  for (MapConstIter iter = infoMap.begin(); iter != infoMap.end(); ++iter)
+  {
+    const ChipChannelPair& chipChannelPair = (*iter).first;
+    const ChannelInfoPair& infoPair = (*iter).second;
+    const ChannelInfo& rawInfo = infoPair.first;
+    const ChannelInfo& adcCalibInfo = infoPair.second;
+    if (res)
+    {
+      dataFileStream << qSetFieldWidth(10) \
+        << chipChannelPair.first << ' ' << chipChannelPair.second << ' ' \
+        << rawInfo.SignalNoAmp << ' ' << adcCalibInfo.SignalNoAmp << '\n';
+    }
+  }
+  dataFileStream.flush();
+  res = dataFile->flush();
+  if (res)
+  {
+    dataFile->close();
+  }
+}
+
+void CameraProfilesDialog::onResetIntegralPseudo2dClicked()
+{
+  Q_D(CameraProfilesDialog);
+  d->histPseudoIntegral2D->Reset();
 }
 
 QT_END_NAMESPACE

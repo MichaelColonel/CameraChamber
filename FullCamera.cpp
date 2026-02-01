@@ -185,15 +185,15 @@ FullCamera::FullCamera(const AbstractCamera::CameraDeviceData& data, QObject *pa
   d_ptr(new FullCameraPrivate(*this))
 {
   Q_D(FullCamera);
-  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
-  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
-  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
-  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
+//  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
+//  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
+//  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
+//  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
 
-  refAdcV = std::make_pair(2, 15); // vert prof
-  refAdcH = std::make_pair(1, 15); // horiz prof
-  refAmpV = std::make_pair(2, 15); // vert prof
-  refAmpH = std::make_pair(1, 15); // horiz prof
+//  refAdcV = std::make_pair(2, 15); // vert prof
+//  refAdcH = std::make_pair(1, 15); // horiz prof
+//  refAmpV = std::make_pair(2, 15); // vert prof
+//  refAmpH = std::make_pair(1, 15); // horiz prof
 
   std::vector< double > vertProf = this->getVerticalProfile();
   std::vector< double > horizProf = this->getHorizontalProfile();
@@ -437,8 +437,8 @@ TH2* FullCamera::createProfile2D(bool integral)
   const double* yBinsBorders = vert.data();
 
   AbstractCamera::CameraDeviceData cameraData = this->getCameraData();
-  QString hist2Name = QString("h2_") + cameraData.id;
-  QString hist2IntegName = QString("hi2_") + cameraData.id;
+  QString hist2Name = QString("h2_") + cameraData.ID;
+  QString hist2IntegName = QString("hi2_") + cameraData.ID;
 
   QString histName = (integral) ? hist2IntegName : hist2Name;
   QByteArray name = histName.toLatin1();

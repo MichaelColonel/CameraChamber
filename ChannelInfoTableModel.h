@@ -41,7 +41,7 @@ public:
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 protected:
   QString headerAt(int offset) const;
-  QMap< QPair< int, int >, ChannelInfoPair > infoMap;
+  std::map< ChipChannelPair, ChannelInfoPair > infoMap;
 
   const QStringList tableHeadersList{
     "Chip",
@@ -58,8 +58,8 @@ protected:
     "Signal-B",
     "SNR-A",
     "SNR-B",
-    "Signal",
-    "Ampl. Signal",
+    "Raw signal",
+    "Ampl. raw signal",
     "Calib. signal",
     "Ampl. calib. signal"
   };

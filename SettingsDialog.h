@@ -25,17 +25,27 @@
 QT_BEGIN_NAMESPACE
 
 class SettingsDialogPrivate;
+class AbstractCamera;
+
+class QAbstractButton;
 
 class SettingsDialog : public QDialog
 {
   Q_OBJECT
 
 public:
-  explicit SettingsDialog(const QString& cameraID, QWidget *parent = nullptr);
+  explicit SettingsDialog(AbstractCamera* cameraDevice, QWidget *parent = nullptr);
   virtual ~SettingsDialog();
 
 Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);
+
+public Q_SLOTS:
+  void onProfileTypeButtonChanged(QAbstractButton* but);
+  void onSignalCalibrationTypeButtonChanged(QAbstractButton* but);
+  void onChipNumberChanged(double);
+  void onChannelNumberChanged(double);
+  void onCameraIdChanged(const QString& cameraID);
 
 protected:
   QScopedPointer< SettingsDialogPrivate > d_ptr;

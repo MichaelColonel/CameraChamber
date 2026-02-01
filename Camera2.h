@@ -33,7 +33,7 @@ public:
   static constexpr int HORIZONTAL_PROFILE_STRIPS = CHANNELS_PER_CHIP * 4;
   // Horizontally oriented strips => vertical profile
   static constexpr int VERTICAL_PROFILE_STRIPS = CHANNELS_PER_PLANE;
-  Camera2(const AbstractCamera::CameraDeviceData& data, QObject *parent = nullptr);
+  explicit Camera2(const AbstractCamera::CameraDeviceData& data, QObject *parent = nullptr);
   ~Camera2() override;
 
   void processDataCounts(bool splitData = false, IntegratorType integType = IntegratorType::A,

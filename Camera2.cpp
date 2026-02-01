@@ -19,27 +19,6 @@
 
 #include "Camera2.h"
 
-/*
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301, USA.
- *
- *
- */
-
-#include "Camera2.h"
-
 #include <QDebug>
 
 #include <TH1.h>
@@ -248,15 +227,15 @@ Camera2::Camera2(const AbstractCamera::CameraDeviceData& data, QObject *parent)
   d_ptr(new Camera2Private(*this))
 {
   Q_D(Camera2);
-  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
-  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
-  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
-  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
+//  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
+//  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
+//  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
+//  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
 
-  refAdcV = std::make_pair(3, 15); // vert prof
-  refAdcH = std::make_pair(1, 15); // horiz prof
-  refAmpV = std::make_pair(3, 15); // vert prof
-  refAmpH = std::make_pair(1, 15); // horiz prof
+//  refAdcV = std::make_pair(3, 15); // vert prof
+//  refAdcH = std::make_pair(1, 15); // horiz prof
+//  refAmpV = std::make_pair(3, 15); // vert prof
+//  refAmpH = std::make_pair(1, 15); // horiz prof
 
   std::vector< double > vertProf = this->getVerticalProfile();
   std::vector< double > horizProf = this->getHorizontalProfile();
@@ -266,6 +245,7 @@ Camera2::Camera2(const AbstractCamera::CameraDeviceData& data, QObject *parent)
     vertProf.resize(VERTICAL_PROFILE_STRIPS);
     horizProf.resize(HORIZONTAL_PROFILE_STRIPS);
   }
+
   std::fill(std::begin(vertProf), std::end(vertProf), 0.);
   std::fill(std::begin(horizProf), std::end(horizProf), 0.);
 }
@@ -605,8 +585,8 @@ TH2* Camera2::createProfile2D(bool integral)
   const double* yBinsBorders = vert.data();
 
   AbstractCamera::CameraDeviceData cameraData = this->getCameraData();
-  QString hist2Name = QString("h2_") + cameraData.id;
-  QString hist2IntegName = QString("hi2_") + cameraData.id;
+  QString hist2Name = QString("h2_") + cameraData.ID;
+  QString hist2IntegName = QString("hi2_") + cameraData.ID;
 
   QString histName = (integral) ? hist2IntegName : hist2Name;
   QByteArray name = histName.toLatin1();

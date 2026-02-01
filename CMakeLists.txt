@@ -7,13 +7,6 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-find_package(CTK REQUIRED IMPORTED)
-if(NOT CTK_FOUND)
-  error("CTK package is not found. Program cannot be built.")
-endif()
-
-include(${CTK_USE_FILE})
-
 find_package(ROOT REQUIRED)
 include(${ROOT_USE_FILE})
 
@@ -33,36 +26,94 @@ if(NOT withqt)
 endif()
 
 if(withqt EQUAL 6)
-  find_package(Qt6 COMPONENTS Core WebEngineCore Xml OpenGL WebEngineWidgets SerialPort OpcUa CONFIG)
-  set(qt_libs Qt6::Core Qt6::Widgets Qt6::WebEngineCore Qt6::WebEngineWidgets Qt6::SerialPort Qt6::Xml Qt6::OpenGL)
+  find_package(Qt6 COMPONENTS Core Widgets WebEngineCore Xml OpenGL WebEngineWidgets SerialPort OpcUa OpenGLWidgets StateMachine Core5Compat CONFIG)
+  set(qt_libs Qt6::Core Qt6::Widgets Qt6::WebEngineCore Qt6::WebEngineWidgets Qt6::SerialPort Qt6::OpcUa Qt6::Xml Qt6::OpenGL Qt6::OpenGLWidgets Qt6::StateMachine Qt6::Core5Compat)
   set(root_qtlib ROOT::ROOTQt6WebDisplay)
 elseif(withqt EQUAL 5)
-  find_package(Qt5 COMPONENTS Widgets SerialPort OpcUa Xml OpenGL REQUIRED WebEngine WebEngineWidgets)
+  find_package(Qt5 COMPONENTS Core Widgets WebEngine Xml OpenGL WebEngineWidgets SerialPort OpcUa REQUIRED)
   set(qt_libs Qt5::Core Qt5::Widgets Qt5::WebEngine Qt5::WebEngineWidgets Qt5::SerialPort Qt5::OpcUa Qt5::Xml Qt5::OpenGL)
   set(root_qtlib ROOT::ROOTQt5WebDisplay)
 else()
   error("No matching withqt parameter found, check if qt5web or qt6web components are there")
 endif()
 
+find_package(CTK REQUIRED IMPORTED)
+if(NOT CTK_FOUND)
+  error("CTK package is not found. Program cannot be built.")
+endif()
+include(${CTK_USE_FILE})
+
+set(RESOURCE_FILES
+  Cameras.json
+  C26AIC01/ChipsPosition.json
+  C26AIC01/Chip1.11.json
+  C26AIC01/Chip1.2.json
+  C26AIC01/Chip1.3.json
+  C26AIC01/Chip1.4.json
+  C26AIC01/Chip1.5.json
+  C26AIC01/Chip1.8.json
+  C26AIC01/Chip2.1.json
+  C26AIC01/Chip2.2.json
+  C26AIC01/Chip2.4.json
+  C26AIC01/Chip2.5.json
+  C26AIC01/Chip2.6.json
+  C26AIC01/Chip2.7.json
+  C26AIC02/ChipsPosition.json
+  C26AIC02/Chip1.1.json
+  C26AIC02/Chip1.10.json
+  C26AIC02/Chip1.12.json
+  C26AIC02/Chip1.6.json
+  C26AIC02/Chip1.7.json
+  C26AIC02/Chip1.9.json
+  C26AIC02/Chip2.10.json
+  C26AIC02/Chip2.3.json
+  C26AIC02/Chip2.8.json
+  C26AIC02/Chip2.9.json
+  C26AIC02/ChipX.X.json
+  C26AIC03/ChipsPosition.json
+  C26AIC03/Chip3.1.json
+  C26AIC03/Chip3.10.json
+  C26AIC03/Chip3.11.json
+  C26AIC03/Chip3.12.json
+  C26AIC03/Chip3.13.json
+  C26AIC03/Chip3.14.json
+  C26AIC03/Chip3.2.json
+  C26AIC03/Chip3.3.json
+  C26AIC03/Chip3.5.json
+  C26AIC03/Chip2.7.json
+  C26AIC03/Chip2.8.json
+  C26AIC03/ChipX.X.json
+  C26AIC04/ChipsPosition.json
+  C26AIC04/ChipX.X.json
+)
+
+file(GLOB forms ${PROJECT_SOURCE_DIR}/*.ui)
+file(GLOB sources ${PROJECT_SOURCE_DIR}/*.cpp)
+file(GLOB headers ${PROJECT_SOURCE_DIR}/*.h)
+
 add_executable(ProfileCamera2D
-  MainWindow.cpp
-  MainWindow.ui
-  AbstractCamera.cpp
-  FullCamera.cpp
-  Camera2.cpp
-  TCanvasWidget.cpp
-  CameraProfilesDialog.cpp
-  CameraProfilesDialog.ui
-  RootFileCameraProfilesDialog.cpp
-  RootFileCameraProfilesDialog.ui
-  SettingsDialog.cpp
-  SettingsDialog.ui
-  ChannelInfoTableModel.cpp
-  main.cpp
+  ${sources}
+  ${headers}
+  ${forms}
 )
 
 target_link_libraries(ProfileCamera2D
   ${qt_libs}
   CTKWidgets
-  ${ROOT_LIBRARIES} ROOT::ROOTWebDisplay ${root_qtlib} ROOT::Gpad ROOT::WebGui6 ROOT::ROOTGpadv7 ROOT::ROOTCanvasPainter ROOT::Geom ROOT::ROOTBrowserv7 ROOT::ROOTGeomViewer
+  ${root_qtlib}
+  ${ROOT_LIBRARIES}
+  ROOT::ROOTWebDisplay
+  ROOT::WebGui6
+  ROOT::Gpad
+  ROOT::ROOTGpadv7
+  ROOT::ROOTCanvasPainter
+  ROOT::Geom
+  ROOT::ROOTBrowserv7
+  ROOT::ROOTGeomViewer
+)
+
+set_target_properties(ProfileCamera2D PROPERTIES
+  MACOSX_BUNDLE TRUE
+  MACOSX_FRAMEWORK_IDENTIFIER org.cmake.ProfileCamera2D
+  RESOURCE "${RESOURCE_FILES}"
 )

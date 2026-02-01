@@ -27,6 +27,7 @@
 #include <TH2.h>
 #include <TTree.h>
 #include <TGraphErrors.h>
+#include <TFile.h>
 
 #include <QDebug>
 #include <QDir>
@@ -48,7 +49,7 @@ public:
   AbstractCameraPrivate(AbstractCamera &object);
   virtual ~AbstractCameraPrivate();
   CameraProfileType getProfileForChip(int chip) const;
-//  bool checkLastCommandWrittenAndRespose();
+  bool checkLastCommandWrittenAndRespose();
   bool checkLastCommandWrittenAndRespose(const QByteArray& responseBuffer);
   bool saveData();
 
@@ -90,10 +91,10 @@ public:
   std::map< int, std::vector< int > > chipChannelsStripsBrokenMap;
 
   // Data stored in Qt settings file for each camera
-  ChipChannelPair refAdcChipChannelVertical = { 1, 1 };
-  ChipChannelPair refAdcChipChannelHorizontal = { 1, 1 };
-  ChipChannelPair refAmpChipChannelVertical = { 1, 1 };
-  ChipChannelPair refAmpChipChannelHorizontal = { 1, 1 };
+  ChipChannelPair refAdcChipChannelVertical = { 2, 1 };
+  ChipChannelPair refAdcChipChannelHorizontal = { 2, 1 };
+  ChipChannelPair refAmpChipChannelVertical = { 2, 1 };
+  ChipChannelPair refAmpChipChannelHorizontal = { 2, 1 };
   std::array< int, 4 > pedestalSignalGateArray = { 1, 100, 101, 200 };
 
   std::map< ChipChannelPair, ChannelInfoPair > chipChannelInfoMap;
@@ -101,7 +102,7 @@ public:
 
   int dataNumber{ 1 };
   QDateTime dataDateTime;
-  TDirectory* dataDirectory{ nullptr };
+  TDirectory* rootDir{ nullptr };
 
   const QByteArray FirstContactCommand = QByteArray(1, 'A');
   const QByteArray OnceTimeExternalStartCommand = QByteArray("S\0\0", AbstractCamera::BUFFER_SIZE);
@@ -124,56 +125,11 @@ AbstractCameraPrivate::~AbstractCameraPrivate()
 {
 }
 
-/*
 bool AbstractCameraPrivate::checkLastCommandWrittenAndRespose()
 {
-  if (this->commandResponseBuffer.isEmpty() || this->lastCommandWritten.isEmpty())
-  {
-    return false;
-  }
-
-  char responseHeader = this->commandResponseBuffer.at(0);
-  char lastWrittenHeader = this->lastCommandWritten.at(0);
-
-  // Check response command header
-  auto CheckRespHeader = [responseHeader](char headerCharacter) -> bool { return responseHeader == headerCharacter; };
-  // Check last written command header
-  auto CheckLastWritHeader = [lastWrittenHeader](char headerCharacter) -> bool { return lastWrittenHeader == headerCharacter; };
-
-  const std::string commandHeadersOK("GMRHAOCIDSELP");
-  const std::string commandHeadersNO("OMIEP");
-
-  if (this->commandResponseBuffer.endsWith("OK") || this->commandResponseBuffer.endsWith("Welcome"))
-  {
-    // Check response command header is OK
-    auto resComHeader = std::find_if(std::begin(commandHeadersOK), std::end(commandHeadersOK), CheckRespHeader);
-    // Check last written command header is OK
-    auto writtenComHeader = std::find_if(std::begin(commandHeadersOK), std::end(commandHeadersOK), CheckLastWritHeader);
-    bool resComHeaderOK = resComHeader != std::end(commandHeadersOK);
-    bool writtenComHeaderOK = writtenComHeader != std::end(commandHeadersOK);
-    if (resComHeaderOK && writtenComHeaderOK && *resComHeader == *writtenComHeader)
-    {
-      return true;
-    }
-  }
-
-  if (this->commandResponseBuffer.endsWith("NO"))
-  {
-    // Check response command header is NO
-    auto resComHeader = std::find_if(std::begin(commandHeadersNO), std::end(commandHeadersNO), CheckRespHeader);
-    // Check last written command header is NO
-    auto writtenComHeader = std::find_if(std::begin(commandHeadersNO), std::end(commandHeadersNO), CheckLastWritHeader);
-    bool resComHeaderNO = resComHeader != std::end(commandHeadersNO);
-    bool writtenComHeaderNO = writtenComHeader != std::end(commandHeadersNO);
-    if (resComHeaderNO && writtenComHeaderNO && *resComHeader == *writtenComHeader)
-    {
-      qCritical() << Q_FUNC_INFO << ": Last command with header \"" << lastWrittenHeader << "\" : parameter isn't set";
-      return false;
-    }
-  }
-  return false;
+  return this->checkLastCommandWrittenAndRespose(this->commandResponseBuffer);
 }
-*/
+
 bool AbstractCameraPrivate::checkLastCommandWrittenAndRespose(const QByteArray& responseBuffer)
 {
   if (responseBuffer.isEmpty() || this->lastCommandWritten.isEmpty())
@@ -192,7 +148,7 @@ bool AbstractCameraPrivate::checkLastCommandWrittenAndRespose(const QByteArray& 
   const std::string commandHeadersOK("GMRHAOCIDSELP");
   const std::string commandHeadersNO("OMIEP");
 
-  if (this->commandResponseBuffer.endsWith("OK") || this->commandResponseBuffer.endsWith("Welcome"))
+  if (responseBuffer.endsWith("OK") || responseBuffer.endsWith("Welcome"))
   {
     // Check response command header is OK
     auto resComHeader = std::find_if(std::begin(commandHeadersOK), std::end(commandHeadersOK), CheckRespHeader);
@@ -206,7 +162,7 @@ bool AbstractCameraPrivate::checkLastCommandWrittenAndRespose(const QByteArray& 
     }
   }
 
-  if (this->commandResponseBuffer.endsWith("NO"))
+  if (responseBuffer.endsWith("NO"))
   {
     // Check response command header is NO
     auto resComHeader = std::find_if(std::begin(commandHeadersNO), std::end(commandHeadersNO), CheckRespHeader);
@@ -241,11 +197,10 @@ CameraProfileType AbstractCameraPrivate::getProfileForChip(int chip) const
 
 bool AbstractCameraPrivate::saveData()
 {
-  if (!this->dataDirectory)
+  if (!this->rootDir)
   {
     return false;
   }
-  this->dataDirectory->cd();
   const int& capacityCode = this->cameraResponse.CapacityCode;
   const int& integrationTimeCode = this->cameraResponse.IntegrationTimeCode;
 
@@ -263,16 +218,16 @@ bool AbstractCameraPrivate::saveData()
   std::unique_ptr< TTree > spillTree(new TTree(spillString.data(), titleString));
   int dataBits = this->cameraResponse.AdcMode;
 
-  spillTree->Branch("respChipsEnabled", &this->cameraResponse.ChipsEnabled, "respChipsEnabled/I");
+  spillTree->Branch("respChipsEnabled", &this->cameraResponse.ChipsEnabled, "respChipsEnabled/I"); // not used
   spillTree->Branch("respChipsEnabledCode", &this->cameraResponse.ChipsEnabledCode, "respChipsEnabledCode/s");
   spillTree->Branch("respIntTime", &this->cameraResponse.IntegrationTimeCode, "respIntTime/I");
   spillTree->Branch("respCapacity", &this->cameraResponse.CapacityCode, "respCapacity/I");
   spillTree->Branch("respExtStart", &this->cameraResponse.ExternalStartState, "respExtStart/O");
   spillTree->Branch("respAdcMode", &this->cameraResponse.AdcMode, "respAdcMode/I");
 
-  spillTree->Branch("mode", &mode, "mode/i");
+  spillTree->Branch("mode", &mode, "mode/i"); // not used
   spillTree->Branch("bufferSize", &bufferSize, "bufferSize/l");
-  spillTree->Branch("adcMode", &dataBits, "adcMode/I");
+  spillTree->Branch("adcMode", &dataBits, "adcMode/I"); // not used
 
   const std::vector< char >* bufferPtr = &buffer;
   spillTree->Branch("bufferVector", "std::vector< char >", &bufferPtr);
@@ -282,7 +237,7 @@ bool AbstractCameraPrivate::saveData()
   spillTree->Branch("chipsAcquired", &chipsAcquired, "chipsAcquired/l");
   spillTree->Branch("chipsAcquiredVector", "std::vector< int >", &chipsAcquiredPtr);
   spillTree->Fill();
-  spillTree->Write();
+  this->rootDir->WriteTObject(spillTree.get());
   return true;
 }
 
@@ -301,10 +256,10 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
   Q_D(AbstractCamera);
 
   d->cameraData = data;
-  if (this->loadCameraData(d->cameraData.dataDirectory))
+  if (this->loadCameraData(d->cameraData.DataDirectory))
   {
 #if !QT_NO_DEBUG
-    qDebug() << Q_FUNC_INFO << ": \"" << d->cameraData.id << "\" data successfully loaded";
+    qDebug() << Q_FUNC_INFO << ": \"" << d->cameraData.ID << "\" data successfully loaded";
 #endif
     d->verticalProfileVector.resize(d->verticalProfileChipsVector.size() * CHANNELS_PER_CHIP);
     std::fill(std::begin(d->verticalProfileVector), std::end(d->verticalProfileVector), 0.);
@@ -330,7 +285,7 @@ bool AbstractCamera::connect()
     d->lastCommandWritten.clear();
     d->adcDataBuffer.clear();
 
-    d->commandPort->setPortName(d->cameraData.commandDeviceName);
+    d->commandPort->setPortName(d->cameraData.CommandDeviceName);
     d->commandPort->setBaudRate(QSerialPort::Baud57600);
     d->commandPort->setDataBits(QSerialPort::Data8);
     d->commandPort->setParity(QSerialPort::NoParity);
@@ -341,7 +296,7 @@ bool AbstractCamera::connect()
       this, SLOT(onCommandPortDataReady()));
     QObject::connect(d->commandPort.data(), SIGNAL(bytesWritten(qint64)),
       this, SLOT(onCommandPortBytesWritten(qint64)));
-    QObject::connect(d->commandPort.data(), SIGNAL(error(QSerialPort::SerialPortError)),
+    QObject::connect(d->commandPort.data(), SIGNAL(errorOccurred(QSerialPort::SerialPortError)),
       this, SLOT(onCommandPortError(QSerialPort::SerialPortError)));
 
     connected = d->commandPort->open(QIODevice::ReadWrite);
@@ -349,7 +304,7 @@ bool AbstractCamera::connect()
 
   if (d->dataPort && !d->dataPort->isOpen())
   {
-    d->dataPort->setPortName(d->cameraData.dataDeviceName);
+    d->dataPort->setPortName(d->cameraData.DataDeviceName);
     d->dataPort->setBaudRate(QSerialPort::Baud57600);
     d->dataPort->setDataBits(QSerialPort::Data8);
     d->dataPort->setParity(QSerialPort::NoParity);
@@ -361,7 +316,7 @@ bool AbstractCamera::connect()
     // read-only port
 //    QObject::connect(d->dataPort.data(), SIGNAL(bytesWritten(qint64)),
 //      this, SLOT(onDataPortBytesWritten(qint64)));
-    QObject::connect(d->dataPort.data(), SIGNAL(error(QSerialPort::SerialPortError)),
+    QObject::connect(d->dataPort.data(), SIGNAL(errorOccurred(QSerialPort::SerialPortError)),
       this, SLOT(onDataPortError(QSerialPort::SerialPortError)));
 
     connected &= d->dataPort->open(QIODevice::ReadOnly);
@@ -394,11 +349,6 @@ void AbstractCamera::disconnect()
   }
   d->dataNumber = 1;
   d->cameraData = AbstractCamera::CameraDeviceData();
-  if (d->dataDirectory)
-  {
-    d->dataDirectory->Close();
-  }
-  d->dataDirectory = nullptr;
   connected = false;
   Q_UNUSED(connected);
 }
@@ -423,11 +373,11 @@ bool AbstractCamera::isDeviceAlreadyConnected(const QString &otherPort)
   Q_D(AbstractCamera);
   if (d->commandPort && d->commandPort->isOpen())
   {
-    return d->cameraData.commandDeviceName == otherPort;
+    return d->cameraData.CommandDeviceName == otherPort;
   }
   if (d->dataPort && d->dataPort->isOpen())
   {
-    return d->cameraData.dataDeviceName == otherPort;
+    return d->cameraData.DataDeviceName == otherPort;
   }
   return false;
 }
@@ -457,7 +407,7 @@ void AbstractCamera::onCommandPortDataReady()
   d->commandResponseBuffer.push_back(portData);
   const quint8* data = reinterpret_cast< quint8* >(d->commandResponseBuffer.data());
 
-  if (d->commandResponseBuffer.size() == 4 && d->checkLastCommandWrittenAndRespose(d->commandResponseBuffer))
+  if (d->commandResponseBuffer.size() == 4 && d->checkLastCommandWrittenAndRespose())
   {
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << d->commandResponseBuffer;
@@ -477,7 +427,7 @@ void AbstractCamera::onCommandPortDataReady()
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": Set external interrupt command response: " << d->cameraResponse.ExternalStartState;
 #endif
-      emit logMessage(tr("External start flag: %1").arg(d->cameraResponse.ExternalStartState), d->cameraData.id, Qt::green);
+      emit logMessage(tr("External start flag: %1").arg(d->cameraResponse.ExternalStartState), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'C':
@@ -485,7 +435,7 @@ void AbstractCamera::onCommandPortDataReady()
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": Set chip capacity command response: " << d->cameraResponse.CapacityCode;
 #endif
-      emit logMessage(tr("Chip capacity code: %1").arg(d->cameraResponse.CapacityCode), d->cameraData.id, Qt::green);
+      emit logMessage(tr("Chip capacity code: %1").arg(d->cameraResponse.CapacityCode), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'D':
@@ -493,14 +443,14 @@ void AbstractCamera::onCommandPortDataReady()
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": ADC resolution command response: " << d->cameraResponse.AdcMode;
 #endif
-      emit logMessage(tr("ADC resolution: %1").arg(d->cameraResponse.AdcMode), d->cameraData.id, Qt::green);
+      emit logMessage(tr("ADC resolution: %1").arg(d->cameraResponse.AdcMode), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'G':
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": Capasities have been written into chip";
 #endif
-      emit logMessage(tr("Capasities have been written into chip"), d->cameraData.id, Qt::green);
+      emit logMessage(tr("Capasities have been written into chip"), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'I':
@@ -509,7 +459,7 @@ void AbstractCamera::onCommandPortDataReady()
       qDebug() << Q_FUNC_INFO << ": Set integration time command response code: " << char(data[1]);
       qDebug() << Q_FUNC_INFO << ": Set integration time is: " << (d->cameraResponse.IntegrationTimeCode + 1) * 2 << " ms";
 #endif
-      emit logMessage(tr("Integration time: %1 ms").arg((d->cameraResponse.IntegrationTimeCode + 1) * 2), d->cameraData.id, Qt::green);
+      emit logMessage(tr("Integration time: %1 ms").arg((d->cameraResponse.IntegrationTimeCode + 1) * 2), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'M':
@@ -517,7 +467,7 @@ void AbstractCamera::onCommandPortDataReady()
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": Number of chips enabled: " << d->cameraResponse.ChipsEnabled;
 #endif
-      emit logMessage(tr("Number of chips enabled: %1").arg(d->cameraResponse.ChipsEnabled), d->cameraData.id, Qt::green);
+      emit logMessage(tr("Number of chips enabled: %1").arg(d->cameraResponse.ChipsEnabled), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'O':
@@ -525,7 +475,7 @@ void AbstractCamera::onCommandPortDataReady()
       qDebug() << Q_FUNC_INFO << ": Set number of chips command response code: " << char(data[1]);
       qDebug() << Q_FUNC_INFO << ": Number of chips (MUST be 12) are: " << data[1] - 'A';
 #endif
-      emit logMessage(tr("Number of chips (MUST be 12): %1").arg(data[1] - 'A'), d->cameraData.id, Qt::green);
+      emit logMessage(tr("Number of chips (MUST be 12): %1").arg(data[1] - 'A'), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     default:
@@ -535,16 +485,16 @@ void AbstractCamera::onCommandPortDataReady()
     d->lastCommandWritten.clear();
     return;
   }
-  else if (d->commandResponseBuffer.size() == 4 && !d->checkLastCommandWrittenAndRespose(d->commandResponseBuffer))
+  else if (d->commandResponseBuffer.size() == 4 && !d->checkLastCommandWrittenAndRespose())
   {
     qCritical() << Q_FUNC_INFO << ": Wrong or strange command response: " << d->commandResponseBuffer;
-    emit logMessage(tr("Wrong or strange command response"), d->cameraData.id, Qt::yellow);
+    emit logMessage(tr("Wrong or strange command response"), d->cameraData.ID, Qt::yellow);
     emit commandWritten(d->lastCommandWritten);
     d->commandResponseBuffer.clear();
     d->lastCommandWritten.clear();
     return;
   }
-  if (d->commandResponseBuffer.size() == 3 && d->checkLastCommandWrittenAndRespose(d->commandResponseBuffer))
+  if (d->commandResponseBuffer.size() == 3 && d->checkLastCommandWrittenAndRespose())
   {
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << d->commandResponseBuffer;
@@ -555,35 +505,35 @@ void AbstractCamera::onCommandPortDataReady()
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": DDC232 configuration register is set";
 #endif
-      emit logMessage(tr("DDC232 configuration register is set"), d->cameraData.id, Qt::green);
+      emit logMessage(tr("DDC232 configuration register is set"), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'R':
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": ALTERA reset";
 #endif
-      emit logMessage(tr("ALTERA reset"), d->cameraData.id, Qt::green);
+      emit logMessage(tr("ALTERA reset"), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'H':
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": Chip reset";
 #endif
-      emit logMessage(tr("Chip reset"), d->cameraData.id, Qt::green);
+      emit logMessage(tr("Chip reset"), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'S':
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": Single shot acquisition with external start";
 #endif
-      emit logMessage(tr("Single shot acquisition..."), d->cameraData.id, Qt::green);
+      emit logMessage(tr("Single shot acquisition..."), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'E':
 #if !QT_NO_DEBUG
       qDebug() << Q_FUNC_INFO << ": Devices enabled are set";
 #endif
-      emit logMessage(tr("Chips are enabled"), d->cameraData.id, Qt::green);
+      emit logMessage(tr("Chips are enabled"), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     case 'P':
@@ -594,7 +544,7 @@ void AbstractCamera::onCommandPortDataReady()
         const unsigned char* comPtr = reinterpret_cast< unsigned char * >(d->lastCommandWritten.data());
         d->cameraResponse.AdcSamples = (comPtr[2] << CHAR_BIT) | comPtr[1];
       }
-      emit logMessage(tr("New number of samples is set: %1").arg(d->cameraResponse.AdcSamples), d->cameraData.id, Qt::green);
+      emit logMessage(tr("New number of samples is set: %1").arg(d->cameraResponse.AdcSamples), d->cameraData.ID, Qt::green);
       emit commandWritten(d->lastCommandWritten);
       break;
     default:
@@ -604,10 +554,10 @@ void AbstractCamera::onCommandPortDataReady()
     d->lastCommandWritten.clear();
     return;
   }
-  else if (d->commandResponseBuffer.size() == 3 && !d->checkLastCommandWrittenAndRespose(d->commandResponseBuffer))
+  else if (d->commandResponseBuffer.size() == 3 && !d->checkLastCommandWrittenAndRespose())
   {
     qCritical() << Q_FUNC_INFO << ": Wrong or strange command response: " << d->commandResponseBuffer;
-    emit logMessage(tr("Wrong or strange command response"), d->cameraData.id, Qt::yellow);
+    emit logMessage(tr("Wrong or strange command response"), d->cameraData.ID, Qt::yellow);
     emit commandWritten(d->lastCommandWritten);
     d->commandResponseBuffer.clear();
     d->lastCommandWritten.clear();
@@ -643,20 +593,21 @@ void AbstractCamera::onCommandPortDataReady()
   }
   if (d->commandResponseBuffer.startsWith('L')
     && d->commandResponseBuffer.size() == 15
-    && d->checkLastCommandWrittenAndRespose(d->commandResponseBuffer))
+    && d->checkLastCommandWrittenAndRespose())
   {
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << ": List of enabled chips is recieved: " << d->commandResponseBuffer;
 #endif
+
+    std::bitset< CHIPS_PER_CAMERA > enabledChips;
+    for (int i = 0; i < CHIPS_PER_CAMERA; ++i)
     {
-      std::bitset< CHIPS_PER_CAMERA > enabledChips;
-      for (int i = 0; i < CHIPS_PER_CAMERA; ++i)
-      {
-        enabledChips.set(i, data[i + 1] - '0');
-      }
-      d->cameraResponse.ChipsEnabledCode = enabledChips.to_ulong();
+      enabledChips.set(i, data[i + 1] - '0');
     }
-    emit logMessage(tr("List of enabled chips is recieved"), d->cameraData.id, Qt::green);
+    d->cameraResponse.ChipsEnabledCode = enabledChips.to_ulong();
+    d->cameraResponse.ChipsEnabled = enabledChips.count();
+
+    emit logMessage(tr("List of enabled chips is recieved"), d->cameraData.ID, Qt::green);
     emit commandWritten(d->lastCommandWritten);
     d->commandResponseBuffer.clear();
     d->lastCommandWritten.clear();
@@ -668,7 +619,7 @@ void AbstractCamera::onCommandPortDataReady()
     int restIndexOf = d->commandResponseBuffer.indexOf("Abort") + std::strlen("Abort");
     QByteArray restResponse = d->commandResponseBuffer.mid(restIndexOf);
     qCritical() << Q_FUNC_INFO << ": Abort found! Rest response: " << restResponse;
-    emit logMessage(tr("Abort received!"), d->cameraData.id, Qt::yellow);
+    emit logMessage(tr("Abort received!"), d->cameraData.ID, Qt::yellow);
     // Parse rest response
     // if response is OK
     if (d->checkLastCommandWrittenAndRespose(restResponse))
@@ -684,7 +635,7 @@ void AbstractCamera::onCommandPortDataReady()
   }
   if (d->commandResponseBuffer.startsWith("Welcome") && d->commandResponseBuffer.size() == std::strlen("Welcome"))
   {
-    emit logMessage(tr("Firmware command buffer reset is finished!"), d->cameraData.id, Qt::green);
+    emit logMessage(tr("Firmware command buffer reset is finished!"), d->cameraData.ID, Qt::green);
     d->commandResponseBuffer.clear();
     d->lastCommandWritten.clear();
     d->initiateCommandsList.clear();
@@ -697,7 +648,7 @@ void AbstractCamera::onCommandPortBytesWritten(qint64 bytes)
   Q_D(AbstractCamera);
   if (bytes == 1)
   {
-    emit logMessage(tr("Firmware command buffer reset..."), d->cameraData.id, Qt::yellow);
+    emit logMessage(tr("Firmware command buffer reset..."), d->cameraData.ID, Qt::yellow);
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << ": one byte has been written.";
 #endif
@@ -784,12 +735,13 @@ void AbstractCamera::processRawData()
 
   QString dataFileName = QDir::tempPath() + QString(QDir::separator()) + "raw_data_bits.txt";
   QScopedPointer< QFile > dataFile(new QFile(dataFileName));
-  dataFile->open(QFile::WriteOnly | QIODevice::Text);
+  bool res = dataFile->open(QIODevice::WriteOnly | QIODevice::Text);
   QTextStream dataFileStream(dataFile.get()); // dump bits to temp file for debug
 
   const QByteArray& arr = d->adcDataBuffer;
   constexpr int BYTES_CHUNK = 4; // bytes per adc data chunk (channel, chip, ADC count, sync bits)
-  std::array< int, BYTES_CHUNK > findData{ 0, 0, 0, 0 };
+  using DataIntegrity = std::array< int, BYTES_CHUNK >;
+  DataIntegrity findData{ 0, 0, 0, 0 };
   for (int i = 0; i < arr.size() - BYTES_CHUNK; i += BYTES_CHUNK)
   {
     std::bitset< CHAR_BIT > d0(arr.at(i)), d1(arr.at(i + 1)), d2(arr.at(i + 2)), d3(arr.at(i + 3));
@@ -810,45 +762,57 @@ void AbstractCamera::processRawData()
       findData[3] += 1;
     }
   }
-  std::array< int, 4 >::iterator findDataIter = std::max_element(findData.begin(), findData.end());
+  DataIntegrity::iterator findDataIter = std::max_element(findData.begin(), findData.end());
   int offset = findDataIter - findData.begin();
 
 #if !QT_NO_DEBUG
   qDebug() << Q_FUNC_INFO << ": Found data " << findData[0] << ' ' << findData[1] << ' ' << findData[2] << ' ' << findData[3] << ' ' << offset;
 #endif
 
-  for (int i = offset; i < arr.size() - BYTES_CHUNK; i += BYTES_CHUNK)
+  d->chipsAddressesVector.clear();
+  if (offset >= arr.size() - BYTES_CHUNK)
   {
-    std::bitset< CHAR_BIT > d0(arr.at(i)), d1(arr.at(i + 1)), d2(arr.at(i + 2)), d3(arr.at(i + 3));
-    QString string_d0 = QString::fromStdString(d0.to_string());
-    QString string_d1 = QString::fromStdString(d1.to_string());
-    QString string_d2 = QString::fromStdString(d2.to_string());
-    QString string_d3 = QString::fromStdString(d3.to_string());
+    qWarning() << Q_FUNC_INFO << ": Raw data offset is way too high, no correct data left";
+    return;
+  }
 
-    dataFileStream << string_d0 << ' ' << string_d1 << ' ' << string_d2 << ' ' << string_d3 << '\n';
+  // dump raw data bits for debug
+  if (res)
+  {
+    for (int i = offset; i < arr.size() - BYTES_CHUNK; i += BYTES_CHUNK)
+    {
+      std::bitset< CHAR_BIT > d0(arr.at(i)), d1(arr.at(i + 1)), d2(arr.at(i + 2)), d3(arr.at(i + 3));
+
+      QString string_d0 = QString::fromStdString(d0.to_string());
+      QString string_d1 = QString::fromStdString(d1.to_string());
+      QString string_d2 = QString::fromStdString(d2.to_string());
+      QString string_d3 = QString::fromStdString(d3.to_string());
+      dataFileStream << qSetFieldWidth(10) << string_d0 << string_d1 << string_d2 << string_d3 << '\n';
+    }
   }
 
   constexpr int SIDE_BIT = 6;
   constexpr int CHIP_BITS = 4;
-  d->chipsAddressesVector.clear();
   std::map< int, bool > chipPresenceMap;
-  for (int i = offset; i < arr.size(); i += BYTES_CHUNK)
+  for (int i = offset; i < arr.size() - BYTES_CHUNK; i += BYTES_CHUNK)
   {
     std::bitset< CHAR_BIT > d0(arr.at(i)), d1(arr.at(i + 1)), d2(arr.at(i + 2)), d3(arr.at(i + 3));
-    this->ReverseBits< CHAR_BIT >(d0);
+    std::bitset< CHIP_BITS > chipBits((d1 >> CHIP_BITS).to_ulong());
+
+    this->ReverseBits(d0);
+    this->ReverseBits(d2);
+    this->ReverseBits(d3);
+    this->ReverseBits(chipBits);
+
     bool sideFlag = d0.test(SIDE_BIT);
     int channel = static_cast<int>(((d0 >> 1) & std::bitset< CHAR_BIT >(0x1F)).to_ulong());
-    std::bitset< CHIP_BITS > chipBits((d1 >> CHIP_BITS).to_ulong());
-    this->ReverseBits< CHIP_BITS >(chipBits);
     int chip = chipBits.to_ulong() - CHIP_BITS;
+    int count = static_cast< int >((d3.to_ulong() << CHAR_BIT) | d2.to_ulong());
     chipPresenceMap[chip] = true;
     std::array< std::vector< int >, CHANNELS_PER_CHIP >& channelsA = d->channelsCountsA[chip];
     std::array< std::vector< int >, CHANNELS_PER_CHIP >& channelsB = d->channelsCountsB[chip];
     std::vector< int >& channelVectorA = channelsA[channel];
     std::vector< int >& channelVectorB = channelsB[channel];
-    this->ReverseBits< CHAR_BIT >(d2);
-    this->ReverseBits< CHAR_BIT >(d3);
-    int count = static_cast< int >((d3.to_ulong() << CHAR_BIT) | d2.to_ulong());
     if (sideFlag)
     {
       channelVectorA.push_back(count);
@@ -859,11 +823,13 @@ void AbstractCamera::processRawData()
     }
   }
   dataFileStream.flush();
-  if (dataFile->flush())
+  res = dataFile->flush();
+  if (res)
   {
     dataFile->close();
   }
 
+  d->chipsAddressesVector.reserve(CHIPS_PER_CAMERA);
   for (const std::pair< int, bool >& chipFlagPair : chipPresenceMap)
   {
     int chipAddress = chipFlagPair.first;
@@ -881,6 +847,14 @@ void AbstractCamera::ReverseBits(std::bitset< N >& b)
     b[i] = b[N - i - 1];
     b[N - i - 1] = t;
   }
+}
+
+template< size_t N >
+std::vector< double > AbstractCamera::GenerateStripsNumbers(int init)
+{
+  std::vector< double > v(N, 0.);
+  std::iota(std::begin(v), std::end(v), init);
+  return v;
 }
 
 std::vector< double > AbstractCamera::GenerateStripsNumbers(size_t n, int init)
@@ -947,7 +921,7 @@ bool AbstractCamera::loadCameraData(const QString &cameraDirectory)
   }
 
   std::array< int, CHANNELS_PER_CHIP > channels;
-  std::bitset< CHIPS_PER_PLANE * 2 > chipChannelsReverse;
+  std::bitset< CHIPS_PER_CAMERA > chipChannelsReverse;
   if (chipChannels.IsArray() && chipChannels.Size() == CHANNELS_PER_CHIP)
   {
     for (rapidjson::SizeType i = 0; i < chipChannels.Size(); i++) // Uses SizeType instead of size_t
@@ -1107,7 +1081,7 @@ bool AbstractCamera::loadChipData(const QString& filePath, int position)
   Q_D(AbstractCamera);
   // Load JSON descriptor file
   std::string jsonFileName = filePath.toStdString();
-  if ((position < 1) || (position > CHIPS_PER_PLANE * 2))
+  if ((position < 1) || (position > CHIPS_PER_CAMERA))
   {
     return false;
   }
@@ -1251,7 +1225,7 @@ QByteArray AbstractCamera::getSetChipsEnabledCommand(int chipsEnabledCode) const
 QByteArray AbstractCamera::getSetNumberOfChipsCommand() const
 {
   unsigned char buf[BUFFER_SIZE] = { 'O' };
-  buf[1] = CHIPS_PER_PLANE * 2;
+  buf[1] = CHIPS_PER_CAMERA;
   return QByteArray(reinterpret_cast<char*>(buf), BUFFER_SIZE);
 }
 
@@ -1354,7 +1328,7 @@ void AbstractCamera::writeCommand(const QByteArray &com)
   Q_D(AbstractCamera);
   if (com.isEmpty())
   {
-    emit logMessage(tr("Input command is empty"), d->cameraData.id, Qt::yellow);
+    emit logMessage(tr("Input command is empty"), d->cameraData.ID, Qt::yellow);
     return;
   }
   d->lastCommandWritten = com;
@@ -1599,6 +1573,10 @@ void AbstractCamera::processDataCounts(bool splitData,
   std::bitset< CHIPS_PER_CAMERA > chips(this->getChipsEnabledCode());
 
   int nofChips = static_cast< int >(chips.count());
+  if (nofChips <= 0)
+  {
+    return;
+  }
 #if !QT_NO_DEBUG
   qDebug() << Q_FUNC_INFO << "Number of chips: " << nofChips;
 #endif
@@ -1652,7 +1630,7 @@ void AbstractCamera::processDataCounts(bool splitData,
   {
     int chipAddress = *iter;
     std::bitset< CHIPS_PER_CAMERA > tmp = chips;
-    ReverseBits< CHIPS_PER_CAMERA >(tmp);
+    ReverseBits(tmp);
     if ((chipAddress < 0) || (chipAddress > CHIPS_PER_CAMERA) || !tmp.test(chipAddress))
     {
       // Skip data for wrong chip address
@@ -1859,23 +1837,30 @@ bool AbstractCamera::processExternalData(TTree *rootFileTree)
   rootFileTree->SetBranchAddress("chipsAcquiredVector", &chipsAcquiredPtr);
 
   Int_t nentries = static_cast<Int_t>(rootFileTree->GetEntries());
+  bool res = true;
   for (Int_t i = 0; i < nentries; i++)
   {
     rootFileTree->GetEntry(i);
-    if (bufferSize && bufferSize == buffer.size())
+    if (bufferSize && buffer.size())
     {
-      d->adcDataBuffer.resize(bufferSize);
+      size_t res = std::min(size_t(bufferSize), buffer.size());
+      d->adcDataBuffer.resize(res);
       std::copy(buffer.begin(), buffer.end(), d->adcDataBuffer.begin());
+    }
+    else
+    {
+      res = false;
+      break;
     }
     d->cameraResponse = response;
     d->chipsAddressesVector = chipsAcquired;
     this->processRawData();
     d->adcDataBuffer.clear();
   }
-  return true;
+  return res;
 }
 
-bool AbstractCamera::loadCalibration(QSettings* settings)
+bool AbstractCamera::loadSettings(QSettings* settings)
 {
   Q_D(AbstractCamera);
 
@@ -1883,7 +1868,7 @@ bool AbstractCamera::loadCalibration(QSettings* settings)
   {
     return false;
   }
-  settings->beginGroup(d->cameraData.id);
+  settings->beginGroup(d->cameraData.ID);
   int refAdcChipVertical = settings->value("ref-adc-chip-vertical", d->refAdcChipChannelVertical.first).toInt();
   int refAdcChannelVertical = settings->value("ref-adc-channel-vertical", d->refAdcChipChannelVertical.second).toInt();
   int refAdcChipHorizontal = settings->value("ref-adc-chip-horizontal", d->refAdcChipChannelHorizontal.first).toInt();
@@ -1891,7 +1876,7 @@ bool AbstractCamera::loadCalibration(QSettings* settings)
   int refAmpChipVertical = settings->value("ref-amp-chip-vertical", d->refAmpChipChannelVertical.first).toInt();
   int refAmpChannelVertical = settings->value("ref-amp-channel-vertical", d->refAmpChipChannelVertical.second).toInt();
   int refAmpChipHorizontal = settings->value("ref-amp-chip-horizontal", d->refAmpChipChannelHorizontal.first).toInt();
-  int refAmpChannelHorizontal = settings->value("ref-amp-channel-horizontal", d->refAmpChipChannelHorizontal.second).toInt();
+  int refAmpChannelHorizontal = settings->value("ref-amp-channel-horizontal", d->refAmpChipChannelHorizontal.second).toInt();  
   d->refAdcChipChannelVertical.first = refAdcChipVertical;
   d->refAdcChipChannelVertical.second = refAdcChannelVertical;
   d->refAdcChipChannelHorizontal.first = refAdcChipHorizontal;
@@ -1900,11 +1885,49 @@ bool AbstractCamera::loadCalibration(QSettings* settings)
   d->refAmpChipChannelVertical.second = refAmpChannelVertical;
   d->refAmpChipChannelHorizontal.first = refAmpChipHorizontal;
   d->refAmpChipChannelHorizontal.second = refAmpChannelHorizontal;
+
+  // load acquisition parameters for the camera
+  AcquisitionParameters params;
+  unsigned short code = settings->value("chips-enabled-code",
+    AcquisitionParameters::DEFAULT_CHIPS_ENABLED_CODE).toUInt();
+  if (code <= AcquisitionParameters::DEFAULT_CHIPS_ENABLED_CODE)
+  {
+    std::bitset< CHIPS_PER_CAMERA > chipsEnabled(code);
+    params.ChipsEnabled = chipsEnabled;
+  }
+  unsigned int time = settings->value("integration-time-ms",
+    AcquisitionParameters::DEFAULT_INTEGRATION_TIME_MS).toUInt();
+  if (time <= AcquisitionParameters::MAX_INTEGRATION_TIME_MS)
+  {
+    params.IntegrationTimeMs = time;
+  }
+  unsigned int capCode = settings->value("capacity-code",
+    AcquisitionParameters::DEFAULT_CAPACITY_CODE).toUInt();
+  if (capCode <= AcquisitionParameters::MAX_CAPACITY_CODE)
+  {
+    params.CapacityCode = capCode;
+  }
+  params.IntegrationSamples = settings->value("nof-adc-samples",
+    AcquisitionParameters::DEFAULT_SAMPLES).toInt();
+  unsigned int mode = settings->value("adc-mode", AcquisitionParameters::DEFAULT_ADC_MODE).toUInt();
+  if (mode == AdcResolutionType::ADC_20_BIT)
+  {
+    params.AdcMode = AdcResolutionType::ADC_20_BIT;
+  }
+  else
+  {
+    params.AdcMode = AdcResolutionType::ADC_16_BIT;
+  }
+  params.ExternalStartFlag = settings->value("external-start", false).toBool();
+
   settings->endGroup();
+
+  d->cameraResponse = params.getCameraResponse();
+
   return true;
 }
 
-bool AbstractCamera::saveCalibration(QSettings* settings)
+bool AbstractCamera::saveSettings(QSettings* settings)
 {
   Q_D(AbstractCamera);
 
@@ -1912,7 +1935,7 @@ bool AbstractCamera::saveCalibration(QSettings* settings)
   {
     return false;
   }
-  settings->beginGroup(d->cameraData.id);
+  settings->beginGroup(d->cameraData.ID);
   settings->setValue("ref-adc-chip-vertical", d->refAdcChipChannelVertical.first);
   settings->setValue("ref-adc-channel-vertical", d->refAdcChipChannelVertical.second);
   settings->setValue("ref-adc-chip-horizontal", d->refAdcChipChannelHorizontal.first);
@@ -1921,30 +1944,85 @@ bool AbstractCamera::saveCalibration(QSettings* settings)
   settings->setValue("ref-amp-channel-vertical", d->refAmpChipChannelVertical.second);
   settings->setValue("ref-amp-chip-horizontal", d->refAmpChipChannelHorizontal.first);
   settings->setValue("ref-amp-channel-horizontal", d->refAmpChipChannelHorizontal.second);
+  AcquisitionParameters params = this->getAcquisitionParameters();
+  settings->setValue("chips-enabled-code", static_cast< int >(params.ChipsEnabled.to_ulong()));
+  settings->setValue("integration-time-ms", params.IntegrationTimeMs);
+  settings->setValue("capacity-code", params.CapacityCode);
+  settings->setValue("nof-adc-samples", params.IntegrationSamples);
+  settings->setValue("adc-mode", params.AdcMode);
+  settings->setValue("external-start", params.ExternalStartFlag);
   settings->endGroup();
   return true;
 }
 
-AcquisitionParameters AbstractCamera::getAcquisitionParameters()
+AcquisitionParameters AbstractCamera::getAcquisitionParameters() const
 {
-  Q_D(AbstractCamera);
+  Q_D(const AbstractCamera);
   AcquisitionParameters params;
-  params.ChipsEnabled.reset();
-  for (int chip : d->verticalProfileChipsVector)
-  {
-    params.ChipsEnabled.set(chip - 1);
-  }
-  for (int chip : d->horizontalProfileChipsVector)
-  {
-    params.ChipsEnabled.set(chip - 1);
-  }
+  params.setCameraResponse(d->cameraResponse);
   return params;
 }
 
-void AbstractCamera::setRootDirectory(TDirectory *dir)
+void AbstractCamera::setRootDirectory(TDirectory* dir)
 {
   Q_D(AbstractCamera);
-  d->dataDirectory = dir;
+  d->rootDir = dir;
 }
 
+ChipChannelPair AbstractCamera::getReferenceChipChannel(bool adcAmp, CameraProfileType profileType) const
+{
+  Q_D(const AbstractCamera);
+  ChipChannelPair dummy{ -1, -1 };
+  switch (profileType)
+  {
+  case CameraProfileType::PROFILE_VERTICAL:
+    dummy = (adcAmp) ? d->refAmpChipChannelVertical : d->refAdcChipChannelVertical;
+    break;
+  case CameraProfileType::PROFILE_HORIZONTAL:
+    dummy = (adcAmp) ? d->refAmpChipChannelHorizontal : d->refAdcChipChannelHorizontal;
+    break;
+  default:
+    break;
+  }
+  return dummy;
+}
+
+bool AbstractCamera::setReferenceChipChannel(const ChipChannelPair& pair, bool adcAmp, CameraProfileType profileType)
+{
+  Q_D(AbstractCamera);
+  bool res = false;
+  if (adcAmp)
+  {
+    switch (profileType)
+    {
+    case CameraProfileType::PROFILE_VERTICAL:
+      d->refAmpChipChannelVertical = pair;
+      res = true;
+      break;
+    case CameraProfileType::PROFILE_HORIZONTAL:
+      d->refAmpChipChannelHorizontal = pair;
+      res = true;
+      break;
+    default:
+      break;
+    }
+  }
+  else
+  {
+    switch (profileType)
+    {
+    case CameraProfileType::PROFILE_VERTICAL:
+      d->refAdcChipChannelVertical = pair;
+      res = true;
+      break;
+    case CameraProfileType::PROFILE_HORIZONTAL:
+      d->refAdcChipChannelHorizontal = pair;
+      res = true;
+      break;
+    default:
+      break;
+    }
+  }
+  return res;
+}
 QT_END_NAMESPACE
