@@ -22,6 +22,7 @@
 #include <rapidjson/filereadstream.h>
 
 #include "AbstractCamera.h"
+#include "AdcAmplitudeCalibrationData.h"
 
 #include <TH1.h>
 #include <TH2.h>
@@ -85,10 +86,11 @@ public:
   std::vector< ChipChannelPair > horizontalProfileChipChannelStripsVector;
 
   // Data from JSON parameters file of the camera
-  std::map< ChipChannelPair, double > chipChannelCalibrationA; // ADC-Offset tangent chip calibration A
-  std::map< ChipChannelPair, double > chipChannelCalibrationB; // ADC-Offset tangent chip calibration B
-  std::map< ChipChannelPair, double > chipChannelCalibrationAmplitude; // amplitude sensitivity calibration
-  std::map< int, std::vector< int > > chipChannelsStripsBrokenMap;
+  ChipChannelCalibrationMap chipChannelCalibrationA; // ADC-Offset tangent chip calibration A
+  ChipChannelCalibrationMap chipChannelCalibrationB; // ADC-Offset tangent chip calibration B
+  ChipChannelCalibrationMap chipChannelCalibrationAmplitude; // amplitude sensitivity calibration
+  AdcAmplitudeCalibrationMap capacityTimeAdcAmpCalibrationMap;
+  ChipBrokenChannelsMap chipChannelsStripsBrokenMap; // chip = key, channels (ir strips) = value
 
   // Data stored in Qt settings file for each camera
   ChipChannelPair refAdcChipChannelVertical = { 2, 1 };
@@ -256,10 +258,17 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
   Q_D(AbstractCamera);
 
   d->cameraData = data;
-  if (this->loadCameraData(d->cameraData.DataDirectory))
+  int capacityCode = -1;
+  int timeCode = -1;
+  if (d->cameraData.ID == "Camera4")
+  {
+    capacityCode = 0;
+    timeCode = 1;
+  }
+  if (this->loadCameraData(d->cameraData.DataDirectory, capacityCode, timeCode))
   {
 #if !QT_NO_DEBUG
-    qDebug() << Q_FUNC_INFO << ": \"" << d->cameraData.ID << "\" data successfully loaded";
+    qDebug() << Q_FUNC_INFO << ": \" << d->cameraData.ID << \" data successfully loaded";
 #endif
     d->verticalProfileVector.resize(d->verticalProfileChipsVector.size() * CHANNELS_PER_CHIP);
     std::fill(std::begin(d->verticalProfileVector), std::end(d->verticalProfileVector), 0.);
@@ -269,6 +278,18 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
 
     d->verticalProfileStripsNumbersVector = GenerateStripsNumbers(d->verticalProfileVector.size());
     d->horizontalProfileStripsNumbersVector = GenerateStripsNumbers(d->horizontalProfileVector.size());
+  }
+  AdcAmplitudeCalibrationData checkCapTimeAdcData(d->capacityTimeAdcAmpCalibrationMap);
+  bool res = checkCapTimeAdcData.checkCapacityCalibrationIsPresent(1, 0);
+  bool timeIsPresent;
+  bool res2 = checkCapTimeAdcData.checkCapacityTimeCalibrationIsPresent(1, 0, 1, timeIsPresent);
+  if (res)
+  {
+    qDebug() << Q_FUNC_INFO << "Capacity is present for camera data \" "<< d->cameraData.ID << "\"";
+  }
+  if (res2 && timeIsPresent)
+  {
+    qDebug() << Q_FUNC_INFO << "Capacity and time are present for camera data \" "<< d->cameraData.ID << "\"";
   }
 }
 
@@ -876,9 +897,14 @@ std::vector< double > AbstractCamera::GenerateFullProfileStripsBinsBorders(size_
   return v;
 }
 
-bool AbstractCamera::loadCameraData(const QString &cameraDirectory)
+bool AbstractCamera::loadCameraData(const QString &cameraDirectory, int capacityCode, int timeCode)
 {
   Q_D(AbstractCamera);
+  d->capacityTimeAdcAmpCalibrationMap.clear();
+  d->chipChannelCalibrationA.clear();
+  d->chipChannelCalibrationB.clear();
+  d->chipChannelCalibrationAmplitude.clear();
+
   // Load JSON descriptor file
   QString path = QDir::currentPath() + QDir::separator() \
     + cameraDirectory + QDir::separator() + "ChipsPosition.json";
@@ -981,7 +1007,7 @@ bool AbstractCamera::loadCameraData(const QString &cameraDirectory)
         QString filePath = QDir::currentPath() + QDir::separator() \
           + cameraDirectory + QDir::separator() \
           + QString::fromStdString(calibrationFileName);
-        if (this->loadChipData(filePath, position))
+        if (this->loadChipData(filePath, position, capacityCode, timeCode))
         {
           /// message here
         }
@@ -1076,7 +1102,7 @@ bool AbstractCamera::loadCameraData(const QString &cameraDirectory)
   return true;
 }
 
-bool AbstractCamera::loadChipData(const QString& filePath, int position)
+bool AbstractCamera::loadChipData(const QString& filePath, int position, int capacityCode, int timeCode)
 {
   Q_D(AbstractCamera);
   // Load JSON descriptor file
@@ -1104,35 +1130,127 @@ bool AbstractCamera::loadChipData(const QString& filePath, int position)
     return false;
   }
   fclose(fp);
-  const rapidjson::Value& calib = d1["CountPerMilliVoltCalibration"];
-  if (calib.IsArray() && (calib.Capacity() == 2))
+  if (capacityCode == -1 && timeCode == -1)
   {
-    const rapidjson::Value& sideA = calib[0];
-    const rapidjson::Value& sideB = calib[1];
-    // side-A calibration
-    for (rapidjson::SizeType pos = 0; pos < sideA.Size(); pos++)
+    const rapidjson::Value& calib = d1["CountPerMilliVoltCalibration"];
+    if (calib.IsArray() && (calib.Capacity() == 2))
     {
-      double value = sideA[pos].GetDouble();
-      std::pair< int, int > chipChannelPair( position, pos + 1);
-      d->chipChannelCalibrationA[chipChannelPair] = value;
+      const rapidjson::Value& sideA = calib[0];
+      const rapidjson::Value& sideB = calib[1];
+      // side-A calibration
+      for (rapidjson::SizeType pos = 0; pos < sideA.Size(); pos++)
+      {
+        double value = sideA[pos].GetDouble();
+        std::pair< int, int > chipChannelPair( position, pos + 1);
+        d->chipChannelCalibrationA[chipChannelPair] = value;
+      }
+      // side-B calibration
+      for (rapidjson::SizeType pos = 0; pos < sideB.Size(); pos++)
+      {
+        double value = sideB[pos].GetDouble();
+        std::pair< int, int > chipChannelPair( position, pos + 1);
+        d->chipChannelCalibrationB[chipChannelPair] = value;
+      }
     }
-    // side-B calibration
-    for (rapidjson::SizeType pos = 0; pos < sideB.Size(); pos++)
+    const rapidjson::Value& amplitude = d1["AmplitudeCalibration"];
+    if (amplitude.IsArray())
     {
-      double value = sideB[pos].GetDouble();
-      std::pair< int, int > chipChannelPair( position, pos + 1);
-      d->chipChannelCalibrationB[chipChannelPair] = value;
+      // Amplitude calibration
+      for (rapidjson::SizeType pos = 0; pos < amplitude.Size(); pos++)
+      {
+        double value = amplitude[pos].GetDouble();
+        std::pair< int, int > chipChannelPair( position, pos + 1);
+        d->chipChannelCalibrationAmplitude[chipChannelPair] = value;
+      }
     }
   }
-  const rapidjson::Value& amplitude = d1["AmplitudeCalibration"];
-  if (amplitude.IsArray())
+  else
   {
-    // Amplitude calibration
-    for (rapidjson::SizeType pos = 0; pos < amplitude.Size(); pos++)
+    const rapidjson::Value& chipParams = d1["ChipParameters"]; // vector chip calibration data
+
+    if (chipParams.IsArray())
     {
-      double value = amplitude[pos].GetDouble();
-      std::pair< int, int > chipChannelPair( position, pos + 1);
-      d->chipChannelCalibrationAmplitude[chipChannelPair] = value;
+      for (rapidjson::SizeType i = 0; i < chipParams.Size(); i++) // Uses SizeType instead of size_t
+      {
+        int chipTimeCode = -1;
+        int chipCapacityCode = -1;
+        std::vector< double > linA, linB, amp;
+        double chipIntegTime = -1.;
+        double chipCapacity = -1.;
+
+        for (rapidjson::Value::ConstMemberIterator iter = chipParams[i].MemberBegin();
+          iter != chipParams[i].MemberEnd(); ++iter)
+        {
+          const rapidjson::Value& name = iter->name;
+          if (name.GetString() == std::string("IntegrationTimeCode"))
+          {
+            const rapidjson::Value& timeCodeValue = iter->value;
+            chipTimeCode = timeCodeValue.GetInt();
+          }
+          if (name.GetString() == std::string("CapacityCode"))
+          {
+            const rapidjson::Value& capacityCodeValue = iter->value;
+            chipCapacityCode = capacityCodeValue.GetInt();
+          }
+          if (name.GetString() == std::string("CountPerMilliVoltCalibration"))
+          {
+            const rapidjson::Value& calib = iter->value;
+            if (calib.IsArray() && (calib.Capacity() == 2))
+            {
+              const rapidjson::Value& sideA = calib[0];
+              const rapidjson::Value& sideB = calib[1];
+              // side-A calibration
+              for (rapidjson::SizeType pos = 0; pos < sideA.Size(); pos++)
+              {
+                linA.push_back(sideA[pos].GetDouble());
+              }
+              // side-B calibration
+              for (rapidjson::SizeType pos = 0; pos < sideB.Size(); pos++)
+              {
+                linB.push_back(sideB[pos].GetDouble());
+              }
+            }
+          }
+          if (name.GetString() == std::string("AmplitudeCalibration"))
+          {
+            const rapidjson::Value& amplitude = iter->value;
+            if (amplitude.IsArray())
+            {
+              // Amplitude calibration
+              for (rapidjson::SizeType pos = 0; pos < amplitude.Size(); pos++)
+              {
+                amp.push_back(amplitude[pos].GetDouble());
+              }
+            }
+          }
+          if (name.GetString() == std::string("IntegrationTime"))
+          {
+            const rapidjson::Value& intTime = iter->value;
+            chipIntegTime = intTime.GetDouble();
+          }
+          if (name.GetString() == std::string("Capacity"))
+          {
+            const rapidjson::Value& intTime = iter->value;
+            chipCapacity = intTime.GetDouble();
+          }
+        }
+        if (linA.size() == linB.size() && linA.size() == amp.size() && linA.size() == std::size_t(CHANNELS_PER_CHIP))
+        {
+          CapacityIntegrationTimeCodesPair capTimePair(chipCapacityCode, chipTimeCode);
+          LinearAmplitudeCalibration adcCalibration;
+          ChipChannelCalibrationMap& adcLinearA = adcCalibration.linearAdcCalibration.first;
+          ChipChannelCalibrationMap& adcLinearB = adcCalibration.linearAdcCalibration.second;
+          ChipChannelCalibrationMap& ampUniform = adcCalibration.uniformAmplitudeCalibration;
+          for (int pos = 0; pos < CHANNELS_PER_CHIP; ++pos)
+          {
+            ChipChannelPair chipChannel(position, pos + 1);
+            adcLinearA[chipChannel] = linA[pos];
+            adcLinearB[chipChannel] = linB[pos];
+            ampUniform[chipChannel] = amp[pos];
+          }
+          d->capacityTimeAdcAmpCalibrationMap[capTimePair] = adcCalibration;
+        }
+      }
     }
   }
   return true;
@@ -1382,7 +1500,7 @@ int AbstractCamera::getIntegrationTimeMs() const
   return int((d->cameraResponse.IntegrationTimeCode + 1) * 2);
 }
 
-int AbstractCamera::getCapasityCode() const
+int AbstractCamera::getCapacityCode() const
 {
   Q_D(const AbstractCamera);
   return d->cameraResponse.CapacityCode;

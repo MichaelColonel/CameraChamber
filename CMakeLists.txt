@@ -80,8 +80,8 @@ set(RESOURCE_FILES
   C26AIC03/Chip3.2.json
   C26AIC03/Chip3.3.json
   C26AIC03/Chip3.5.json
-  C26AIC03/Chip2.7.json
-  C26AIC03/Chip2.8.json
+  C26AIC03/Chip3.7.json
+  C26AIC03/Chip3.8.json
   C26AIC03/ChipX.X.json
   C26AIC04/ChipsPosition.json
   C26AIC04/ChipX.X.json
@@ -98,9 +98,9 @@ add_executable(ProfileCamera2D
 )
 
 target_link_libraries(ProfileCamera2D
-  ${qt_libs}
   CTKWidgets
   ${root_qtlib}
+  ${qt_libs}
   ${ROOT_LIBRARIES}
   ROOT::ROOTWebDisplay
   ROOT::WebGui6
@@ -112,8 +112,16 @@ target_link_libraries(ProfileCamera2D
   ROOT::ROOTGeomViewer
 )
 
-set_target_properties(ProfileCamera2D PROPERTIES
-  MACOSX_BUNDLE TRUE
-  MACOSX_FRAMEWORK_IDENTIFIER org.cmake.ProfileCamera2D
-  RESOURCE "${RESOURCE_FILES}"
-)
+install(FILES Cameras.json DESTINATION bin)
+install(DIRECTORY C26AIC01 DESTINATION bin)
+install(DIRECTORY C26AIC02 DESTINATION bin)
+install(DIRECTORY C26AIC03 DESTINATION bin)
+install(DIRECTORY C26AIC04 DESTINATION bin)
+
+#set_target_properties(ProfileCamera2D PROPERTIES
+#  MACOSX_BUNDLE TRUE
+#  MACOSX_FRAMEWORK_IDENTIFIER org.cmake.ProfileCamera2D
+#  RESOURCE "${RESOURCE_FILES}"
+#)
+
+install(TARGETS ProfileCamera2D DESTINATION bin)

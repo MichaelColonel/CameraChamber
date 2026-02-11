@@ -74,7 +74,7 @@ public:
   RootFileCameraProfilesDialogPrivate(RootFileCameraProfilesDialog &object);
   virtual ~RootFileCameraProfilesDialogPrivate();
   void processRootFile(const QString& filename);
-  AbstractCamera* getCamera(const QString& cameraId) const;
+  AbstractCamera* getCamera(const QString& cameraId) const { return !cameraId.isEmpty() ? this->camerasMap[cameraId].data() : nullptr; }
   AbstractCamera* getCamera() const { return this->getCamera(this->cameraID); }
 
   QMap< QString, QPointer< AbstractCamera > > camerasMap;
@@ -199,10 +199,9 @@ void RootFileCameraProfilesDialogPrivate::processRootFile(const QString& rootFil
   this->cameraDirectorySpillsModel->setSpillsData(spillData);
 }
 
+/*
 AbstractCamera* RootFileCameraProfilesDialogPrivate::getCamera(const QString& cameraId) const
 {
-  return !cameraId.isEmpty() ? this->camerasMap[cameraId].data() : nullptr;
-/*
   if (!cameraId.isEmpty())
   {
     bool res = false;
@@ -218,8 +217,8 @@ AbstractCamera* RootFileCameraProfilesDialogPrivate::getCamera(const QString& ca
     return res ? this->camerasMap[cameraId].data() : nullptr;
   }
   return nullptr;
-*/
 }
+*/
 
 RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFileName, QWidget *parent)
   :

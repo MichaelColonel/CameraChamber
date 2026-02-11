@@ -98,7 +98,7 @@ public:
   bool processExternalData(TTree* rootFileTree);
   int getChipsEnabledCode() const;
   int getIntegrationTimeMs() const;
-  int getCapasityCode() const;
+  int getCapacityCode() const;
   int getAdcResolutionMode() const;
   int getAdcSamples() const;
   bool getChipChannelInfo(int chip, int channel, ChannelInfoPair& info);
@@ -153,8 +153,10 @@ signals:
 
 protected:
   void processRawData();
-  bool loadCameraData(const QString& cameraDirectory); // directory must contain ChipsPositions.json file and chips JSON files
-  bool loadChipData(const QString& chipFile, int chipPosition); // chip file in camera directory
+  // if capacityCode and timeCode are not equal -1 => load chips data
+  // for the specific capacity code and integration time code
+  bool loadCameraData(const QString& cameraDirectory, int capacityCode = -1, int timeCode = -1); // directory must contain ChipsPositions.json file and chips JSON files
+  bool loadChipData(const QString& chipFile, int chipPosition, int capacityCode = -1, int timeCode = -1); // chip file in camera directory
 
 //  void setRefAdcCalibrationChipChannel(int chip, int channel);
 //  void setRefAmpChipChannelVerticalProfile(int chip, int channel);

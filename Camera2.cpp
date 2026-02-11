@@ -315,12 +315,12 @@ void Camera2::processDataCounts(bool splitData,
   formChipStripV(vertChipChannels, VerticalProfileChipChannels); // vertical profile
   formChipStripH(horizChipChannels, HorizontalProfileChipChannels); // horizontal profile
 
-  double IntegralAdcSignalToCharge = AbstractCamera::CAPACITY_RANGE[this->getCapasityCode()];
-  if (this->getCapasityCode() == ADC_16_BIT)
+  double IntegralAdcSignalToCharge = AbstractCamera::CAPACITY_RANGE[this->getCapacityCode()];
+  if (this->getAdcResolutionMode() == ADC_16_BIT)
   {
     IntegralAdcSignalToCharge /= double(AbstractCamera::RESOLUTION_16BIT);
   }
-  else if (this->getCapasityCode() == ADC_20_BIT)
+  else if (this->getAdcResolutionMode() == ADC_20_BIT)
   {
     IntegralAdcSignalToCharge /= double(AbstractCamera::RESOLUTION_20BIT);
   }

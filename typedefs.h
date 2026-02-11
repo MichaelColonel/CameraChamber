@@ -55,10 +55,19 @@ typedef boost::accumulators::accumulator_set< \
 
 typedef std::pair< int, int > ChipChannelPair;
 typedef std::map< ChipChannelPair, double > ChipChannelCalibrationMap;
+typedef std::map< int, std::vector< int > > ChipBrokenChannelsMap;
 typedef std::array< ChipChannelPair, CHANNELS_PER_PLANE > ChipChannelArray;
 typedef std::map< int, std::array< std::vector< int >, CHANNELS_PER_CHIP > > ChipChannelsCountsMap;
 typedef std::pair< ChipChannelCalibrationMap, ChipChannelCalibrationMap > ChipChannelCalibrationMapPair;
 typedef std::map< int, ChipChannelCalibrationMapPair > AdcOffsetCalibrationMap; // ADC-Offset calibration
+
+struct LinearAmplitudeCalibration {
+  ChipChannelCalibrationMapPair linearAdcCalibration; // for Side-A, and Side-B
+  ChipChannelCalibrationMap uniformAmplitudeCalibration; // uniform exposure amplitude data
+};
+
+typedef std::pair< int, int > CapacityIntegrationTimeCodesPair;
+typedef std::map< CapacityIntegrationTimeCodesPair, LinearAmplitudeCalibration > AdcAmplitudeCalibrationMap;
 
 enum StripsOrientationType : int {
   ORIENTATION_HORIZONTAL = 0,
