@@ -912,6 +912,7 @@ void MainWindow::onOpenRootFileActionTriggered()
   }
 
   QDialog* rootFileDialog = new RootFileCameraProfilesDialog(this->rootFileName, this);
+  connect(rootFileDialog, SIGNAL(logMessage(QString, QString, QColor)), this, SLOT(log(QString, QString, QColor)));
   if (rootFileDialog->exec())
   {
     ;

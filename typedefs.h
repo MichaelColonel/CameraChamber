@@ -67,6 +67,18 @@ struct LinearAmplitudeCalibration {
 };
 
 typedef std::pair< int, int > CapacityIntegrationTimeCodesPair;
+typedef std::vector< double > CalibrationVector;
+
+struct ChipCalibrationData {
+  CalibrationVector linearAdcCalibrationA; // for Side-A
+  CalibrationVector linearAdcCalibrationB; // for Side-B
+  CalibrationVector uniformAmplitudeCalibration; // uniform exposure amplitude data
+};
+
+typedef std::map< CapacityIntegrationTimeCodesPair, ChipChannelArray > ChipAdcCalibrationMap;
+typedef std::map< CapacityIntegrationTimeCodesPair, ChipCalibrationData > CapacityIntegrationTimeCalibrationMap;
+typedef std::map< int, CapacityIntegrationTimeCalibrationMap > ChipCapacityIntegrationTimeCalibrationMap;
+
 typedef std::map< CapacityIntegrationTimeCodesPair, LinearAmplitudeCalibration > AdcAmplitudeCalibrationMap;
 
 enum StripsOrientationType : int {

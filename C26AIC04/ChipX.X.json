@@ -1,7 +1,7 @@
 {
   "ChipParameters": [
     {
-      "IntegrationTimeCode" : 1,
+      "IntegrationTimeCode": 1,
       "IntegrationTime": 4.0,
       "CapacityCode": 0,
       "Capacity": 3.0,
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "IntegrationTimeCode" : 1,
+      "IntegrationTimeCode": 1,
       "IntegrationTime": 4.0,
       "CapacityCode": 2,
       "Capacity": 25.0,

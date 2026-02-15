@@ -415,8 +415,8 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
 
   if (!cam)
   {
-    qWarning() << Q_FUNC_INFO << "Camera is invalid";
-//    emit logMessage("Camera is invalid", "", Qt::red);
+//    qWarning() << Q_FUNC_INFO << "Camera is invalid";
+    emit logMessage("Camera is invalid", "", Qt::red);
     return;
   }
   int pedMin = static_cast< int >(d->ui->RangeWidget_Pedestal->minimumValue());
