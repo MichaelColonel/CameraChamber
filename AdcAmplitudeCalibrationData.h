@@ -23,11 +23,6 @@
 
 class ChipCapacityCalibrationData {
 public:
-  enum CalibrationDataType : int {
-    INTEGRATOR_A,
-    INTEGRATOR_B,
-    SIGNAL_AMPLITUDE
-  };
   ChipCapacityCalibrationData(const ChipCapacityIntegrationTimeCalibrationMap& data)
     : chipCapacityCalibrationMap(data) {}
   virtual ~ChipCapacityCalibrationData() {}
@@ -47,6 +42,11 @@ public:
   ChipChannelCalibrationMap getAmpUniformCalibration(int capacityCode, int timeCode,
     bool& capCodeIsFound, bool& timeCodeIsFound) const;
 private:
+  enum CalibrationDataType : int {
+    INTEGRATOR_A,
+    INTEGRATOR_B,
+    SIGNAL_AMPLITUDE
+  };
   ChipChannelCalibrationMap getCalibration(CalibrationDataType type) const;
   ChipChannelCalibrationMap getCalibration(int capacityCode, bool& capCodeIsFound, CalibrationDataType type) const;
   ChipChannelCalibrationMap getCalibration(int capacityCode, int timeCode,
