@@ -35,6 +35,7 @@ public:
   explicit CameraProfilesDialog(const AbstractCamera::CameraDeviceData& cameraInfo, QWidget* parent = nullptr);
   virtual ~CameraProfilesDialog();
   void setCameraDevice(QPointer< AbstractCamera > cam);
+  void getProfiles(TGraph* horiz, TGraph* vert, TH2* hist2d);
 
 public Q_SLOTS:
   void onAcquisitionStarted();

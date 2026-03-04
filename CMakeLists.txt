@@ -90,12 +90,15 @@ set(RESOURCE_FILES
 file(GLOB forms ${PROJECT_SOURCE_DIR}/*.ui)
 file(GLOB sources ${PROJECT_SOURCE_DIR}/*.cpp)
 file(GLOB headers ${PROJECT_SOURCE_DIR}/*.h)
+file(GLOB batch_mode ${PROJECT_SOURCE_DIR}/root_profile_batch_mode.cc)
 
 add_executable(ProfileCamera2D
   ${sources}
   ${headers}
   ${forms}
 )
+
+add_executable(profile_offline ${batch_mode})
 
 target_link_libraries(ProfileCamera2D
   CTKWidgets
@@ -112,6 +115,8 @@ target_link_libraries(ProfileCamera2D
   ROOT::ROOTGeomViewer
 )
 
+target_link_libraries(profile_offline ${ROOT_LIBRARIES})
+
 install(FILES Cameras.json DESTINATION bin)
 install(DIRECTORY C26AIC01 DESTINATION bin)
 install(DIRECTORY C26AIC02 DESTINATION bin)
@@ -125,3 +130,4 @@ install(DIRECTORY C26AIC04 DESTINATION bin)
 #)
 
 install(TARGETS ProfileCamera2D DESTINATION bin)
+install(TARGETS profile_offline DESTINATION bin)

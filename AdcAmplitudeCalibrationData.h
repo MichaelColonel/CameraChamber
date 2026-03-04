@@ -45,7 +45,8 @@ private:
   enum CalibrationDataType : int {
     INTEGRATOR_A,
     INTEGRATOR_B,
-    SIGNAL_AMPLITUDE
+    SIGNAL_AMPLITUDE,
+    CalibrationDataType_Last
   };
   ChipChannelCalibrationMap getCalibration(CalibrationDataType type) const;
   ChipChannelCalibrationMap getCalibration(int capacityCode, bool& capCodeIsFound, CalibrationDataType type) const;

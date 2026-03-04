@@ -55,6 +55,7 @@
 #include "CameraUtils.h"
 
 #include "CameraSpillsListModel.h"
+#include "ChannelInfoTableModel.h"
 
 #include <sstream>
 
@@ -80,6 +81,7 @@ public:
   QMap< QString, QPointer< AbstractCamera > > camerasMap;
   std::unique_ptr< TFile > rootFile;
   QScopedPointer< CameraSpillsListModel > cameraDirectorySpillsModel;
+  QScopedPointer< ChannelInfoTableModel > chipChannelInfoModel;
 
   std::unique_ptr< TGraph > graphChannel; // TGraph adc time data
   std::unique_ptr< TPad > padChannel;
@@ -107,6 +109,7 @@ RootFileCameraProfilesDialogPrivate::RootFileCameraProfilesDialogPrivate(RootFil
   q_ptr(&object),
   ui(new Ui::RootFileCameraProfilesDialog),
   cameraDirectorySpillsModel(new CameraSpillsListModel(&object)),
+  chipChannelInfoModel(new ChannelInfoTableModel(&object)),
   timer(new QTimer(&object))
 {
   QSettings settings("ProfileCamera2D", "configure");
@@ -227,8 +230,11 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
 {
   Q_D(RootFileCameraProfilesDialog);
   d->ui->setupUi(this);
+  this->setWindowTitle(tr("ROOT File Camera Profiles & Data Dialog"));
+  this->setWindowFlag(Qt::WindowMaximizeButtonHint, true);
 
   d->ui->ListView_CameraSpills->setModel(d->cameraDirectorySpillsModel.data());
+  d->ui->TableView_ChannelsInfo->setModel(d->chipChannelInfoModel.data());
 
   {
     QSignalBlocker blockerPed(d->ui->RangeWidget_Pedestal);
@@ -468,6 +474,8 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
   d->padPseudo2D->cd();
   d->padPseudo2D->Modified();
   d->padPseudo2D->Update();
+
+  d->chipChannelInfoModel->setChipChannelInfo(infoMap);
 
   // dump info into temporary text file
   auto cameraData = cam->getCameraData();

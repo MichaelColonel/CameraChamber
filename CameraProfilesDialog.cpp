@@ -32,11 +32,15 @@
 #include <TH2.h>
 #include <TPad.h>
 #include <TLine.h>
+#include <TFile.h>
+
 #include <TROOT.h>
 
 #include "ChannelInfoTableModel.h"
 
 #include "typedefs.h"
+
+#include <sstream>
 
 QT_BEGIN_NAMESPACE
 
@@ -57,6 +61,7 @@ public:
   size_t updateChannelGraph(int chipIndex, int channelIndex, AdcTimeType dataType);
   void updateHistSideA(int chipIndex, int channelIndex, AdcTimeType dataType);
   void updateHistSideB(int chipIndex, int channelIndex, AdcTimeType dataType);
+  bool saveSpillProfiles();
 
   QPointer< AbstractCamera > camera;
   QScopedPointer< ChannelInfoTableModel > chipChannelInfoModel;
@@ -255,6 +260,30 @@ void CameraProfilesDialogPrivate::updateHistSideB(int chipIndex, int channelInde
       this->histB->Draw("SAME");
     }
   }
+}
+
+bool CameraProfilesDialogPrivate::saveSpillProfiles()
+{
+  Q_Q(CameraProfilesDialog);
+  if (!this->camera)
+  {
+    return false;
+  }
+  AbstractCamera::CameraDeviceData camData = this->camera->getCameraData();
+
+  std::stringstream sstream;
+  sstream << "/tmp/spillProfile_" << camData.ID.toStdString() << ".root";
+  std::string name = sstream.str();
+  std::unique_ptr< TFile > spillFile = std::unique_ptr< TFile >(new TFile(name.c_str(), "RECREATE"));
+  if (!spillFile)
+  {
+    return false;
+  }
+  spillFile->WriteTObject(this->graphVerticalProfile.get(), "vp");
+  spillFile->WriteTObject(this->graphHorizontalProfile.get(), "hp");
+  spillFile->WriteTObject(this->histPseudo2D.get(), "h2p");
+  spillFile->Close();
+  return true;
 }
 
 CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceData& info,
@@ -558,7 +587,15 @@ void CameraProfilesDialog::onAcquisitionFinished()
     chipsStr = d->camera->getChipsAddresses();
   }
   d->ui->LineEdit_EnabledChips->setText(chipsStr);
-//  this->onUpdateProfilesClicked();
+  if (!d->camera->getOnceTimeExternalStartFlag())
+  {
+    this->onUpdateProfilesClicked();
+    if (d->saveSpillProfiles())
+    {
+//      qWarning() << Q_FUNC_INFO << "Spill is saved";
+      emit logMessage("Spill is saved", "", Qt::red);
+    }
+  }
   QApplication::restoreOverrideCursor();
 }
 
@@ -730,6 +767,14 @@ void CameraProfilesDialog::onResetIntegralPseudo2dClicked()
 {
   Q_D(CameraProfilesDialog);
   d->histPseudoIntegral2D->Reset();
+}
+
+void CameraProfilesDialog::getProfiles(TGraph *horiz, TGraph *vert, TH2 *hist2d)
+{
+  Q_D(CameraProfilesDialog);
+  horiz = d->graphHorizontalProfile.get();
+  vert = d->graphVerticalProfile.get();
+  hist2d = d->histPseudo2D.get();
 }
 
 QT_END_NAMESPACE

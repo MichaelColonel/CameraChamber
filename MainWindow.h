@@ -39,6 +39,7 @@
 
 #include <TFile.h>
 #include <TDirectory.h>
+#include <THttpServer.h>
 
 #include <memory>
 
@@ -123,6 +124,7 @@ protected:
   // ROOT file name for cameras data
   QString rootFileName;
   std::unique_ptr< TFile > rootFile;
+  std::unique_ptr< THttpServer > httpServer;
 
 //  OpcUaModel* opcUaModelData{ nullptr };
 //  QOpcUaProvider* opcUaProvider{ nullptr };

@@ -103,6 +103,7 @@ public:
   int getAdcSamples() const;
   bool getChipChannelInfo(int chip, int channel, ChannelInfoPair& info);
   void getChipChannelInfo(std::map< ChipChannelPair, ChannelInfoPair >& infoMap);
+  bool getOnceTimeExternalStartFlag() const;
 
   ChipChannelPair getReferenceChipChannel(bool adcAmp = false, CameraProfileType profileType = CameraProfileType::PROFILE_VERTICAL) const;
   bool setReferenceChipChannel(const ChipChannelPair& pair, bool adcAmp = false, CameraProfileType profileType = CameraProfileType::PROFILE_VERTICAL);

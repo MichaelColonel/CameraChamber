@@ -101,6 +101,7 @@ public:
   std::vector< std::vector< double > > profileFramesVector;
 
   int dataNumber{ 1 };
+  bool onceTimeExternalStartFlag{ false };
   QDateTime dataDateTime;
   TDirectory* rootDir{ nullptr };
 
@@ -611,6 +612,7 @@ void AbstractCamera::onCommandPortDataReady()
     d->lastCommandWritten.clear();
     emit acquisitionFinished();
     d->acquisitionFlag = false;
+    d->onceTimeExternalStartFlag = false;
     return;
   }
   if (d->commandResponseBuffer.startsWith('L')
@@ -653,6 +655,7 @@ void AbstractCamera::onCommandPortDataReady()
     {
       d->commandResponseBuffer = restResponse;
     }
+    d->onceTimeExternalStartFlag = false;
     return;
   }
   if (d->commandResponseBuffer.startsWith("Welcome") && d->commandResponseBuffer.size() == std::strlen("Welcome"))
@@ -688,12 +691,14 @@ void AbstractCamera::onCommandPortBytesWritten(qint64 bytes)
   }
   if (d->lastCommandWritten.size() == bytes && d->lastCommandWritten == d->AcquisitionCommand)
   {
+    d->onceTimeExternalStartFlag = false;
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << ": Acquisition command written";
 #endif
   }
   else if (d->lastCommandWritten.size() == bytes && d->lastCommandWritten == d->OnceTimeExternalStartCommand)
   {
+    d->onceTimeExternalStartFlag = true;
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << ": Waiting for the external start...";
 #endif
@@ -1242,7 +1247,8 @@ QString AbstractCamera::getChipsAddresses() const
 
 QByteArray AbstractCamera::getSetCapacityCommand(int capacityCode) const
 {
-  if ((capacityCode < 0) || (capacityCode > 7))
+  const int& max = AcquisitionParameters::MAX_CAPACITY_CODE;
+  if ((capacityCode < 0) || (capacityCode > max))
   {
     return QByteArray();
   }
@@ -1259,7 +1265,10 @@ QByteArray AbstractCamera::getSetCapacityCommand(int capacityCode) const
 
 QByteArray AbstractCamera::getSetIntegrationTimeCommand(int timeMs /* from 2...32 ms step 2 ms */) const
 {
-  if ((timeMs < 2) || (timeMs > 32))
+  const int& min = AcquisitionParameters::MIN_INTEGRATION_TIME_MS;
+  const int& max = AcquisitionParameters::MAX_INTEGRATION_TIME_MS;
+
+  if ((timeMs < min) || (timeMs > max))
   {
     return QByteArray();
   }
@@ -1270,14 +1279,15 @@ QByteArray AbstractCamera::getSetIntegrationTimeCommand(int timeMs /* from 2...3
 
 QByteArray AbstractCamera::getSetAdcResolutionCommand(bool adc20Bit) const
 {
-  unsigned char buf[BUFFER_SIZE] = { 'D' };
-  buf[1] = adc20Bit; // data
+  unsigned char buf[BUFFER_SIZE] = { 'D', adc20Bit }; // data
   return QByteArray(reinterpret_cast<char*>(buf), BUFFER_SIZE);
 }
 
 QByteArray AbstractCamera::getSetSamplesCommand(int samples) const
 {
-  if ((samples < 10) || (samples > 1000))
+  const int& min = AcquisitionParameters::MIN_SAMPLES;
+  const int& max = AcquisitionParameters::MAX_SAMPLES;
+  if ((samples < min) || (samples > max))
   {
     return QByteArray();
   }
@@ -1289,7 +1299,8 @@ QByteArray AbstractCamera::getSetSamplesCommand(int samples) const
 
 QByteArray AbstractCamera::getSetChipsEnabledCommand(int chipsEnabledCode) const
 {
-  if ((chipsEnabledCode < 1) || (chipsEnabledCode > 0x0FFF))
+  const int& max = AcquisitionParameters::DEFAULT_CHIPS_ENABLED_CODE;
+  if ((chipsEnabledCode < 1) || (chipsEnabledCode > max))
   {
     return QByteArray();
   }
@@ -1302,8 +1313,7 @@ QByteArray AbstractCamera::getSetChipsEnabledCommand(int chipsEnabledCode) const
 
 QByteArray AbstractCamera::getSetNumberOfChipsCommand() const
 {
-  unsigned char buf[BUFFER_SIZE] = { 'O' };
-  buf[1] = CHIPS_PER_CAMERA;
+  unsigned char buf[BUFFER_SIZE] = { 'O', CHIPS_PER_CAMERA };
   return QByteArray(reinterpret_cast<char*>(buf), BUFFER_SIZE);
 }
 
@@ -1353,6 +1363,12 @@ QByteArray AbstractCamera::getOnceTimeExternalStartCommand() const
 {
   Q_D(const AbstractCamera);
   return d->OnceTimeExternalStartCommand;
+}
+
+bool AbstractCamera::getOnceTimeExternalStartFlag() const
+{
+  Q_D(const AbstractCamera);
+  return d->onceTimeExternalStartFlag;
 }
 
 bool AbstractCamera::getChipChannelInfo(int chip, int channel, ChannelInfoPair &info)
