@@ -101,6 +101,8 @@ private slots:
   void onCameraAcquisitionFinished();
   void onOpenRootFileActionTriggered();
   void onCameraSettingsActionTriggered();
+  void onHttpServerActionTriggered();
+  void onBeamActionTriggered();
 
 private:
   void updateUiState();
@@ -124,7 +126,7 @@ protected:
   // ROOT file name for cameras data
   QString rootFileName;
   std::unique_ptr< TFile > rootFile;
-  std::unique_ptr< THttpServer > httpServer;
+  std::shared_ptr< THttpServer > httpServer;
 
 //  OpcUaModel* opcUaModelData{ nullptr };
 //  QOpcUaProvider* opcUaProvider{ nullptr };

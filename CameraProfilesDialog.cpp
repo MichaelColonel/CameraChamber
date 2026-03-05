@@ -744,8 +744,8 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   using MapConstIter = std::map< ChipChannelPair, ChannelInfoPair >::const_iterator;
   for (MapConstIter iter = infoMap.begin(); iter != infoMap.end(); ++iter)
   {
-    const ChipChannelPair& chipChannelPair = (*iter).first;
-    const ChannelInfoPair& infoPair = (*iter).second;
+    const ChipChannelPair& chipChannelPair = iter->first;
+    const ChannelInfoPair& infoPair = iter->second;
     const ChannelInfo& rawInfo = infoPair.first;
     const ChannelInfo& adcCalibInfo = infoPair.second;
     if (res)

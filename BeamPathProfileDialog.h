@@ -24,32 +24,29 @@
 QT_BEGIN_NAMESPACE
 
 namespace Ui {
-  class HttpServerDialog;
+  class BeamPathProfile;
 }
 
-class HttpServerDialogPrivate;
-class CameraProfilesDialog;
+class BeamPathProfilePrivate;
 class THttpServer;
 
-class HttpServerDialog : public QDialog
+class BeamPathProfile : public QDialog
 {
   Q_OBJECT
 
 public:
-  explicit HttpServerDialog(std::shared_ptr< THttpServer >& server, QWidget *parent = nullptr);
-  ~HttpServerDialog();
-  bool registerHistograms(const QString& cameraID, CameraProfilesDialog* profilesDialog);
-  std::shared_ptr< THttpServer > getUpdatedServer();
+  explicit BeamPathProfile(QWidget *parent = nullptr);
+  ~BeamPathProfile();
 
 Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);
 
 protected:
-  QScopedPointer< HttpServerDialogPrivate > d_ptr;
+  QScopedPointer< BeamPathProfilePrivate > d_ptr;
 
 private:
-  Q_DECLARE_PRIVATE(HttpServerDialog);
-  Q_DISABLE_COPY(HttpServerDialog);
+  Q_DECLARE_PRIVATE(BeamPathProfile);
+  Q_DISABLE_COPY(BeamPathProfile);
 };
 
 QT_END_NAMESPACE

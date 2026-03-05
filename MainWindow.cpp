@@ -56,6 +56,8 @@
 #include "RootFileCameraProfilesDialog.h"
 #include "CameraProfilesDialog.h"
 #include "SettingsDialog.h"
+#include "HttpServerDialog.h"
+#include "BeamPathProfileDialog.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -195,6 +197,10 @@ MainWindow::MainWindow(QWidget *parent)
     this, SLOT(onOpenRootFileActionTriggered()));
   QObject::connect(this->ui->actionCameraSettings, SIGNAL(triggered()),
     this, SLOT(onCameraSettingsActionTriggered()));
+  QObject::connect(this->ui->actionHttpServer, SIGNAL(triggered()),
+    this, SLOT(onHttpServerActionTriggered()));
+  QObject::connect(this->ui->actionBeam, SIGNAL(triggered()),
+    this, SLOT(onBeamActionTriggered()));
 
   QObject::connect(this->ui->actionExit, &QAction::triggered, [this](){ this->close(); });
 
@@ -928,6 +934,38 @@ void MainWindow::onCameraSettingsActionTriggered()
     ;
   }
   delete settingsDialog;
+}
+
+void MainWindow::onHttpServerActionTriggered()
+{
+  HttpServerDialog* serverDialog = new HttpServerDialog(httpServer, this);
+  CameraDeviceProfilesMap::iterator iter = cameraDeviceProfilesMap.begin();
+
+  while (iter != cameraDeviceProfilesMap.end())
+  {
+    QString id = iter.key();
+    CameraDeviceProfilesPair& deviceProfiles = iter.value();
+    CameraProfilesDialog* profilesDialog = deviceProfiles.second.data();
+    if (serverDialog)
+    {
+      serverDialog->registerHistograms(id, profilesDialog);
+    }
+  }
+  if (serverDialog->exec())
+  {
+    ;
+  }
+  delete serverDialog;
+}
+
+void MainWindow::onBeamActionTriggered()
+{
+  BeamPathProfileDialog* dialog = new BeamPathProfileDialog(this);
+  if (dialog->exec())
+  {
+    ;
+  }
+  delete dialog;
 }
 
 QT_END_NAMESPACE

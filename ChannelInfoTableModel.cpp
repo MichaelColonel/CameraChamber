@@ -68,7 +68,7 @@ QVariant ChannelInfoTableModel::data(const QModelIndex& index, int role) const
     {
       if (i == index.row())
       {
-        chipChannel = (*iter).first;
+        chipChannel = iter->first;
       }
     }
     const ChannelInfoPair& infoPair = this->infoMap.at(chipChannel);
