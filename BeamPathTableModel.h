@@ -19,40 +19,32 @@
 
 #pragma once
 
-#include <QDialog>
+#include <QAbstractTableModel>
+#include <QMap>
+#include <QPair>
+
+#include "typedefs.h"
 
 QT_BEGIN_NAMESPACE
 
-namespace Ui {
-  class HttpServerDialog;
-}
-
-class HttpServerDialogPrivate;
-class CameraProfilesDialog;
-class THttpServer;
-
-class HttpServerDialog : public QDialog
+class BeamPathTableModel : public QAbstractTableModel
 {
   Q_OBJECT
-
 public:
-  explicit HttpServerDialog(std::shared_ptr< THttpServer >& server, QWidget *parent = nullptr);
-  ~HttpServerDialog();
-  bool registerHistograms(const QString& cameraID, CameraProfilesDialog* profilesDialog);
-  std::shared_ptr< THttpServer > getUpdatedServer();
-
-Q_SIGNALS:
-  void logMessage(const QString& msg, const QString& context, QColor color);
-
-public Q_SLOTS:
-  void updateLatex();
-
+  static constexpr int NOF_HEADERS = 2;
+  BeamPathTableModel(QObject *parent = nullptr);
+  void setBeamPath(const BeamPathMap& newBeamPathMap);
+  int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+  int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+  QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 protected:
-  QScopedPointer< HttpServerDialogPrivate > d_ptr;
-
-private:
-  Q_DECLARE_PRIVATE(HttpServerDialog);
-  Q_DISABLE_COPY(HttpServerDialog);
+  QString headerAt(int offset) const;
+  BeamPathMap beamMap;
+  const QStringList tableHeadersList{
+    "IC1 / Wall",
+    "IC2 / Isocenter"
+  };
 };
 
 QT_END_NAMESPACE

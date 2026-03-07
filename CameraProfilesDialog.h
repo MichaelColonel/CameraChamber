@@ -49,6 +49,8 @@ public Q_SLOTS:
   void onResetIntegralPseudo2dClicked();
 
 Q_SIGNALS:
+  void profilesUpdated();
+  void profilesUpdated(const QString& cameraID);
   void logMessage(const QString& msg, const QString& context, QColor color);
 
 protected:

@@ -189,3 +189,7 @@ struct AcquisitionParameters {
     return resp;
   }
 };
+
+typedef std::array< double, 3 > BeamProfileArray;
+typedef std::pair< BeamProfileArray, BeamProfileArray > BeamPathPair;
+typedef std::map< double, BeamPathPair > BeamPathMap;

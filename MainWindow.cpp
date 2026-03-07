@@ -521,6 +521,8 @@ void MainWindow::getCamerasAvailable()
   for (const QString& id : cameraIDs)
   {
     this->ui->ComboBox_Cameras->addItem(id);
+    this->ui->ComboBox_BeamPathCamera1->addItem(id);
+    this->ui->ComboBox_BeamPathCamera2->addItem(id);
   }
 }
 
@@ -960,7 +962,14 @@ void MainWindow::onHttpServerActionTriggered()
 
 void MainWindow::onBeamActionTriggered()
 {
+  QString id_camera1 = this->ui->ComboBox_BeamPathCamera1->currentText();
+  QString id_camera2 = this->ui->ComboBox_BeamPathCamera2->currentText();
+
+  QPointer< AbstractCamera > camera1 = this->getCamera(id_camera1);
+  QPointer< AbstractCamera > camera2 = this->getCamera(id_camera2);
+
   BeamPathProfileDialog* dialog = new BeamPathProfileDialog(this);
+  dialog->setCamerasDevices(camera1, camera2);
   if (dialog->exec())
   {
     ;

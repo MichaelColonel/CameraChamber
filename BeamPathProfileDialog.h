@@ -24,29 +24,35 @@
 QT_BEGIN_NAMESPACE
 
 namespace Ui {
-  class BeamPathProfile;
+  class BeamPathProfileDialog;
 }
 
-class BeamPathProfilePrivate;
+class AbstractCamera;
+
+class BeamPathProfileDialogPrivate;
 class THttpServer;
 
-class BeamPathProfile : public QDialog
+class BeamPathProfileDialog : public QDialog
 {
   Q_OBJECT
 
 public:
-  explicit BeamPathProfile(QWidget *parent = nullptr);
-  ~BeamPathProfile();
+  explicit BeamPathProfileDialog(QWidget *parent = nullptr);
+  ~BeamPathProfileDialog();
+  void setCamerasDevices(QPointer< AbstractCamera > camera1, QPointer< AbstractCamera > camera2);
 
 Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);
 
+public Q_SLOTS:
+  void profileIsReady(const QString& cameraID);
+
 protected:
-  QScopedPointer< BeamPathProfilePrivate > d_ptr;
+  QScopedPointer< BeamPathProfileDialogPrivate > d_ptr;
 
 private:
-  Q_DECLARE_PRIVATE(BeamPathProfile);
-  Q_DISABLE_COPY(BeamPathProfile);
+  Q_DECLARE_PRIVATE(BeamPathProfileDialog);
+  Q_DISABLE_COPY(BeamPathProfileDialog);
 };
 
 QT_END_NAMESPACE
