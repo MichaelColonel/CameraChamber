@@ -31,8 +31,8 @@
 #include "ui_MainWindow.h"
 
 // RapidJSON includes
-#include <rapidjson/document.h>     // rapidjson's DOM-style API
-#include <rapidjson/filereadstream.h>
+#include <rapidjson/include/rapidjson/document.h>     // rapidjson's DOM-style API
+#include <rapidjson/include/rapidjson/filereadstream.h>
 
 #include <QTextCharFormat>
 #include <QPlainTextEdit>

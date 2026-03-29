@@ -18,8 +18,8 @@
  */
 
 // RapidJSON includes
-#include <rapidjson/document.h>     // rapidjson's DOM-style API
-#include <rapidjson/filereadstream.h>
+#include <rapidjson/include/rapidjson/document.h>     // rapidjson's DOM-style API
+#include <rapidjson/include/rapidjson/filereadstream.h>
 
 #include "AbstractCamera.h"
 #include "AdcAmplitudeCalibrationData.h"
