@@ -39,13 +39,23 @@ class BeamPathProfileDialog : public QDialog
 public:
   explicit BeamPathProfileDialog(QWidget *parent = nullptr);
   ~BeamPathProfileDialog();
-  void setCamerasDevices(QPointer< AbstractCamera > camera1, QPointer< AbstractCamera > camera2);
+  void setCamerasDevices(AbstractCamera* camera1, AbstractCamera* camera2);
+  void addBeamProfilesToServer(std::shared_ptr< THttpServer > server); // register TPad or TCanvas
 
 Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);
 
 public Q_SLOTS:
-  void profileIsReady(const QString& cameraID);
+  void processCameraProfiles(const QString& cameraID);
+  void processCameraBeginProfiles();
+  void processCameraEndProfiles();
+//  void onBeamPathCalculationClicked();
+//  void onCalibrationCalculationClicked();
+//  void onScanningCalculationClicked();
+  void onScanHomoHorizonalBeginChanged(double pos);
+  void onScanHomoHorizonalEndChanged(double pos);
+  void onScanHomoVerticalBeginChanged(double pos);
+  void onScanHomoVerticalEndChanged(double pos);
 
 protected:
   QScopedPointer< BeamPathProfileDialogPrivate > d_ptr;

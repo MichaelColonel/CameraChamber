@@ -38,7 +38,7 @@ class HttpServerDialog : public QDialog
 public:
   explicit HttpServerDialog(std::shared_ptr< THttpServer >& server, QWidget *parent = nullptr);
   ~HttpServerDialog();
-  bool registerHistograms(const QString& cameraID, CameraProfilesDialog* profilesDialog);
+//  bool registerHistograms(const QString& cameraID, CameraProfilesDialog* profilesDialog);
   std::shared_ptr< THttpServer > getUpdatedServer();
 
 Q_SIGNALS:

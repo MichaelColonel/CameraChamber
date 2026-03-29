@@ -33,6 +33,7 @@
 #include <TPad.h>
 #include <TLine.h>
 #include <TFile.h>
+#include <THttpServer.h>
 
 #include <TROOT.h>
 
@@ -63,7 +64,7 @@ public:
   void updateHistSideB(int chipIndex, int channelIndex, AdcTimeType dataType);
   bool saveSpillProfiles();
 
-  QPointer< AbstractCamera > camera;
+  AbstractCamera* camera{ nullptr };
   QScopedPointer< ChannelInfoTableModel > chipChannelInfoModel;
 
   std::unique_ptr< TGraph > graphChannel;
@@ -383,17 +384,9 @@ CameraProfilesDialog::~CameraProfilesDialog()
       d->padChannel->GetListOfPrimitives()->Remove(d->graphChannel.get());
     }
   }
-
-  if (d->camera)
-  {
-    QObject::disconnect(d->camera.data(), SIGNAL(acquisitionStarted()), this,
-      SLOT(onAcquisitionStarted()));
-    QObject::disconnect(d->camera.data(), SIGNAL(acquisitionFinished()), this,
-      SLOT(onAcquisitionFinished()));
-  }
 }
 
-void CameraProfilesDialog::setCameraDevice(QPointer< AbstractCamera > cam)
+void CameraProfilesDialog::setCameraDevice(AbstractCamera* cam)
 {
   Q_D(CameraProfilesDialog);
   d->camera = cam;
@@ -401,9 +394,9 @@ void CameraProfilesDialog::setCameraDevice(QPointer< AbstractCamera > cam)
   {
     return;
   }
-  QObject::connect(d->camera.data(), SIGNAL(acquisitionStarted()), this,
+  QObject::connect(d->camera, SIGNAL(acquisitionStarted()), this,
     SLOT(onAcquisitionStarted()));
-  QObject::connect(d->camera.data(), SIGNAL(acquisitionFinished()), this,
+  QObject::connect(d->camera, SIGNAL(acquisitionFinished()), this,
     SLOT(onAcquisitionFinished()));
 
   TCanvas* canvas = d->ui->RootCanvas_VerticalProfile->getCanvas();
@@ -592,8 +585,9 @@ void CameraProfilesDialog::onAcquisitionFinished()
     this->onUpdateProfilesClicked();
     if (d->saveSpillProfiles())
     {
-//      qWarning() << Q_FUNC_INFO << "Spill is saved";
-      emit logMessage("Spill is saved", "", Qt::red);
+      QString cameraID = d->camera->getCameraData().ID;
+//      qWarning() << Q_FUNC_INFO << "Spill profiles are saved for " << cameraID;
+      emit logMessage("Spill profiles are saved", cameraID, Qt::green);
     }
   }
   QApplication::restoreOverrideCursor();
@@ -729,6 +723,8 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   d->padPseudoIntegral2D->Modified();
   d->padPseudoIntegral2D->Update();
 
+  emit profilesUpdated();
+  emit profilesUpdated(d->camera->getCameraData().ID);
   d->chipChannelInfoModel->setChipChannelInfo(infoMap);
 
   // dump info into temporary text file
@@ -767,8 +763,49 @@ void CameraProfilesDialog::onResetIntegralPseudo2dClicked()
 {
   Q_D(CameraProfilesDialog);
   d->histPseudoIntegral2D->Reset();
+  d->padPseudoIntegral2D->Modified();
+  d->padPseudoIntegral2D->Update();
 }
 
+void CameraProfilesDialog::addBeamProfilesToServer(THttpServer* server)
+{
+  Q_D(CameraProfilesDialog);
+  if (!server)
+  {
+    return;
+  }
+  QString cameraID;
+  if (d->camera)
+  {
+    cameraID = d->camera->getCameraData().ID;
+  }
+  if (cameraID.isEmpty())
+  {
+    return;
+  }
+  QByteArray bytesStr = QByteArray(1, '/') + cameraID.toLatin1();
+  const char* id_str = bytesStr.data();
+  server->Register(id_str, d->padHorizontalProfile.get());
+  server->Register(id_str, d->padVerticalProfile.get());
+  server->Register(id_str, d->padPseudo2D.get());
+  server->Register(id_str, d->padPseudoIntegral2D.get());
+
+  server->SetItemField(id_str, "_layout", "grid2x2");
+/*  QByteArray Str = cameraID.toLatin1();
+  std::stringstream ss;
+  ss << '[' << d->padHorizontalProfile.get()->GetName() \
+     << ',' << d->padVerticalProfile.get()->GetName() \
+     << ',' << d->padPseudo2D.get()->GetName() \
+     << ',' << d->padPseudoIntegral2D.get()->GetName() << ']';
+  std::string drawItems = ss.str();
+
+  qDebug() << Q_FUNC_INFO << ": Camera items string: " << QString::fromStdString(drawItems);
+  server->SetItemField(id_str, "_drawitem", drawItems.c_str());  // items
+  server->SetItemField(id_str, "_monitoring", "1000");
+*/
+}
+
+/*
 void CameraProfilesDialog::getProfiles(TGraph *horiz, TGraph *vert, TH2 *hist2d)
 {
   Q_D(CameraProfilesDialog);
@@ -776,5 +813,5 @@ void CameraProfilesDialog::getProfiles(TGraph *horiz, TGraph *vert, TH2 *hist2d)
   vert = d->graphVerticalProfile.get();
   hist2d = d->histPseudo2D.get();
 }
-
+*/
 QT_END_NAMESPACE

@@ -557,16 +557,17 @@ void Camera2::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
       }
     }
   }
-  if (integPseudo2D)
+  if (integPseudo2D && pseudo2D)
   {
-    for (Int_t row = 0; row < vertProfData.size(); ++row)
-    {
-      for (Int_t column = 0; column < xBins; ++column)
-      {
-        Double_t pixel = horizProfData[column] * vertProfData[row];
-        integPseudo2D->Fill(xBinsBorders[column], (vertProfData.size() - 1) - row, pixel);
-      }
-    }
+    integPseudo2D->Add(pseudo2D, 1.);
+//    for (Int_t row = 0; row < vertProfData.size(); ++row)
+//    {
+//      for (Int_t column = 0; column < xBins; ++column)
+//      {
+//        Double_t pixel = horizProfData[column] * vertProfData[row];
+//        integPseudo2D->Fill(xBinsBorders[column], (vertProfData.size() - 1) - row, pixel);
+//      }
+//    }
   }
 }
 

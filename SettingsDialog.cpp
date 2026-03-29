@@ -48,6 +48,7 @@ public:
   SettingsDialogPrivate(SettingsDialog &object);
   virtual ~SettingsDialogPrivate();
   void updateChipChannel();
+  void updateHttpServer(); // update ROOT HTTP server connection parameters
   void setChipChannel();
   bool isVerticalProfile() const;
   bool isHorizontalProfile() const;
@@ -62,9 +63,9 @@ public:
 SettingsDialogPrivate::SettingsDialogPrivate(SettingsDialog &object)
   :
   q_ptr(&object),
-  ui(new Ui::SettingsDialog)
+  ui(new Ui::SettingsDialog),
+  settings(new QSettings("ProfileCamera2D", "configure"))
 {
-  settings = new QSettings("ProfileCamera2D", "configure");
 }
 
 SettingsDialogPrivate::~SettingsDialogPrivate()
@@ -152,11 +153,21 @@ void SettingsDialogPrivate::updateChipChannel()
   }
 }
 
+void SettingsDialogPrivate::updateHttpServer()
+{
+  Q_Q(SettingsDialog);
+  this->settings->beginGroup("RootHttpServer");
+  settings->setValue("host", this->ui->LineEdit_HttpServerHost->text());
+  settings->setValue("port", this->ui->SpinBox_HttpServerPort->value());
+  settings->setValue("connect-on-startup", this->ui->CheckBox_ConnectHttpServerOnStartup->isChecked());
+  this->settings->endGroup();
+}
+
 ChipChannelPair SettingsDialogPrivate::getChipChannel() const
 {
   Q_Q(const SettingsDialog);
   QString cameraID;
-  ChipChannelPair pair( -1, -1);
+  ChipChannelPair pair(-1, -1);
   if (this->camera)
   {
     cameraID = this->camera->getCameraData().ID;
@@ -247,11 +258,21 @@ SettingsDialog::SettingsDialog(AbstractCamera* cameraDevice, QWidget *parent)
     d->ui->SliderWidget_Channel->setValue(pair.second);
     d->ui->SliderWidget_Chip->setValue(pair.first);
   }
+
+  d->settings->beginGroup("RootHttpServer");
+  QString host = d->settings->value("host", "http").toString();
+  int port = d->settings->value("port", 8080).toInt();
+  bool connect = d->settings->value("connect-on-startup", true).toBool();
+  d->settings->endGroup();
+  d->ui->LineEdit_HttpServerHost->setText(host);
+  d->ui->SpinBox_HttpServerPort->setValue(port);
+  d->ui->CheckBox_ConnectHttpServerOnStartup->setChecked(connect);
 }
 
 SettingsDialog::~SettingsDialog()
 {
   Q_D(SettingsDialog);
+  d->updateHttpServer();
 }
 
 void SettingsDialog::onSignalCalibrationTypeButtonChanged(QAbstractButton *but)

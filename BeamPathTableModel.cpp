@@ -69,10 +69,31 @@ QVariant BeamPathTableModel::data(const QModelIndex& index, int role) const
     switch (index.column())
     {
     case 0:
-      res = QObject::tr("%1, %2, %3").arg(pair.first[0]).arg(pair.first[1]).arg(pair.first[2]); // pos begin
+      res = QString::number(time);
       break;
     case 1:
-      res = QObject::tr("%1, %2, %3").arg(pair.second[0]).arg(pair.second[1]).arg(pair.second[2]); // pos end
+      {
+        if (pair.first[2] < 0)
+        {
+          res = tr("No beam");
+        }
+        else
+        {
+          res = QObject::tr("%1, %2, %3").arg(pair.first[0]).arg(pair.first[1]).arg(pair.first[2]); // pos begin
+        }
+      }
+      break;
+    case 2:
+      {
+        if (pair.second[2] < 0)
+        {
+          res = tr("No beam");
+        }
+        else
+        {
+          res = QObject::tr("%1, %2, %3").arg(pair.second[0]).arg(pair.second[1]).arg(pair.second[2]); // pos end
+        }
+      }
       break;
     default:
       res = QVariant();

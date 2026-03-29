@@ -43,6 +43,12 @@ constexpr int CHANNELS_PER_CAMERA = CHANNELS_VERTICAL_STRIPS_PLANE + CHANNELS_HO
 
 constexpr double STRIP_STEP_PER_SIDE_MM = 2.0;
 
+constexpr int BEAM_PATH_TIME_STEPS = 9;
+constexpr int BEAM_CALIBRATION_TIME_STEPS = 9;
+constexpr int BEAM_SCANNING_TIME_STEPS = 9;
+
+constexpr int BEAM_PATH_CUSTOM_COLORS_PALETTE = 20;
+
 typedef boost::accumulators::accumulator_set< \
   double, \
   boost::accumulators::stats< \

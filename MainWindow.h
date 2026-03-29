@@ -37,7 +37,7 @@
 
 // #include <QOpcUaClient> // OPC UA client
 
-#include <TFile.h>
+#include <TParallelMergingFile.h>
 #include <TDirectory.h>
 #include <THttpServer.h>
 
@@ -60,6 +60,7 @@ class QTimer;
 class QProgressDialog;
 
 class CameraProfilesDialog;
+class BeamPathProfileDialog;
 
 class MainWindow : public QMainWindow
 {
@@ -106,11 +107,14 @@ private slots:
 
 private:
   void updateUiState();
-
-protected:
+  bool loadSettings(QSettings* settings);
+  bool saveSettings(QSettings* settings);
   int getChipsEnabledCode() const;
   void getCamerasAvailable();
   void updateAcquisitionParameters(AbstractCamera* cameraDevice);
+
+protected:
+  void closeEvent(QCloseEvent*);
 
   AbstractCamera* getCamera(const QString& cameraID) const;
   CameraProfilesDialog* getProfiles(const QString& cameraID) const;
@@ -122,6 +126,7 @@ protected:
 
   QScopedPointer< QTimer > initiationTimer;
   QScopedPointer< QProgressDialog > initiationProgress;
+  QScopedPointer< BeamPathProfileDialog > beamPathProfile;
 
   // ROOT file name for cameras data
   QString rootFileName;
@@ -132,7 +137,7 @@ protected:
 //  QOpcUaProvider* opcUaProvider{ nullptr };
 //  QOpcUaClient* opcUaClient{ nullptr };
 
-  typedef QPair< QPointer< AbstractCamera >, QPointer< CameraProfilesDialog > > CameraDeviceProfilesPair;
+  typedef QPair< AbstractCamera* , CameraProfilesDialog* > CameraDeviceProfilesPair;
   typedef QMap< QString, CameraDeviceProfilesPair > CameraDeviceProfilesMap;
   CameraDeviceProfilesMap cameraDeviceProfilesMap;
 };

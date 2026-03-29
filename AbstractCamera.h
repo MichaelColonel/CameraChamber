@@ -71,6 +71,8 @@ public:
   virtual ~AbstractCamera();
   bool connect();
   void disconnect();
+  void setProfilesProcessingBusyFlag(bool busyFlag);
+  bool getProfilesProcessingBusyFlag() const;
   bool isDeviceAlreadyConnected(const QString& otherPort);
   bool isDeviceAlreadyConnected();
 
@@ -83,6 +85,9 @@ public:
 
   // set pedestal and signal gate and update channel info map
   void setPedestalSignalGate(int pedMin, int pedMax, int sigMin, int sigMax);
+  void getPedestalSignalGate(int& pedMin, int& pedMax, int& sigMin, int& sigMax) const;
+  void getPedestalSignalGate(std::array< int, 4 >& pedSigGateArray) const;
+
   // set ROOT directory to save spill data trees
   void setRootDirectory(TDirectory* dir);
 
@@ -108,15 +113,15 @@ public:
   ChipChannelPair getReferenceChipChannel(bool adcAmp = false, CameraProfileType profileType = CameraProfileType::PROFILE_VERTICAL) const;
   bool setReferenceChipChannel(const ChipChannelPair& pair, bool adcAmp = false, CameraProfileType profileType = CameraProfileType::PROFILE_VERTICAL);
 
-  QByteArray getSetIntegrationTimeCommand(int integrationTimeMs = 2) const;
-  QByteArray getSetCapacityCommand(int capacityCode = 3) const;
+  QByteArray getSetIntegrationTimeCommand(int integrationTimeMs = AcquisitionParameters::DEFAULT_INTEGRATION_TIME_MS) const;
+  QByteArray getSetCapacityCommand(int capacityCode = AcquisitionParameters::DEFAULT_CAPACITY_CODE) const;
   QByteArray getResetChipCommand() const;
   QByteArray getResetAlteraCommand() const;
   QByteArray getStartAcquisitionCommand() const;
   QByteArray getSetAdcResolutionCommand(bool adc20Bit = false) const;
-  QByteArray getSetChipsEnabledCommand(int chipsEnabledCode = 0x0FFF) const;
+  QByteArray getSetChipsEnabledCommand(int chipsEnabledCode = AcquisitionParameters::DEFAULT_CHIPS_ENABLED_CODE) const;
   QByteArray getSetNumberOfChipsCommand() const;
-  QByteArray getSetSamplesCommand(int numberOfSamples = 100) const;
+  QByteArray getSetSamplesCommand(int numberOfSamples = AcquisitionParameters::DEFAULT_SAMPLES) const;
   QByteArray getSetExternalStartCommand(bool externalStart = false) const;
   QByteArray getWriteChipsCapacitiesCommand() const;
   QByteArray getFirstContactCommand() const;

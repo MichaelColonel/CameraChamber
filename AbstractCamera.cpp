@@ -35,6 +35,8 @@
 #include <QScopedPointer>
 #include <QSettings>
 #include <QDateTime>
+//#include <QMutex>
+//#include <QMutexLocker>
 
 #include <utility>
 #include <cstring>
@@ -65,6 +67,10 @@ public:
   QByteArray lastCommandWritten;
   bool initiationFlag{ false };
   bool acquisitionFlag{ false };
+  bool profilesProcessingBusyFlag{ false };
+//  QMutex busyMutex;
+  bool onceTimeExternalStartFlag{ false };
+
   std::vector< int > chipsAddressesVector; // acquired chips addresses
   struct CameraResponse cameraResponse;
 
@@ -95,13 +101,12 @@ public:
   ChipChannelPair refAdcChipChannelHorizontal = { 2, 1 };
   ChipChannelPair refAmpChipChannelVertical = { 2, 1 };
   ChipChannelPair refAmpChipChannelHorizontal = { 2, 1 };
-  std::array< int, 4 > pedestalSignalGateArray = { 1, 100, 101, 200 };
+  std::array< int, 4 > pedestalSignalGateArray = { 1, 199, 200, 1100 };
 
   std::map< ChipChannelPair, ChannelInfoPair > chipChannelInfoMap;
   std::vector< std::vector< double > > profileFramesVector;
 
   int dataNumber{ 1 };
-  bool onceTimeExternalStartFlag{ false };
   QDateTime dataDateTime;
   TDirectory* rootDir{ nullptr };
 
@@ -202,6 +207,7 @@ bool AbstractCameraPrivate::saveData()
   {
     return false;
   }
+  this->rootDir->cd();
   const int& capacityCode = this->cameraResponse.CapacityCode;
   const int& integrationTimeCode = this->cameraResponse.IntegrationTimeCode;
 
@@ -264,6 +270,7 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
 //    capacityCode = 0;
 //    timeCode = 1;
 //  }
+
   if (this->loadCameraData(d->cameraData.DataDirectory))
   {
 #if !QT_NO_DEBUG
@@ -297,6 +304,7 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
 
 AbstractCamera::~AbstractCamera()
 {
+
 }
 
 bool AbstractCamera::connect()
@@ -604,8 +612,11 @@ void AbstractCamera::onCommandPortDataReady()
     /// Save raw data
     this->processRawData();
     // store acquisition data into a file
-    d->saveData();
-    /// Data is safe => clear acquisition buffer
+    if (d->saveData())
+    {
+      emit logMessage(QObject::tr("Spill data are saved"), d->cameraData.ID, Qt::green);
+    }
+    /// Data are saved => clear acquisition buffer
     emit commandWritten(d->lastCommandWritten);
     d->adcDataBuffer.clear();
     d->commandResponseBuffer.clear();
@@ -1500,6 +1511,21 @@ const std::vector< int >& AbstractCamera::getChipsAddressesVector() const
   return d->chipsAddressesVector;
 }
 
+void AbstractCamera::getPedestalSignalGate(int& pedMin, int& pedMax, int& sigMin, int& sigMax) const
+{
+  Q_D(const AbstractCamera);
+  pedMin = d->pedestalSignalGateArray[0];
+  pedMax = d->pedestalSignalGateArray[1];
+  sigMin = d->pedestalSignalGateArray[2];
+  sigMax = d->pedestalSignalGateArray[3];
+}
+
+void AbstractCamera::getPedestalSignalGate(std::array< int, 4 >& pedSigGateArray) const
+{
+  Q_D(const AbstractCamera);
+  std::copy(d->pedestalSignalGateArray.begin(), d->pedestalSignalGateArray.end(), pedSigGateArray.begin());
+}
+
 const std::array< int, 4 >& AbstractCamera::getPedestalSignalGate() const
 {
   Q_D(const AbstractCamera);
@@ -2147,4 +2173,35 @@ bool AbstractCamera::setReferenceChipChannel(const ChipChannelPair& pair, bool a
   }
   return res;
 }
+
+void AbstractCamera::setProfilesProcessingBusyFlag(bool busyFlag)
+{
+  Q_D(AbstractCamera);
+  if (busyFlag)
+  {
+    QObject::disconnect(d->commandPort.data(), SIGNAL(readyRead()),
+      this, SLOT(onCommandPortDataReady()));
+    QObject::disconnect(d->dataPort.data(), SIGNAL(readyRead()),
+      this, SLOT(onDataPortDataReady()));
+  }
+  else
+  {
+    bool flushed = d->commandPort->flush();
+    flushed &= d->dataPort->flush();
+    d->commandResponseBuffer.clear();
+    d->adcDataBuffer.clear();
+    QObject::connect(d->commandPort.data(), SIGNAL(readyRead()),
+      this, SLOT(onCommandPortDataReady()));
+    QObject::connect(d->dataPort.data(), SIGNAL(readyRead()),
+      this, SLOT(onDataPortDataReady()));
+  }
+  d->profilesProcessingBusyFlag = busyFlag;
+}
+
+bool AbstractCamera::getProfilesProcessingBusyFlag() const
+{
+  Q_D(const AbstractCamera);
+  return d->profilesProcessingBusyFlag;
+}
+
 QT_END_NAMESPACE

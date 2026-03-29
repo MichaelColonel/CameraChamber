@@ -231,13 +231,13 @@
                <double>2.000000000000000</double>
               </property>
               <property name="minimum">
-               <double>0.000000000000000</double>
+               <double>2.000000000000000</double>
               </property>
               <property name="maximum">
                <double>2000.000000000000000</double>
               </property>
               <property name="maximumValue">
-               <double>200.000000000000000</double>
+               <double>198.000000000000000</double>
               </property>
               <property name="suffix">
                <string> ms</string>
@@ -271,10 +271,10 @@
                <double>2000.000000000000000</double>
               </property>
               <property name="minimumValue">
-               <double>99.000000000000000</double>
+               <double>200.000000000000000</double>
               </property>
               <property name="maximumValue">
-               <double>1070.000000000000000</double>
+               <double>1100.000000000000000</double>
               </property>
               <property name="suffix">
                <string> ms</string>

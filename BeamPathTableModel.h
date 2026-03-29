@@ -31,7 +31,7 @@ class BeamPathTableModel : public QAbstractTableModel
 {
   Q_OBJECT
 public:
-  static constexpr int NOF_HEADERS = 2;
+  static constexpr int NOF_HEADERS = 3;
   BeamPathTableModel(QObject *parent = nullptr);
   void setBeamPath(const BeamPathMap& newBeamPathMap);
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -42,6 +42,7 @@ protected:
   QString headerAt(int offset) const;
   BeamPathMap beamMap;
   const QStringList tableHeadersList{
+    "Time, ms",
     "IC1 / Wall",
     "IC2 / Isocenter"
   };

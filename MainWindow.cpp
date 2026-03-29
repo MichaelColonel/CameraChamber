@@ -189,6 +189,8 @@ MainWindow::MainWindow(QWidget *parent)
     this, SLOT(onAcquisitionClicked()));
   QObject::connect(this->ui->PushButton_OnceTimeExternalStart, SIGNAL(clicked()),
     this, SLOT(onOnceTimeExternalStartClicked()));
+  QObject::connect(this->ui->PushButton_ShowBeamPathProfilesDialog, SIGNAL(clicked()),
+    this, SLOT(onBeamActionTriggered()));
 
   QObject::connect(this->initiationTimer.data(), SIGNAL(timeout()),
     this, SLOT(onCameraFirstContactTimeout()));
@@ -209,6 +211,9 @@ MainWindow::MainWindow(QWidget *parent)
   this->getCamerasAvailable();
   this->initiationTimer->setInterval(400);
   this->setMinimumWidth(500);
+
+  QSettings settings("ProfileCamera2D", "configure");
+  this->loadSettings(&settings);
 }
 
 MainWindow::~MainWindow()
@@ -230,21 +235,58 @@ MainWindow::~MainWindow()
   file->Close();
   delete file;
 */
+}
 
-  for (auto& cameraDialogPair : this->cameraDeviceProfilesMap)
+void
+MainWindow::closeEvent(QCloseEvent* event)
+{
+  int res = QMessageBox::warning( this, tr("Close program"), \
+    tr("Acquisition is still active.\nDo you want to quit program?"), \
+      QMessageBox::Yes, QMessageBox::No | QMessageBox::Default);
+
+  if (res == QMessageBox::Yes)
   {
-    auto& camera = cameraDialogPair.first;
-    auto& dialog = cameraDialogPair.second;
-    if (camera && camera->isDeviceAlreadyConnected())
+    QSettings settings("ProfileCamera2D", "configure");
+    this->saveSettings(&settings);
+
+    if (this->beamPathProfile)
     {
-      QSettings settings("ProfileCamera2D", "configure");
-      camera->saveSettings(&settings);
-      camera->disconnect();
+      this->beamPathProfile->close();
     }
-    if (dialog)
+    this->beamPathProfile.reset();
+
+    for (auto& cameraDialogPair : this->cameraDeviceProfilesMap)
     {
-      dialog->close();
+      AbstractCamera* camera = cameraDialogPair.first;
+      CameraProfilesDialog* dialog = cameraDialogPair.second;
+      if (camera && camera->isDeviceAlreadyConnected())
+      {
+        camera->saveSettings(&settings);
+        camera->disconnect();
+      }
+      if (dialog)
+      {
+        dialog->close();
+        delete dialog;
+        dialog = nullptr;
+      }
+      if (camera)
+      {
+        delete camera;
+        camera = nullptr;
+      }
     }
+    if (this->rootFile && this->rootFile->IsOpen())
+    {
+      this->rootFile->cd();
+      this->rootFile->Write();
+      this->rootFile->Close();
+    }
+    event->accept();
+  }
+  else
+  {
+    event->ignore();
   }
 }
 
@@ -254,8 +296,8 @@ void MainWindow::onConnectCameraClicked()
   QString cameraID = this->ui->ComboBox_Cameras->currentText();
   AbstractCamera::CameraDeviceData cameraData;
 
-  QPointer< AbstractCamera > cameraDevice;
-  QPointer< CameraProfilesDialog > cameraProfiles;
+  AbstractCamera* cameraDevice{ nullptr };
+  CameraProfilesDialog* cameraProfiles{ nullptr };
 
   auto camerasAvailable = CameraUtils::getCamerasData();
   for (const AbstractCamera::CameraDeviceData& data : camerasAvailable)
@@ -282,13 +324,13 @@ void MainWindow::onConnectCameraClicked()
   {
     if (cameraID == "Camera2")
     {
-      cameraDevice = QPointer< AbstractCamera >(new Camera2(cameraData, this));
+      cameraDevice = new Camera2(cameraData, this);
     }
     else
     {
-      cameraDevice = QPointer< AbstractCamera >(new FullCamera(cameraData, this));
+      cameraDevice = new FullCamera(cameraData, this);
     }
-    cameraProfiles = QPointer< CameraProfilesDialog >(new CameraProfilesDialog(cameraData, this));
+    cameraProfiles = new CameraProfilesDialog(cameraData, this);
     if (cameraDevice && cameraProfiles)
     {
       if (this->cameraDeviceProfilesMap.isEmpty())
@@ -312,25 +354,25 @@ void MainWindow::onConnectCameraClicked()
       cameraDevice->loadSettings(&settings);
       cameraProfiles->setCameraDevice(cameraDevice);
 
-      QObject::connect(cameraDevice.data(), SIGNAL(logMessage(QString,QString,QColor)),
+      QObject::connect(cameraDevice, SIGNAL(logMessage(QString,QString,QColor)),
         this, SLOT(log(QString,QString,QColor)));
-      QObject::connect(cameraProfiles.data(), SIGNAL(logMessage(QString,QString,QColor)),
+      QObject::connect(cameraProfiles, SIGNAL(logMessage(QString,QString,QColor)),
         this, SLOT(log(QString,QString,QColor)));
       QObject::connect(this->ui->CheckBox_ShowCameraProfiles, SIGNAL(toggled(bool)),
-        cameraProfiles.data(), SLOT(setVisible(bool)));
-      QObject::connect(cameraDevice.data(), SIGNAL(initiationStarted()),
+        cameraProfiles, SLOT(setVisible(bool)));
+      QObject::connect(cameraDevice, SIGNAL(initiationStarted()),
         this, SLOT(onCameraInitiationStarted()));
-      QObject::connect(cameraDevice.data(), SIGNAL(initiationProgress(int)),
+      QObject::connect(cameraDevice, SIGNAL(initiationProgress(int)),
         this, SLOT(onCameraInitiationInProgress(int)));
-      QObject::connect(cameraDevice.data(), SIGNAL(initiationFinished()),
+      QObject::connect(cameraDevice, SIGNAL(initiationFinished()),
         this, SLOT(onCameraFirstContactFinished()));
-      QObject::connect(cameraDevice.data(), SIGNAL(commandWritten(QByteArray)),
+      QObject::connect(cameraDevice, SIGNAL(commandWritten(QByteArray)),
         this, SLOT(onCameraCommandWritten(QByteArray)));
-      QObject::connect(cameraDevice.data(), SIGNAL(firmwareCommandBufferIsReset()),
+      QObject::connect(cameraDevice, SIGNAL(firmwareCommandBufferIsReset()),
         this, SLOT(onCameraFirstContactFinished()));
-      QObject::connect(cameraDevice.data(), SIGNAL(acquisitionStarted()),
+      QObject::connect(cameraDevice, SIGNAL(acquisitionStarted()),
         this, SLOT(onCameraAcquisitionStarted()));
-      QObject::connect(cameraDevice.data(), SIGNAL(acquisitionFinished()),
+      QObject::connect(cameraDevice, SIGNAL(acquisitionFinished()),
         this, SLOT(onCameraAcquisitionFinished()));
     }
   }
@@ -341,7 +383,7 @@ void MainWindow::onConnectCameraClicked()
 
   if (cameraDevice && cameraDevice->connect())
   {
-    this->updateAcquisitionParameters(cameraDevice.data());
+    this->updateAcquisitionParameters(cameraDevice);
     // create TDirectory for camera data
     if (this->rootFile)
     {
@@ -364,25 +406,25 @@ void MainWindow::onConnectCameraClicked()
   }
   else
   {
-    QObject::disconnect(cameraDevice.data(), SIGNAL(logMessage(QString,QString,QColor)),
+    QObject::disconnect(cameraDevice, SIGNAL(logMessage(QString,QString,QColor)),
       this, SLOT(log(QString,QString,QColor)));
-    QObject::disconnect(cameraProfiles.data(), SIGNAL(logMessage(QString,QString,QColor)),
+    QObject::disconnect(cameraProfiles, SIGNAL(logMessage(QString,QString,QColor)),
       this, SLOT(log(QString,QString,QColor)));
     QObject::disconnect(this->ui->CheckBox_ShowCameraProfiles, SIGNAL(toggled(bool)),
-      cameraProfiles.data(), SLOT(setVisible(bool)));
-    QObject::disconnect(cameraDevice.data(), SIGNAL(initiationStarted()),
+      cameraProfiles, SLOT(setVisible(bool)));
+    QObject::disconnect(cameraDevice, SIGNAL(initiationStarted()),
       this, SLOT(onCameraInitiationStarted()));
-    QObject::disconnect(cameraDevice.data(), SIGNAL(initiationProgress(int)),
+    QObject::disconnect(cameraDevice, SIGNAL(initiationProgress(int)),
       this, SLOT(onCameraInitiationInProgress(int)));
-    QObject::disconnect(cameraDevice.data(), SIGNAL(initiationFinished()),
+    QObject::disconnect(cameraDevice, SIGNAL(initiationFinished()),
       this, SLOT(onCameraFirstContactFinished()));
-    QObject::disconnect(cameraDevice.data(), SIGNAL(commandWritten(QByteArray)),
+    QObject::disconnect(cameraDevice, SIGNAL(commandWritten(QByteArray)),
       this, SLOT(onCameraCommandWritten(QByteArray)));
-    QObject::disconnect(cameraDevice.data(), SIGNAL(firmwareCommandBufferIsReset()),
+    QObject::disconnect(cameraDevice, SIGNAL(firmwareCommandBufferIsReset()),
       this, SLOT(onCameraFirstContactFinished()));
-    QObject::disconnect(cameraDevice.data(), SIGNAL(acquisitionStarted()),
+    QObject::disconnect(cameraDevice, SIGNAL(acquisitionStarted()),
       this, SLOT(onCameraAcquisitionStarted()));
-    QObject::disconnect(cameraDevice.data(), SIGNAL(acquisitionFinished()),
+    QObject::disconnect(cameraDevice, SIGNAL(acquisitionFinished()),
       this, SLOT(onCameraAcquisitionFinished()));
 
     this->cameraConnectedFlag = false;
@@ -392,7 +434,7 @@ void MainWindow::onConnectCameraClicked()
     QMessageBox msgBox(this);
     msgBox.setModal(true);
     msgBox.setWindowTitle(tr("CameraProfile2D"));
-    msgBox.setText(tr("Unable to connect port %1.\n%2.").arg(commandDeviceName).arg(cameraDevice.data()->getCommandPortError()));
+    msgBox.setText(tr("Unable to connect port %1.\n%2.").arg(commandDeviceName).arg(cameraDevice->getCommandPortError()));
     msgBox.exec();
     ui->statusbar->showMessage(QObject::tr("Unable to connect camera"), 1000);
 
@@ -550,7 +592,7 @@ AbstractCamera* MainWindow::getCamera(const QString& cameraID) const
     return nullptr;
   }
   const CameraDeviceProfilesPair& pair = this->cameraDeviceProfilesMap[cameraID];
-  return pair.first.data();
+  return pair.first;
 }
 
 CameraProfilesDialog* MainWindow::getProfiles(const QString& cameraID) const
@@ -560,7 +602,7 @@ CameraProfilesDialog* MainWindow::getProfiles(const QString& cameraID) const
       return nullptr;
   }
   const CameraDeviceProfilesPair& pair = this->cameraDeviceProfilesMap[cameraID];
-  return pair.second.data();
+  return pair.second;
 }
 
 AbstractCamera* MainWindow::getCurrentCamera() const
@@ -894,7 +936,7 @@ void MainWindow::onCameraFirstContactFinished()
 
 void MainWindow::onOpenRootFileActionTriggered()
 {
-  QFileDialog* dialog = new QFileDialog(this, tr("Open ROOT File..."));
+  QScopedPointer< QFileDialog > dialog(new QFileDialog(this, tr("Open ROOT File...")));
   dialog->setAcceptMode(QFileDialog::AcceptOpen);
   dialog->setFileMode(QFileDialog::ExistingFile);
 
@@ -912,30 +954,27 @@ void MainWindow::onOpenRootFileActionTriggered()
       this->rootFileName = fileNames[0];
     }
   }
-  delete dialog;
 
   if (this->rootFileName.isEmpty())
   {
     return;
   }
 
-  QDialog* rootFileDialog = new RootFileCameraProfilesDialog(this->rootFileName, this);
-  connect(rootFileDialog, SIGNAL(logMessage(QString, QString, QColor)), this, SLOT(log(QString, QString, QColor)));
+  QScopedPointer< RootFileCameraProfilesDialog > rootFileDialog(new RootFileCameraProfilesDialog(this->rootFileName, this));
+  connect(rootFileDialog.get(), SIGNAL(logMessage(QString, QString, QColor)), this, SLOT(log(QString, QString, QColor)));
   if (rootFileDialog->exec())
   {
     ;
   }
-  delete rootFileDialog;
 }
 
 void MainWindow::onCameraSettingsActionTriggered()
 {
-  QDialog* settingsDialog = new SettingsDialog(this->getCurrentCamera(), this);
+  QScopedPointer< SettingsDialog > settingsDialog(new SettingsDialog(this->getCurrentCamera(), this));
   if (settingsDialog->exec())
   {
     ;
   }
-  delete settingsDialog;
 }
 
 void MainWindow::onHttpServerActionTriggered()
@@ -945,13 +984,18 @@ void MainWindow::onHttpServerActionTriggered()
 
   while (iter != cameraDeviceProfilesMap.end())
   {
-    QString id = iter.key();
+//    QString id = iter.key();
     CameraDeviceProfilesPair& deviceProfiles = iter.value();
-    CameraProfilesDialog* profilesDialog = deviceProfiles.second.data();
-    if (serverDialog)
-    {
-      serverDialog->registerHistograms(id, profilesDialog);
-    }
+    CameraProfilesDialog* profilesDialog = deviceProfiles.second;
+//    if (profilesDialog)
+//    {
+//      profilesDialog->addBeamProfilesToServer(serverDialog->getUpdatedServer().get());
+//    }
+    ++iter;
+//    if (serverDialog)
+//    {
+//      serverDialog->registerHistograms(id, profilesDialog);
+//    }
   }
   if (serverDialog->exec())
   {
@@ -965,16 +1009,58 @@ void MainWindow::onBeamActionTriggered()
   QString id_camera1 = this->ui->ComboBox_BeamPathCamera1->currentText();
   QString id_camera2 = this->ui->ComboBox_BeamPathCamera2->currentText();
 
-  QPointer< AbstractCamera > camera1 = this->getCamera(id_camera1);
-  QPointer< AbstractCamera > camera2 = this->getCamera(id_camera2);
+  AbstractCamera* camera1 = this->getCamera(id_camera1);
+  AbstractCamera* camera2 = this->getCamera(id_camera2);
 
-  BeamPathProfileDialog* dialog = new BeamPathProfileDialog(this);
-  dialog->setCamerasDevices(camera1, camera2);
-  if (dialog->exec())
+  CameraProfilesDialog* dialog1 = this->getProfiles(id_camera1);
+  CameraProfilesDialog* dialog2 = this->getProfiles(id_camera2);
+
+  if (!beamPathProfile)
   {
-    ;
+    beamPathProfile.reset(new BeamPathProfileDialog(this));
+    if (dialog1 && dialog2)
+    {
+      connect(dialog1, SIGNAL(profilesUpdated(const QString&)),
+        beamPathProfile.get(), SLOT(processCameraProfiles(const QString&)));
+      connect(dialog2, SIGNAL(profilesUpdated(const QString&)),
+        beamPathProfile.get(), SLOT(processCameraProfiles(const QString&)));
+    }
+    beamPathProfile->setCamerasDevices(camera1, camera2);
+    beamPathProfile->addBeamProfilesToServer(httpServer);
+    beamPathProfile->show();
   }
-  delete dialog;
+  if (beamPathProfile && beamPathProfile->isHidden())
+  {
+    beamPathProfile->show();
+    beamPathProfile->raise();
+  }
+}
+
+bool MainWindow::saveSettings(QSettings *settings)
+{
+  Q_UNUSED(settings);
+  return false;
+}
+
+bool MainWindow::loadSettings(QSettings *settings)
+{
+  if (!settings)
+  {
+    return false;
+  }
+  settings->beginGroup("RootHttpServer");
+  QString host = settings->value("host", "localhost").toString();
+  int port = settings->value("port", 8080).toInt();
+  bool connect = settings->value("connect-on-startup", true).toBool();
+  settings->endGroup();
+  if (connect)
+  {
+    QString hostPortString = host + QString(':') + QString::number(port);
+    QByteArray bytesString = hostPortString.toLatin1();
+//    this->httpServer = std::shared_ptr< THttpServer >(new THttpServer(bytesString.data()));
+    this->httpServer = std::shared_ptr< THttpServer >(new THttpServer("http:8080"));
+  }
+  return true;
 }
 
 QT_END_NAMESPACE

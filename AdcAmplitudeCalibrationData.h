@@ -93,11 +93,11 @@ bool ChipCapacityCalibrationData::checkCapacityTimeCalibrationIsPresent(int chip
   bool chipIsPresent = false;
   for (auto iter = chipCapacityCalibrationMap.begin(); iter != chipCapacityCalibrationMap.end(); ++iter)
   {
-    int chipNumber = (*iter).first;
-    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = (*iter).second;
+    int chipNumber = iter->first;
+    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = iter->second;
     for (auto it = capTimeCalibrationMap.begin(); it != capTimeCalibrationMap.end(); ++it)
     {
-      CapacityIntegrationTimeCodesPair capTimePair = (*it).first;
+      CapacityIntegrationTimeCodesPair capTimePair = it->first;
       capacityIsPresent = capTimePair.first == capacityCode;
       timeIsPresent = capTimePair.second == integrationTimeCode;
       if (capacityIsPresent && timeIsPresent)
@@ -122,10 +122,10 @@ ChipChannelCalibrationMap ChipCapacityCalibrationData::getCalibration(
   ChipChannelCalibrationMap map;
   for (auto iter = chipCapacityCalibrationMap.begin(); iter != chipCapacityCalibrationMap.end(); ++iter)
   {
-    int chipNumber = (*iter).first;
-    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = (*iter).second;
+    int chipNumber = iter->first;
+    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = iter->second;
     auto it = capTimeCalibrationMap.begin();
-    const struct ChipCalibrationData& calibData = (*it).second;
+    const struct ChipCalibrationData& calibData = it->second;
     auto getCalibrationVector = [calibData](ChipCapacityCalibrationData::CalibrationDataType type) -> const CalibrationVector&
     {
       switch (type)
@@ -162,12 +162,12 @@ ChipChannelCalibrationMap ChipCapacityCalibrationData::getCalibration(int capaci
   bool capacityIsPresent = false;
   for (auto iter = chipCapacityCalibrationMap.begin(); iter != chipCapacityCalibrationMap.end(); ++iter)
   {
-    int chipNumber = (*iter).first;
-    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = (*iter).second;
+    int chipNumber = iter->first;
+    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = iter->second;
     for (auto it = capTimeCalibrationMap.begin(); it != capTimeCalibrationMap.end(); ++it)
     {
-      CapacityIntegrationTimeCodesPair capTimePair = (*it).first;
-      const struct ChipCalibrationData& calibData = (*it).second;
+      CapacityIntegrationTimeCodesPair capTimePair = it->first;
+      const struct ChipCalibrationData& calibData = it->second;
       capacityIsPresent = capTimePair.first == capacityCode;
 
       auto getCalibrationVector = [calibData](ChipCapacityCalibrationData::CalibrationDataType type) -> const CalibrationVector&
@@ -212,12 +212,12 @@ ChipChannelCalibrationMap ChipCapacityCalibrationData::getCalibration(int capaci
   bool timeIsPresent = false;
   for (auto iter = chipCapacityCalibrationMap.begin(); iter != chipCapacityCalibrationMap.end(); ++iter)
   {
-    int chipNumber = (*iter).first;
-    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = (*iter).second;
+    int chipNumber = iter->first;
+    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = iter->second;
     for (auto it = capTimeCalibrationMap.begin(); it != capTimeCalibrationMap.end(); ++it)
     {
-      CapacityIntegrationTimeCodesPair capTimePair = (*it).first;
-      const struct ChipCalibrationData& calibData = (*it).second;
+      CapacityIntegrationTimeCodesPair capTimePair = it->first;
+      const struct ChipCalibrationData& calibData = it->second;
 
       capacityIsPresent = capTimePair.first == capacityCode;
       timeIsPresent = capTimePair.second == timeCode;

@@ -73,7 +73,7 @@ HttpServerDialog::HttpServerDialog(std::shared_ptr< THttpServer >& server, QWidg
 
   TCanvas* canvas = d->ui->RootCanvas_Latex->getCanvas();
   canvas->cd();
-  d->pad = std::unique_ptr< TPad >(new TPad("pLatex", "Grid", 0., 0., 1., 1.));
+  d->pad = std::unique_ptr< TPad >(new TPad("PadTable", "Grid", 0., 0., 1., 1.));
   d->pad->Draw();
 
   if (server)
@@ -82,7 +82,7 @@ HttpServerDialog::HttpServerDialog(std::shared_ptr< THttpServer >& server, QWidg
   }
   else
   {
-    d->httpServer = std::shared_ptr< THttpServer >(new THttpServer("http:8080?loopback"));
+    d->httpServer = std::shared_ptr< THttpServer >(new THttpServer("http:8080"));
 //    d->httpServer = std::shared_ptr< THttpServer >(new THttpServer("http:10.163.1.39:8080?loopback"));
 //    d->httpServer->SetJSROOT("https://jsroot.gsi.de/latest/");
 
@@ -138,10 +138,7 @@ HttpServerDialog::HttpServerDialog(std::shared_ptr< THttpServer >& server, QWidg
     d->pad->Modified();
     d->pad->Update();
 
-    d->httpServer->Register("/p1", d->pad.get());
-    TGraph* gr = new TGraph(10);
-    gr->SetName("gr1");
-    d->httpServer->Register("graphs/subfolder", gr);
+    d->httpServer->Register("/BeamPath", d->pad.get());
     d->httpServer->SetItemField("/","_monitoring","1000");
   }
   d->timer->setInterval(5000);
@@ -188,13 +185,13 @@ std::shared_ptr< THttpServer > HttpServerDialog::getUpdatedServer()
   return d->httpServer;
 }
 
-bool HttpServerDialog::registerHistograms(const QString& cameraID, CameraProfilesDialog* profilesDialog)
-{
-  Q_D(HttpServerDialog);
-  TGraph* verticalProfile;
-  TGraph* horizontalProfile;
-  TH2* pseudo2D;
-  profilesDialog->getProfiles(horizontalProfile, verticalProfile, pseudo2D);
+//bool HttpServerDialog::registerHistograms(const QString& cameraID, CameraProfilesDialog* profilesDialog)
+//{
+//  Q_D(HttpServerDialog);
+//  TGraph* verticalProfile;
+//  TGraph* horizontalProfile;
+//  TH2* pseudo2D;
+//  profilesDialog->getProfiles(horizontalProfile, verticalProfile, pseudo2D);
 
 /*
   return d->httpServer;
@@ -211,7 +208,7 @@ bool HttpServerDialog::registerHistograms(const QString& cameraID, CameraProfile
   serv->SetItemField("/","_drawitem","[hpxpy,hpx,Debug]");
   serv->SetItemField("/","_drawopt","col");
 */
-  return true;
-}
+//  return true;
+//}
 
 QT_END_NAMESPACE

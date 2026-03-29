@@ -64,9 +64,8 @@ int main(int argc, char **argv)
 
    // main window
    QScopedPointer< MainWindow > window(new MainWindow());
-   window->show();
-
    window->setWindowTitle(QString("ProfileCamera2D ") + QT_VERSION_STR);
+   window->show();
 
    QObject::connect(&qtApp, SIGNAL(lastWindowClosed()), &qtApp, SLOT(quit()));
    int res = qtApp.exec();

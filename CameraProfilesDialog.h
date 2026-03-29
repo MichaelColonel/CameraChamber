@@ -24,6 +24,8 @@
 
 #include "AbstractCamera.h"
 
+class THttpServer;
+
 QT_BEGIN_NAMESPACE
 
 class CameraProfilesDialogPrivate;
@@ -34,8 +36,9 @@ class CameraProfilesDialog : public QDialog
 public:
   explicit CameraProfilesDialog(const AbstractCamera::CameraDeviceData& cameraInfo, QWidget* parent = nullptr);
   virtual ~CameraProfilesDialog();
-  void setCameraDevice(QPointer< AbstractCamera > cam);
-  void getProfiles(TGraph* horiz, TGraph* vert, TH2* hist2d);
+  void setCameraDevice(AbstractCamera* cam);
+//  void getProfiles(TGraph* horiz, TGraph* vert, TH2* hist2d);
+  void addBeamProfilesToServer(THttpServer* server); // register TPad or TCanvas
 
 public Q_SLOTS:
   void onAcquisitionStarted();
