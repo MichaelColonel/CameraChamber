@@ -7,6 +7,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+include_directories("rapidjson/include")
+
 find_package(ROOT REQUIRED)
 include(${ROOT_USE_FILE})
 

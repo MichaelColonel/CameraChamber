@@ -10,8 +10,8 @@
     9, 10, 11, 12, 25, 26, 27, 28, 13, 14, 15, 16, 29, 30, 31, 32, 17, 18, 19,
     20, 1, 2, 3, 4, 21, 22, 23, 24, 5, 6, 7, 8
   ],
-  "VerticalChips": [3, 2, 1, 10, 11, 12],
-  "HorizontalChips": [7, 8, 9, 6, 5, 4],
+  "VerticalChips": [3, 2, 1, 7, 8, 9],
+  "HorizontalChips": [10, 11, 12, 6, 5, 4],
   "Chips": [
     {
       "Position": 1,
@@ -72,6 +72,16 @@
       "Position": 12,
       "Name": "3.4",
       "ReverseChannels": 1
+    }
+  ],
+  "BrokenChipChannelsStrips": [
+    {
+      "Chip": 1,
+      "ChannelsStrips": [ 25 ]
+    },
+    {
+      "Chip": 6,
+      "ChannelsStrips": [ 3 ]
     }
   ]
 }

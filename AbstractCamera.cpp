@@ -18,8 +18,8 @@
  */
 
 // RapidJSON includes
-#include <rapidjson/include/rapidjson/document.h>     // rapidjson's DOM-style API
-#include <rapidjson/include/rapidjson/filereadstream.h>
+#include <rapidjson/document.h>     // rapidjson's DOM-style API
+#include <rapidjson/filereadstream.h>
 
 #include "AbstractCamera.h"
 #include "AdcAmplitudeCalibrationData.h"
@@ -1047,6 +1047,7 @@ bool AbstractCamera::loadCameraData(const QString &cameraDirectory, int capacity
     {
       int chip = -1;
       std::vector< int > channelsStrips;
+      channelsStrips.reserve(CHANNELS_PER_CHIP);
       for (rapidjson::Value::ConstMemberIterator iter = brokenStrips[i].MemberBegin();
         iter != brokenStrips[i].MemberEnd(); ++iter)
       {
@@ -1061,7 +1062,6 @@ bool AbstractCamera::loadCameraData(const QString &cameraDirectory, int capacity
           const rapidjson::Value& channelsStripsValue = iter->value;
           if (channelsStripsValue.IsArray())
           {
-            channelsStrips.reserve(channelsStripsValue.Size());
             for (rapidjson::SizeType j = 0; j < channelsStripsValue.Size(); j++)
             {
               channelsStrips.push_back(channelsStripsValue[j].GetInt());
@@ -1069,7 +1069,7 @@ bool AbstractCamera::loadCameraData(const QString &cameraDirectory, int capacity
           }
         }
       }
-      if (chip > 1 && channelsStrips.size())
+      if (chip > 0 && channelsStrips.size())
       {
         d->chipChannelsStripsBrokenMap.insert({chip, channelsStrips});
       }

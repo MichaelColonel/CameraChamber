@@ -96,6 +96,9 @@
           <property name="text">
            <string>Beam path calculation</string>
           </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
          </widget>
         </item>
         <item row="1" column="0">
@@ -117,6 +120,9 @@
          <widget class="QPushButton" name="PushButton_CalibrationCalculation">
           <property name="text">
            <string>Calibration calculation</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -339,6 +345,9 @@
          <widget class="QPushButton" name="PushButton_ScanningCalculation">
           <property name="text">
            <string>Scanning calculation</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
           </property>
          </widget>
         </item>

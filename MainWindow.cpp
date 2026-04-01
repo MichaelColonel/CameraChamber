@@ -31,8 +31,8 @@
 #include "ui_MainWindow.h"
 
 // RapidJSON includes
-#include <rapidjson/include/rapidjson/document.h>     // rapidjson's DOM-style API
-#include <rapidjson/include/rapidjson/filereadstream.h>
+#include <rapidjson/document.h>     // rapidjson's DOM-style API
+#include <rapidjson/filereadstream.h>
 
 #include <QTextCharFormat>
 #include <QPlainTextEdit>
@@ -48,6 +48,9 @@
 
 #include <TROOT.h>
 #include <TTree.h>
+#include <TH1F.h>
+#include <TCanvas.h>
+#include <TF1.h>
 
 #include "FullCamera.h"
 #include "Camera2.h"
@@ -203,6 +206,9 @@ MainWindow::MainWindow(QWidget *parent)
     this, SLOT(onHttpServerActionTriggered()));
   QObject::connect(this->ui->actionBeam, SIGNAL(triggered()),
     this, SLOT(onBeamActionTriggered()));
+
+  QObject::connect(this->ui->PushButton_Test, SIGNAL(clicked()),
+    this, SLOT(onTestClicked()));
 
   QObject::connect(this->ui->actionExit, &QAction::triggered, [this](){ this->close(); });
 
@@ -1061,6 +1067,29 @@ bool MainWindow::loadSettings(QSettings *settings)
     this->httpServer = std::shared_ptr< THttpServer >(new THttpServer("http:8080"));
   }
   return true;
+}
+
+void MainWindow::onTestClicked()
+{
+  auto hist = new TH1F("gaus_standalone","Example of standalone TCanvas", 100, -5, 5);
+  hist->FillRandom("gaus", 10000);
+  hist->SetDirectory(nullptr);
+  Double_t m = hist->GetMaximum();
+  hist->Scale(100. / m);
+
+  auto canvas = new TCanvas("standalone", "Standalone canvas");
+  canvas->cd();
+  auto form = new TF1("prof", "gaus", -3., 3.);
+  form->SetParameter(0, 100.);
+  form->SetParameter(1, 0.0);
+  form->SetParameter(2, 1.0);
+  hist->Fit("prof");
+
+  hist->Draw("hist");
+  form->Draw("SAME");
+
+  canvas->Modified();
+  canvas->Update();
 }
 
 QT_END_NAMESPACE

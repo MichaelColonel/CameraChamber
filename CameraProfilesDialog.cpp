@@ -354,6 +354,12 @@ CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceDat
     this, SLOT(onSignalBeginChanged(double)));
   QObject::connect(d->ui->RangeWidget_Signal, SIGNAL(maximumValueChanged(double)),
     this, SLOT(onSignalEndChanged(double)));
+
+  {
+    QSignalBlocker block(d->ui->RangeWidget_Signal);
+    d->ui->RangeWidget_Signal->setMinimumValue(200.);
+    d->ui->RangeWidget_Signal->setMaximumValue(1100.);
+  }
 }
 
 CameraProfilesDialog::~CameraProfilesDialog()
