@@ -498,13 +498,13 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
     double sigDispA = rawInfo.SigMom2A - rawInfo.SigMeanA * rawInfo.SigMeanA;
     double signalA = rawInfo.SigMeanA - rawInfo.PedMeanA;
     double skoA = std::sqrt(pedDispA + sigDispA);
+    double meanRawSignalNoAmp = (2. * rawInfo.SignalNoAmp) / (rawInfo.SigCountA + rawInfo.SigCountB);
+    double meanCalibSignalNoAmp = (2. * adcCalibInfo.SignalNoAmp) / (adcCalibInfo.SigCountA + adcCalibInfo.SigCountB);
     if (res)
     {
-      double meanRawSignal = (rawInfo.SigMeanA - rawInfo.PedMeanA + rawInfo.SigMeanB - rawInfo.PedMeanB) / 2.;
-      double meanCalibSignal = (adcCalibInfo.SigMeanA - adcCalibInfo.PedMeanA + adcCalibInfo.SigMeanB - adcCalibInfo.PedMeanB) / 2.;
       dataFileStream << qSetFieldWidth(10) \
         << chipChannelPair.first << ' ' << chipChannelPair.second << ' ' \
-        << meanRawSignal << ' ' << meanCalibSignal << ' ' \
+        << meanRawSignalNoAmp << ' ' << meanCalibSignalNoAmp << ' ' \
         << signalA << ' ' << skoA << '\n';
     }
   }
