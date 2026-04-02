@@ -45,32 +45,32 @@
     },
     {
       "Position": 7,
-      "Name": "3.10",
-      "ReverseChannels": 1
-    },
-    {
-      "Position": 8,
-      "Name": "3.8",
-      "ReverseChannels": 1
-    },
-    {
-      "Position": 9,
-      "Name": "3.14",
-      "ReverseChannels": 1
-    },
-    {
-      "Position": 10,
       "Name": "3.7",
       "ReverseChannels": 1
     },
     {
-      "Position": 11,
+      "Position": 8,
       "Name": "3.5",
       "ReverseChannels": 1
     },
     {
-      "Position": 12,
+      "Position": 9,
       "Name": "3.4",
+      "ReverseChannels": 1
+    },
+    {
+      "Position": 10,
+      "Name": "3.10",
+      "ReverseChannels": 1
+    },
+    {
+      "Position": 11,
+      "Name": "3.8",
+      "ReverseChannels": 1
+    },
+    {
+      "Position": 12,
+      "Name": "3.14",
       "ReverseChannels": 1
     }
   ],
@@ -78,6 +78,10 @@
     {
       "Chip": 1,
       "ChannelsStrips": [ 25 ]
+    },
+    {
+      "Chip": 4,
+      "ChannelsStrips": [ 18 ]
     },
     {
       "Chip": 6,

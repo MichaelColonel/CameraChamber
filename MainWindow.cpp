@@ -246,9 +246,9 @@ MainWindow::~MainWindow()
 void
 MainWindow::closeEvent(QCloseEvent* event)
 {
-  int res = QMessageBox::warning( this, tr("Close program"), \
+  int res = QMessageBox::warning(this, tr("Close program"), \
     tr("Acquisition is still active.\nDo you want to quit program?"), \
-      QMessageBox::Yes, QMessageBox::No | QMessageBox::Default);
+      QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
 
   if (res == QMessageBox::Yes)
   {

@@ -752,9 +752,11 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
     const ChannelInfo& adcCalibInfo = infoPair.second;
     if (res)
     {
+      double meanRawSignal = (rawInfo.SigMeanA - rawInfo.PedMeanA + rawInfo.SigMeanB - rawInfo.PedMeanB) / 2.;
+      double meanCalibSignal = (adcCalibInfo.SigMeanA - adcCalibInfo.PedMeanA + adcCalibInfo.SigMeanB - adcCalibInfo.PedMeanB) / 2.;
       dataFileStream << qSetFieldWidth(10) \
         << chipChannelPair.first << ' ' << chipChannelPair.second << ' ' \
-        << rawInfo.SignalNoAmp << ' ' << adcCalibInfo.SignalNoAmp << '\n';
+        << meanRawSignal << ' ' << meanCalibSignal << '\n';
     }
   }
   dataFileStream.flush();

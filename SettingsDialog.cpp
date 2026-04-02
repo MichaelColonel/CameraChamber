@@ -226,7 +226,7 @@ SettingsDialog::SettingsDialog(AbstractCamera* cameraDevice, QWidget *parent)
     d->ui->SliderWidget_Chip->setValue(refAdcVer.first);
     d->ui->SliderWidget_Channel->setValue(refAdcVer.second);
   }
-  connect(d->ui->ComboBox_Camera, SIGNAL(currentIndexChanged(QString)),
+  connect(d->ui->ComboBox_Camera, SIGNAL(currentTextChanged(QString)),
     this, SLOT(onCameraIdChanged(QString)));
   connect(d->ui->ButtonGroup_ProfileType, SIGNAL(buttonClicked(QAbstractButton*)),
     this, SLOT(onProfileTypeButtonChanged(QAbstractButton*)));

@@ -278,7 +278,7 @@ void FullCamera::processDataCounts(bool splitData,
     const ChipChannelPair& chipChannelPair = chipChannelInfoPair.first;
     const ChannelInfoPair& channelInfoPair = chipChannelInfoPair.second;
     const ChannelInfo& calibInfo = channelInfoPair.second;
-    const ChannelInfo& info = channelInfoPair.first;
+///    const ChannelInfo& info = channelInfoPair.first;
     int chipStrip = -1; // valid value from 0...PROFILE_STRIPS-1
     auto findChipChannelArray = [chipChannelPair](const std::array< ChipChannelPair, PROFILE_STRIPS >& chipStripMask) -> int
     {
@@ -311,22 +311,22 @@ void FullCamera::processDataCounts(bool splitData,
         chipStrip = findChipChannelVector(vertChipChannels);
       }
       // fill vertical profile
-      double v = calibInfo.SignalNoAmp;
+      double v = calibInfo.Signal;
       if (chipStrip >= 0 && chipStrip < PROFILE_STRIPS)
       {
         switch (profileType)
         {
         case ProfileRepresentationType::MEAN:
-          v = 0.5 * calibInfo.SignalNoAmp / (calibInfo.SigCountA + calibInfo.SigCountB);
+          v = 0.5 * calibInfo.Signal / (calibInfo.SigCountA + calibInfo.SigCountB);
 //          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         case ProfileRepresentationType::CHARGE:
-          v = IntegralAdcSignalToCharge * calibInfo.SignalNoAmp;
+          v = IntegralAdcSignalToCharge * calibInfo.Signal;
 //          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         case ProfileRepresentationType::INTEGRAL:
         default:
-          v = calibInfo.SignalNoAmp;
+          v = calibInfo.Signal;
 //          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         }
@@ -344,25 +344,22 @@ void FullCamera::processDataCounts(bool splitData,
         chipStrip = findChipChannelVector(horizChipChannels);
       }
       // fill horizontal profile
-      double v = calibInfo.SignalNoAmp;
+      double v = calibInfo.Signal;
       if (chipStrip >= 0 && chipStrip < PROFILE_STRIPS)
       {
         switch (profileType)
         {
         case ProfileRepresentationType::MEAN:
-          v = 0.5 * info.SignalNoAmp / (info.SigCountA + info.SigCountB);
-///          v = 0.5 * calibInfo.Signal / (calibInfo.SigCountA + calibInfo.SigCountB);
+          v = 0.5 * calibInfo.Signal / (calibInfo.SigCountA + calibInfo.SigCountB);
 //          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         case ProfileRepresentationType::CHARGE:
-          v = IntegralAdcSignalToCharge * info.SignalNoAmp;
-///          v = IntegralAdcSignalToCharge * calibInfo.Signal;
+          v = IntegralAdcSignalToCharge * calibInfo.Signal;
 //          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         case ProfileRepresentationType::INTEGRAL:
         default:
-          v = info.SignalNoAmp;
-///          v = calibInfo.Signal;
+          v = calibInfo.Signal;
 //          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         }
