@@ -11,7 +11,7 @@
     20, 1, 2, 3, 4, 21, 22, 23, 24, 5, 6, 7, 8
   ],
   "VerticalChips": [3, 2, 1, 7, 8, 9],
-  "HorizontalChips": [10, 11, 12, 6, 5, 4],
+  "HorizontalChips": [12, 11, 10, 4, 5, 6],
   "Chips": [
     {
       "Position": 1,
@@ -31,17 +31,17 @@
     {
       "Position": 4,
       "Name": "3.46",
-      "ReverseChannels": 0
+      "ReverseChannels": 1
     },
     {
       "Position": 5,
       "Name": "3.38",
-      "ReverseChannels": 0
+      "ReverseChannels": 1
     },
     {
       "Position": 6,
       "Name": "3.45",
-      "ReverseChannels": 0
+      "ReverseChannels": 1
     },
     {
       "Position": 7,
@@ -61,31 +61,23 @@
     {
       "Position": 10,
       "Name": "3.40",
-      "ReverseChannels": 1
+      "ReverseChannels": 0
     },
     {
       "Position": 11,
       "Name": "3.36",
-      "ReverseChannels": 1
+      "ReverseChannels": 0
     },
     {
       "Position": 12,
       "Name": "3.39",
-      "ReverseChannels": 1
+      "ReverseChannels": 0
     }
   ],
   "BrokenChipChannelsStrips": [
     {
-      "Chip": 1,
-      "ChannelsStrips": [ 25 ]
-    },
-    {
-      "Chip": 4,
-      "ChannelsStrips": [ 18 ]
-    },
-    {
-      "Chip": 6,
-      "ChannelsStrips": [ 3 ]
+      "Chip": 12,
+      "ChannelsStrips": [ 11 ]
     }
   ]
 }

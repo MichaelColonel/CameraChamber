@@ -63,12 +63,13 @@ bool ChipCapacityCalibrationData::checkCapacityCalibrationIsPresent(int chip, in
   bool chipIsPresent = false;
   for (auto iter = chipCapacityCalibrationMap.begin(); iter != chipCapacityCalibrationMap.end(); ++iter)
   {
-    int chipNumber = (*iter).first;
-    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = (*iter).second;
+    int chipNumber = iter->first;
+    const CapacityIntegrationTimeCalibrationMap& capTimeCalibrationMap = iter->second;
     for (auto it = capTimeCalibrationMap.begin(); it != capTimeCalibrationMap.end(); ++it)
     {
-      CapacityIntegrationTimeCodesPair capTimePair = (*it).first;
+      CapacityIntegrationTimeCodesPair capTimePair = it->first;
       capacityIsPresent = capTimePair.first == capacityCode;
+
       if (capacityIsPresent)
       {
         break;
@@ -76,6 +77,7 @@ bool ChipCapacityCalibrationData::checkCapacityCalibrationIsPresent(int chip, in
     }
     chipIsPresent = chipNumber == chip;
     result == capacityIsPresent && chipIsPresent;
+
     if (result)
     {
       break;

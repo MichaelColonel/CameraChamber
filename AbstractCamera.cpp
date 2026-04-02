@@ -1729,20 +1729,20 @@ void AbstractCamera::processDataCounts(bool splitData,
   }
 
   ChipCapacityCalibrationData adcData(d->chipCalibrationMap);
-  bool foundLinA = false;
-  bool foundLinB = false;
-  bool foundAmpl = false;
+  bool foundCodeLinA = false, foundTimeLinA = false;
+  bool foundCodeLinB = false, foundTimeLinB = false;
+  bool foundCodeAmpl = false, foundTimeAmpl = false;
 //  bool integrationTimeIsFound = false;
   const int& capCode = d->cameraResponse.CapacityCode;
-//  int& timeCode = d->cameraResponse.IntegrationTimeCode;
+  int& timeCode = d->cameraResponse.IntegrationTimeCode;
 
   ChipChannelCalibrationMap chipChannelCalibrationA;
   ChipChannelCalibrationMap chipChannelCalibrationB;
   ChipChannelCalibrationMap chipChannelCalibrationAmplitude;
-  chipChannelCalibrationA = adcData.getAdcLinearCalibrationA(capCode, foundLinA);
-  chipChannelCalibrationB = adcData.getAdcLinearCalibrationB(capCode, foundLinB);
-  chipChannelCalibrationAmplitude = adcData.getAmpUniformCalibration(capCode, foundAmpl);
-  if (foundLinA && foundLinB && foundAmpl)
+  chipChannelCalibrationA = adcData.getAdcLinearCalibrationA(capCode, timeCode, foundCodeLinA, foundTimeLinA);
+  chipChannelCalibrationB = adcData.getAdcLinearCalibrationB(capCode, timeCode, foundCodeLinB, foundTimeLinB);
+  chipChannelCalibrationAmplitude = adcData.getAmpUniformCalibration(capCode, timeCode, foundCodeAmpl, foundTimeAmpl);
+  if (!chipChannelCalibrationA.empty() && !chipChannelCalibrationB.empty() && !chipChannelCalibrationAmplitude.empty())
   {
 //    qDebug() << Q_FUNC_INFO << ": Calibration data for chip capacity is found";
     emit logMessage(tr("Calibration data for chip capacity is found"), d->cameraData.ID, Qt::green);
@@ -1758,7 +1758,7 @@ void AbstractCamera::processDataCounts(bool splitData,
   if (chipChannelCalibrationA.empty() || chipChannelCalibrationB.empty() || chipChannelCalibrationAmplitude.empty())
   {
 //    qDebug() << Q_FUNC_INFO << ": Calibration data is empty, unity data must be loaded";
-    emit logMessage(tr("Calibration data is empty, unity data must be loaded"), d->cameraData.ID, Qt::yellow);
+    emit logMessage(tr("Calibration data is empty, unity data must be loaded"), d->cameraData.ID, Qt::red);
   }
   const ChipChannelPair& refAdcV = d->refAdcChipChannelVertical;
   const ChipChannelPair& refAdcH = d->refAdcChipChannelHorizontal;
