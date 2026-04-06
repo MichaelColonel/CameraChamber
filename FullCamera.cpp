@@ -406,17 +406,29 @@ void FullCamera::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool 
 
   if (vertProfile)
   {
+    double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
+    std::vector< double > vertProfDataCopy(vertProfData);
+    if (this->getCameraData().ID == "Camera4")
+    {
+      std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
+    }
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i]), Double_t(vertProfData[i]));
+      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
     }
   }
 
   if (horizProf)
   {
+    double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
+    std::vector< double > horizProfDataCopy(horizProfData);
+    if (this->getCameraData().ID == "Camera4")
+    {
+      std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+    }
     for (Int_t i = 0; i < horizProfData.size(); ++i)
     {
-      horizProfile->SetPoint(i, Double_t(horizProfStrips[i]), Double_t(horizProfData[i]));
+      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfDataCopy[i]));
     }
   }
 }
@@ -430,10 +442,20 @@ TH2* FullCamera::createProfile2D(bool integral)
 
   int xBins = static_cast< int >(horizProfData.size());
   std::vector< double > horiz = AbstractCamera::GenerateFullProfileStripsBinsBorders(xBins + 1);
+
+  double halfSizeHoriz = *std::max_element(horiz.begin(), horiz.end()) / 2.;
+  auto shiftHoriz = [halfSizeHoriz](double& v) { v -= halfSizeHoriz; };
+  std::for_each(horiz.begin(), horiz.end(), shiftHoriz);
+
   const double* xBinsBorders = horiz.data();
 
   int yBins = static_cast< int >(vertProfData.size());
   std::vector< double > vert = AbstractCamera::GenerateFullProfileStripsBinsBorders(yBins + 1);
+
+  double halfSizeVert = *std::max_element(vert.begin(), vert.end()) / 2.;
+  auto shiftVert = [halfSizeVert](double& v) { v -= halfSizeVert; };
+  std::for_each(vert.begin(), vert.end(), shiftVert);
+
   const double* yBinsBorders = vert.data();
 
   AbstractCamera::CameraDeviceData cameraData = this->getCameraData();
@@ -457,15 +479,23 @@ void FullCamera::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
   const std::vector< double >& vertProfData = this->getVerticalProfile();
   const std::vector< double >& horizProfData = this->getHorizontalProfile();
 
+  std::vector< double > vertProfDataCopy(vertProfData);
+  std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
+  if (this->getCameraData().ID == "Camera4")
+  {
+    std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
+  }
   if (pseudo2D)
   {
     pseudo2D->Reset();
     for (Int_t row = 0; row < vertProfData.size(); ++row)
     {
+      Double_t centerY = pseudo2D->GetYaxis()->GetBinCenter(row + 1);
       for (Int_t column = 0; column < horizProfData.size(); ++column)
       {
-        Double_t pixel = horizProfData[column] * vertProfData[row];
-        pseudo2D->Fill(column, (horizProfData.size() - 1) - row, pixel);
+        Double_t centerX = pseudo2D->GetXaxis()->GetBinCenter(column + 1);
+        Double_t pixel = horizProfData[column] * vertProfDataCopy[row];
+        pseudo2D->Fill(centerX, centerY, pixel);
       }
     }
   }

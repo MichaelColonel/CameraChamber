@@ -29,11 +29,13 @@
 #include <TH2.h>
 #include <TLatex.h>
 #include <TH1.h>
+#include <TF1.h>
 #include <TPad.h>
 #include <TMultiGraph.h>
 #include <TStyle.h>
 
 #include <QElapsedTimer>
+#include <QTimer>
 
 #include "AbstractCamera.h"
 #include "BeamPathTableModel.h"
@@ -85,7 +87,9 @@ public:
 
   std::weak_ptr< THttpServer > httpServer;
   std::unique_ptr< TLatex > latexBeamPathTable;
+  std::unique_ptr< TLatex > latexTestMessage;
 
+  std::unique_ptr< TPad > padTestMessage;
   std::unique_ptr< TPad > padBeamPathTable;
   std::unique_ptr< TPad > padCalibration2D;
   std::unique_ptr< TPad > padScanning2D;
@@ -103,6 +107,7 @@ public:
   std::unique_ptr< TLine > lineScanningHorizontalEnd;
 
   QScopedPointer< BeamPathTableModel > beamPathModel;
+  QScopedPointer< QTimer > timer;
   static constexpr std::array< Int_t, BEAM_PATH_CUSTOM_COLORS_PALETTE > calibrationScanningPalette{
     kBlack, // (< 0)
     kBlue + 4, // (5-0)
@@ -131,7 +136,8 @@ BeamPathProfileDialogPrivate::BeamPathProfileDialogPrivate(BeamPathProfileDialog
   :
   q_ptr(&object),
   ui(new Ui::BeamPathProfileDialog),
-  beamPathModel(new BeamPathTableModel(&object))
+  beamPathModel(new BeamPathTableModel(&object)),
+  timer(new QTimer(&object))
 {
 }
 
@@ -419,8 +425,36 @@ void BeamPathProfileDialogPrivate::calculateBeamPath()
     return;
   }
 
+  const int offset = 200;
+  const int integInterval = 100;
+  constexpr int steps = 9;
+  constexpr std::array< double, steps > pos{.7, .65, .6, .55, .6, .45, .4, .35, .3 };
+  BeamPathMap beamPathMap;
+
+  this->padBeamPathTable->cd();
+  this->padBeamPathTable->Clear();
+  this->latexBeamPathTable = std::unique_ptr< TLatex >(new TLatex);
+  QDateTime dt = QDateTime::currentDateTime();
+  QString msg = QObject::tr("Местное время -- %1").arg(dt.toString("hh:mm:ss"));
+  std::string msgBytes = msg.toStdString();
+  const char* str = msgBytes.data();
+
+  this->latexBeamPathTable->DrawLatex(.2, 0.95, str);
+
+  this->latexBeamPathTable->SetTextSize(0.05);
+  this->latexBeamPathTable->SetTextAlign(13);  //align at top
+  this->latexBeamPathTable->DrawLatex(.0, .9,"Время, (мс)");
+  this->latexBeamPathTable->DrawLatex(.3, .9,"ПР1 / Стена");
+  this->latexBeamPathTable->DrawLatex(.6, .9,"ПР2 / Изоцентр");
+
+  this->latexBeamPathTable->DrawLatex(.0,.85,"           ");
+  this->latexBeamPathTable->DrawLatex(.3,.85,"X,Y,D (мм)");
+  this->latexBeamPathTable->DrawLatex(.6,.85,"X,Y,D (мм)");
+
   if (!this->camera1() || !this->camera2() || !this->areCamerasProfilesReady())
   {
+    this->padBeamPathTable->Modified();
+    this->padBeamPathTable->Update();
     return;
   }
 
@@ -428,25 +462,6 @@ void BeamPathProfileDialogPrivate::calculateBeamPath()
   this->camera1()->getPedestalSignalGate(gatecam1);
   std::array< int, 4 > gatecam2;
   this->camera2()->getPedestalSignalGate(gatecam2);
-
-  const int offset = 200;
-  const int integInterval = 100;
-  constexpr int steps = 9;
-  constexpr std::array< double, steps > pos{.8, .75, .7, .65, .6, .55, .5, .45, .4 };
-  BeamPathMap beamPathMap;
-
-  this->padBeamPathTable->cd();
-  this->padBeamPathTable->Clear();
-  this->latexBeamPathTable = std::unique_ptr< TLatex >(new TLatex);
-  this->latexBeamPathTable->SetTextSize(0.05);
-  this->latexBeamPathTable->SetTextAlign(13);  //align at top
-  this->latexBeamPathTable->DrawLatex(.0, 1.,"Время, (мс)");
-  this->latexBeamPathTable->DrawLatex(.3, 1.,"ПР1 / Стена");
-  this->latexBeamPathTable->DrawLatex(.6, 1.,"ПР2 / Изоцентр");
-
-  this->latexBeamPathTable->DrawLatex(.0,.95,"           ");
-  this->latexBeamPathTable->DrawLatex(.3,.95,"X,Y,D (мм)");
-  this->latexBeamPathTable->DrawLatex(.6,.95,"X,Y,D (мм)");
 
   this->latexBeamPathTable->SetTextSize(0.04);
   for (int i = 0; i < steps; ++i)
@@ -709,6 +724,10 @@ BeamPathProfileDialog::BeamPathProfileDialog(QWidget *parent) :
 
   gStyle->SetPalette(d->calibrationScanningPalette.size(),
     const_cast< Int_t* >(d->calibrationScanningPalette.data()));
+
+  QObject::connect(d->timer.get(), SIGNAL(timeout()), this, SLOT(onTimeoutUpdate()));
+  d->timer->setInterval(1000);
+  d->timer->start();
 }
 
 BeamPathProfileDialog::~BeamPathProfileDialog()
@@ -863,6 +882,7 @@ void BeamPathProfileDialog::onScanHomoHorizonalBeginChanged(double pos)
   d->padScanning2D->Modified();
 }
 
+
 void BeamPathProfileDialog::onScanHomoHorizonalEndChanged(double pos)
 {
   Q_D(BeamPathProfileDialog);
@@ -948,6 +968,12 @@ void BeamPathProfileDialog::onScanHomoVerticalEndChanged(double pos)
 
   d->padScanning2D->Update();
   d->padScanning2D->Modified();
+}
+
+void BeamPathProfileDialog::onTimeoutUpdate()
+{
+  Q_D(BeamPathProfileDialog);
+  d->calculateBeamPath();
 }
 
 QT_END_NAMESPACE

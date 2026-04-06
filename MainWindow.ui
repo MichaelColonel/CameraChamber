@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>398</width>
-    <height>870</height>
+    <height>899</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,58 +16,6 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="3" column="0">
-     <widget class="ctkCollapsibleButton" name="CollapsibleButton_RunParameters">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="text">
-       <string>Run parameters</string>
-      </property>
-      <property name="collapsed">
-       <bool>true</bool>
-      </property>
-      <layout class="QGridLayout" name="gridLayout_5">
-       <item row="0" column="0">
-        <layout class="QGridLayout" name="gridLayout_4">
-         <item row="0" column="0">
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Run number:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QSpinBox" name="SpinBox_RunNumber"/>
-         </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Spill prefix:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QLineEdit" name="LineEdit_SpillPrefix"/>
-         </item>
-        </layout>
-       </item>
-       <item row="1" column="0">
-        <spacer name="verticalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="4" column="0">
      <widget class="ctkCollapsibleButton" name="CollapsibleButton_BeamPathAndProfiles">
       <property name="text">
        <string>Beam path and profiles</string>
@@ -577,7 +525,7 @@
       </layout>
      </widget>
     </item>
-    <item row="5" column="0">
+    <item row="4" column="0">
      <widget class="ctkCollapsibleGroupBox" name="CollapsibleGroupBox_Log">
       <property name="title">
        <string>Log</string>
@@ -595,7 +543,59 @@
       </layout>
      </widget>
     </item>
-    <item row="6" column="0">
+    <item row="2" column="0">
+     <widget class="ctkCollapsibleButton" name="CollapsibleButton_RunParameters">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="text">
+       <string>Run parameters</string>
+      </property>
+      <property name="collapsed">
+       <bool>true</bool>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_5">
+       <item row="0" column="0">
+        <layout class="QGridLayout" name="gridLayout_4">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Run number:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QSpinBox" name="SpinBox_RunNumber"/>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Spill prefix:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="LineEdit_SpillPrefix"/>
+         </item>
+        </layout>
+       </item>
+       <item row="1" column="0">
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="5" column="0">
      <spacer name="verticalSpacer">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
@@ -607,13 +607,6 @@
        </size>
       </property>
      </spacer>
-    </item>
-    <item row="2" column="0">
-     <widget class="QPushButton" name="PushButton_Test">
-      <property name="text">
-       <string>Test</string>
-      </property>
-     </widget>
     </item>
    </layout>
   </widget>

@@ -56,6 +56,7 @@ public Q_SLOTS:
   void onScanHomoHorizonalEndChanged(double pos);
   void onScanHomoVerticalBeginChanged(double pos);
   void onScanHomoVerticalEndChanged(double pos);
+  void onTimeoutUpdate();
 
 protected:
   QScopedPointer< BeamPathProfileDialogPrivate > d_ptr;

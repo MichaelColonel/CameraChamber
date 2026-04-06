@@ -207,9 +207,6 @@ MainWindow::MainWindow(QWidget *parent)
   QObject::connect(this->ui->actionBeam, SIGNAL(triggered()),
     this, SLOT(onBeamActionTriggered()));
 
-  QObject::connect(this->ui->PushButton_Test, SIGNAL(clicked()),
-    this, SLOT(onTestClicked()));
-
   QObject::connect(this->ui->actionExit, &QAction::triggered, [this](){ this->close(); });
 
   oldMessageHandler = qInstallMessageHandler(&messageHandler);
@@ -270,16 +267,16 @@ MainWindow::closeEvent(QCloseEvent* event)
         camera->saveSettings(&settings);
         camera->disconnect();
       }
+      if (camera)
+      {
+        delete camera;
+        camera = nullptr;
+      }
       if (dialog)
       {
         dialog->close();
         delete dialog;
         dialog = nullptr;
-      }
-      if (camera)
-      {
-        delete camera;
-        camera = nullptr;
       }
     }
     if (this->rootFile && this->rootFile->IsOpen())
@@ -1063,33 +1060,10 @@ bool MainWindow::loadSettings(QSettings *settings)
   {
     QString hostPortString = host + QString(':') + QString::number(port);
     QByteArray bytesString = hostPortString.toLatin1();
-//    this->httpServer = std::shared_ptr< THttpServer >(new THttpServer(bytesString.data()));
-    this->httpServer = std::shared_ptr< THttpServer >(new THttpServer("http:8080"));
+    this->httpServer = std::shared_ptr< THttpServer >(new THttpServer(bytesString.data()));
+//    this->httpServer = std::shared_ptr< THttpServer >(new THttpServer("http:8080"));
   }
   return true;
-}
-
-void MainWindow::onTestClicked()
-{
-  auto hist = new TH1F("gaus_standalone","Example of standalone TCanvas", 100, -5, 5);
-  hist->FillRandom("gaus", 10000);
-  hist->SetDirectory(nullptr);
-  Double_t m = hist->GetMaximum();
-  hist->Scale(100. / m);
-
-  auto canvas = new TCanvas("standalone", "Standalone canvas");
-  canvas->cd();
-  auto form = new TF1("prof", "gaus", -3., 3.);
-  form->SetParameter(0, 100.);
-  form->SetParameter(1, 0.0);
-  form->SetParameter(2, 1.0);
-  hist->Fit("prof");
-
-  hist->Draw("hist");
-  form->Draw("SAME");
-
-  canvas->Modified();
-  canvas->Update();
 }
 
 QT_END_NAMESPACE

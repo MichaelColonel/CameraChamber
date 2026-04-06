@@ -81,7 +81,7 @@
     },
     {
       "Chip": 4,
-      "ChannelsStrips": [ 18 ]
+      "ChannelsStrips": [17, 18, 19,20,21,22,23,24]
     },
     {
       "Chip": 6,

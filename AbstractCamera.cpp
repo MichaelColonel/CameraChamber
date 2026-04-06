@@ -906,7 +906,7 @@ std::vector< double > AbstractCamera::GenerateFullProfileStripsBinsBorders(size_
 {
   std::vector< double > v(n, 0.);
   v[0] = 0.0;
-  constexpr double step1 = STRIP_STEP_PER_SIDE_MM / 2.; // 1. mm
+  const double& step1 = STRIP_STEP_MM; // 1. mm
   for (size_t i = 1; i < v.size(); ++i)
   {
     v[i] = v[i - 1] + step1;
@@ -1904,9 +1904,16 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
       {
         profile = new TGraph(vertProfData.size());
       }
+      double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
+      std::vector< double > vertProfDataCopy(vertProfData);
+      std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
+      if (this->getCameraData().ID == "Camera4")
+      {
+        std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
+      }
       for (Int_t i = 0; i < vertProfData.size(); ++i)
       {
-        profile->SetPoint(i, Double_t(vertProfStrips[i]), Double_t(vertProfData[i]));
+        profile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
       }
     }
     break;
@@ -1920,9 +1927,16 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
       {
         profile = new TGraph(horizProfData.size());
       }
+      double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
+      std::vector< double > horizProfDataCopy(horizProfData);
+      std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+      if (this->getCameraData().ID == "Camera4")
+      {
+          std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+      }
       for (Int_t i = 0; i < horizProfData.size(); ++i)
       {
-        profile->SetPoint(i, Double_t(horizProfStrips[i]), Double_t(horizProfData[i]));
+        profile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfDataCopy[i]));
       }
     }
     break;

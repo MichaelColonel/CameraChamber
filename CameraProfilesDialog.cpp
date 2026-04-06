@@ -67,6 +67,7 @@ public:
   AbstractCamera* camera{ nullptr };
   QScopedPointer< ChannelInfoTableModel > chipChannelInfoModel;
 
+  std::weak_ptr< THttpServer > httpServer;
   std::unique_ptr< TGraph > graphChannel;
   std::unique_ptr< TPad > padChannel;
 
@@ -691,7 +692,7 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   d->graphVerticalProfile->SetLineColor(kRed);
   d->graphVerticalProfile->SetLineWidth(2);
   d->graphVerticalProfile->SetMarkerColor(kBlue);
-  d->graphVerticalProfile->SetTitle("Horizontal profile (vertical strips);Strip position (mm);Charge (pC)");
+  d->graphVerticalProfile->SetTitle("Vertical profile (horizontal strips);Strip position (mm);Charge (pC)");
   d->graphVerticalProfile->Draw("AL*");
   d->padVerticalProfile->Modified();
   d->padVerticalProfile->Update();
@@ -798,7 +799,7 @@ void CameraProfilesDialog::addBeamProfilesToServer(THttpServer* server)
   server->Register(id_str, d->padPseudo2D.get());
   server->Register(id_str, d->padPseudoIntegral2D.get());
 
-  server->SetItemField(id_str, "_layout", "grid2x2");
+//  server->SetItemField(id_str, "_layout", "grid2x2");
 /*  QByteArray Str = cameraID.toLatin1();
   std::stringstream ss;
   ss << '[' << d->padHorizontalProfile.get()->GetName() \

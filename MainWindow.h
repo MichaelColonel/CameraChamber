@@ -104,7 +104,6 @@ private slots:
   void onCameraSettingsActionTriggered();
   void onHttpServerActionTriggered();
   void onBeamActionTriggered();
-  void onTestClicked();
 
 private:
   void updateUiState();

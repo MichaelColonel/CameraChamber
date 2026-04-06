@@ -174,7 +174,7 @@ void RootFileCameraProfilesDialogPrivate::processRootFile(const QString& rootFil
   TIter keyList(rootFile->GetListOfKeys());
   TKey* key = nullptr;
   std::vector< std::pair< TDirectory*, TTree* > > spillData;
-  while (key = dynamic_cast< TKey* >(keyList()))
+  while ((key = dynamic_cast< TKey* >(keyList())))
   {
     TClass* cl = gROOT->GetClass(key->GetClassName());
     if (cl && !cl->InheritsFrom("TDirectory"))
@@ -324,7 +324,7 @@ void RootFileCameraProfilesDialog::onCurrentRootTreeItemChanged(QListWidgetItem*
   QByteArray treeNameByteArray = treeName.toLatin1();
   TIter keyList(d->rootFile->GetListOfKeys());
   TKey* key = nullptr;
-  while (key = dynamic_cast< TKey* >(keyList()))
+  while ((key = dynamic_cast< TKey* >(keyList())))
   {
     TClass* cl = gROOT->GetClass(key->GetClassName());
     if (cl && !cl->InheritsFrom("TDirectory"))

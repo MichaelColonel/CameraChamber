@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1085</width>
-    <height>789</height>
+    <width>982</width>
+    <height>623</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -66,8 +66,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>322</width>
-             <height>329</height>
+             <width>274</width>
+             <height>210</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_8">
@@ -91,7 +91,7 @@
           </widget>
          </widget>
         </item>
-        <item row="2" column="0">
+        <item row="3" column="0">
          <widget class="QPushButton" name="PushButton_BeamPathCalculation">
           <property name="text">
            <string>Beam path calculation</string>
@@ -103,6 +103,22 @@
         </item>
         <item row="1" column="0">
          <widget class="TCanvasWidget" name="RootCanvas_BeamPathTable" native="true"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="TCanvasWidget" name="RootCanvas_TestMessage" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>100</height>
+           </size>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
