@@ -1,5 +1,5 @@
 {
-  "_comment": "Ionization camera chips and channels geometry - IC05",
+  "_comment": "Ionization camera chips and channels geometry - IC06",
   "NumberOfChips": 12,
   "ChipsPerPlane": 6,
   "ChipsPerSide": 3,
@@ -15,73 +15,63 @@
   "Chips": [
     {
       "Position": 1,
-      "Name": "3.32",
+      "Name": "X.X",
       "ReverseChannels": 0
     },
     {
       "Position": 2,
-      "Name": "3.26",
+      "Name": "X.X",
       "ReverseChannels": 0
     },
     {
       "Position": 3,
-      "Name": "3.28",
+      "Name": "X.X",
       "ReverseChannels": 0
     },
     {
       "Position": 4,
-      "Name": "3.25",
+      "Name": "X.X",
       "ReverseChannels": 1
     },
     {
       "Position": 5,
-      "Name": "3.27",
+      "Name": "X.X",
       "ReverseChannels": 1
     },
     {
       "Position": 6,
-      "Name": "3.34",
+      "Name": "X.X",
       "ReverseChannels": 1
     },
     {
       "Position": 7,
-      "Name": "3.33",
+      "Name": "X.X",
       "ReverseChannels": 1
     },
     {
       "Position": 8,
-      "Name": "3.30",
+      "Name": "X.X",
       "ReverseChannels": 1
     },
     {
       "Position": 9,
-      "Name": "3.24",
+      "Name": "X.X",
       "ReverseChannels": 1
     },
     {
       "Position": 10,
-      "Name": "3.31",
+      "Name": "X.X",
       "ReverseChannels": 0
     },
     {
       "Position": 11,
-      "Name": "3.23",
+      "Name": "X.X",
       "ReverseChannels": 0
     },
     {
       "Position": 12,
-      "Name": "3.29",
+      "Name": "X.X",
       "ReverseChannels": 0
-    }
-  ],
-  "BrokenChipChannelsStrips": [
-    {
-      "Chip": 2,
-      "ChannelsStrips": [ 12 ]
-    },
-    {
-      "Chip": 7,
-      "ChannelsStrips": [ 18 ]
     }
   ]
 }

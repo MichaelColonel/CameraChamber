@@ -87,6 +87,34 @@ set(RESOURCE_FILES
   C26AIC03/ChipX.X.json
   C26AIC04/ChipsPosition.json
   C26AIC04/ChipX.X.json
+  C26AIC04/Chip3.35.json
+  C26AIC04/Chip3.36.json
+  C26AIC04/Chip3.37.json
+  C26AIC04/Chip3.38.json
+  C26AIC04/Chip3.39.json
+  C26AIC04/Chip3.40.json
+  C26AIC04/Chip3.41.json
+  C26AIC04/Chip3.42.json
+  C26AIC04/Chip3.43.json
+  C26AIC04/Chip3.44.json
+  C26AIC04/Chip3.45.json
+  C26AIC04/Chip3.46.json
+  C26AIC05/ChipsPosition.json
+  C26AIC05/ChipX.X.json
+  C26AIC05/Chip3.23.json
+  C26AIC05/Chip3.24.json
+  C26AIC05/Chip3.25.json
+  C26AIC05/Chip3.26.json
+  C26AIC05/Chip3.27.json
+  C26AIC05/Chip3.28.json
+  C26AIC05/Chip3.29.json
+  C26AIC05/Chip3.30.json
+  C26AIC05/Chip3.31.json
+  C26AIC05/Chip3.32.json
+  C26AIC05/Chip3.33.json
+  C26AIC05/Chip3.34.json
+  C26AIC06/ChipsPosition.json
+  C26AIC06/ChipX.X.json
 )
 
 file(GLOB forms ${PROJECT_SOURCE_DIR}/*.ui)
