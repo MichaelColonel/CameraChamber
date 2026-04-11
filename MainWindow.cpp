@@ -52,8 +52,11 @@
 #include <TCanvas.h>
 #include <TF1.h>
 
-#include "FullCamera.h"
-#include "Camera2.h"
+#include "FullCamera.h" /// Camera-1
+#include "Camera2.h" /// Camera-2
+#include "FullCamera3.h" /// Camera-3
+#include "FullCamera4.h" /// Camera-4
+
 #include "CameraUtils.h"
 
 #include "RootFileCameraProfilesDialog.h"
@@ -328,6 +331,14 @@ void MainWindow::onConnectCameraClicked()
     if (cameraID == "Camera2")
     {
       cameraDevice = new Camera2(cameraData, this);
+    }
+    else if (cameraID == "Camera3")
+    {
+      cameraDevice = new FullCamera3(cameraData, this);
+    }
+    else if (cameraID == "Camera4")
+    {
+      cameraDevice = new FullCamera4(cameraData, this);
     }
     else
     {

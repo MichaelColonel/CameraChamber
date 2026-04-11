@@ -36,7 +36,7 @@ public:
   explicit Camera2(const AbstractCamera::CameraDeviceData& data, QObject *parent = nullptr);
   ~Camera2() override;
 
-  void processDataCounts(bool splitData = false, IntegratorType integType = IntegratorType::A,
+  void processDataCounts(bool fullChipCalibration, bool splitData = false, IntegratorType integType = IntegratorType::A,
     ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE) override;
   TH2* createProfile2D(bool integral = false) override;
   void updateProfiles2D(TH2* pseudo2D = nullptr, TH2* integPseudo2D = nullptr) override;

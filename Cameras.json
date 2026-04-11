@@ -1,34 +1,40 @@
 {
-    "Cameras": [
-        {
-            "ID": "Camera1",
-            "directory": "C26AIC01",
-            "data-device": "/dev/ft2232h_ic01_a",
-            "command-device": "/dev/ft2232h_ic01_b"
-        },
-        {
-            "ID": "Camera2",
-            "directory": "C26AIC02",
-            "data-device": "/dev/ft2232h_ic02_a",
-            "command-device": "/dev/ft2232h_ic02_b"
-        },
-        {
-            "ID": "Camera3",
-            "directory": "C26AIC03",
-            "data-device": "/dev/ft2232h_ic03_a",
-            "command-device": "/dev/ft2232h_ic03_b"
-        },
-        {
-            "ID": "Camera4",
-            "directory": "C26AIC04",
-            "data-device": "/dev/ft2232h_ic04_a",
-            "command-device": "/dev/ft2232h_ic04_b"
-        },
-        {
-            "ID": "Camera5",
-            "directory": "C26AIC05",
-            "data-device": "/dev/ft2232h_ic05_a",
-            "command-device": "/dev/ft2232h_ic05_b"
-        }
-    ]
+  "Cameras": [
+    {
+      "ID": "Camera1",
+      "directory": "C26AIC01",
+      "data-device": "/dev/ft2232h_ic01_a",
+      "command-device": "/dev/ft2232h_ic01_b"
+    },
+    {
+      "ID": "Camera2",
+      "directory": "C26AIC02",
+      "data-device": "/dev/ft2232h_ic02_a",
+      "command-device": "/dev/ft2232h_ic02_b"
+    },
+    {
+      "ID": "Camera3",
+      "directory": "C26AIC03",
+      "data-device": "/dev/ft2232h_ic03_a",
+      "command-device": "/dev/ft2232h_ic03_b"
+    },
+    {
+      "ID": "Camera4",
+      "directory": "C26AIC04",
+      "data-device": "/dev/ft2232h_ic04_a",
+      "command-device": "/dev/ft2232h_ic04_b"
+    },
+    {
+      "ID": "Camera5",
+      "directory": "C26AIC05",
+      "data-device": "/dev/ft2232h_ic05_a",
+      "command-device": "/dev/ft2232h_ic05_b"
+    },
+    {
+      "ID": "Camera6",
+      "directory": "C26AIC06",
+      "data-device": "/dev/ft2232h_ic06_a",
+      "command-device": "/dev/ft2232h_ic06_b"
+    }
+  ]
 }

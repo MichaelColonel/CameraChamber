@@ -117,6 +117,40 @@ public:
   const QByteArray AlteraResetCommand = QByteArray("R\0\0", AbstractCamera::BUFFER_SIZE);
   const QByteArray WriteCapacitiesCommand = QByteArray("G\0\0", AbstractCamera::BUFFER_SIZE); // write DDC232 configuration register
   const QByteArray ListChipsEnabledCommand = QByteArray("L\0\0", AbstractCamera::BUFFER_SIZE); // list of chips enabled
+  static constexpr std::array< double, CHANNELS_PER_CHIP > ADC_CALIBRATION_RESISTORS{
+    1.932,
+    1.910,
+    1.950,
+    1.941,
+    1.939,
+    1.953,
+    1.943,
+    1.931,
+    1.950,
+    1.960,
+    1.960,
+    1.940,
+    1.943,
+    1.934,
+    1.933,
+    1.950,
+    1.939,
+    1.931,
+    1.939,
+    1.930,
+    1.947,
+    1.930,
+    1.926,
+    1.945,
+    1.915,
+    1.939,
+    1.954,
+    1.940,
+    1.938,
+    1.954,
+    1.947,
+    1.941
+  };
 };
 
 AbstractCameraPrivate::AbstractCameraPrivate(AbstractCamera &object)
@@ -203,7 +237,7 @@ CameraProfileType AbstractCameraPrivate::getProfileForChip(int chip) const
 
 bool AbstractCameraPrivate::saveData()
 {
-  if (!this->rootDir)
+  if (!this->rootDir || this->adcDataBuffer.isEmpty())
   {
     return false;
   }
@@ -248,12 +282,12 @@ bool AbstractCameraPrivate::saveData()
   return true;
 }
 
-AbstractCamera::AbstractCamera()
-  :
-  QObject(nullptr),
-  d_ptr(new AbstractCameraPrivate(*this))
-{
-}
+//AbstractCamera::AbstractCamera()
+//  :
+//  QObject(nullptr),
+//  d_ptr(new AbstractCameraPrivate(*this))
+//{
+//}
 
 AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
   :
@@ -262,17 +296,9 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
 {
   Q_D(AbstractCamera);
 
-  d->cameraData = data;
-//  int capacityCode = -1;
-//  int timeCode = -1;
-//  if (d->cameraData.ID == "Camera4")
-//  {
-//    capacityCode = 0;
-//    timeCode = 1;
-//  }
-
-  if (this->loadCameraData(d->cameraData.DataDirectory))
+  if (this->loadCameraData(data.DataDirectory))
   {
+    d->cameraData = data;
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << ": \" << d->cameraData.ID << \" data successfully loaded";
 #endif
@@ -360,7 +386,10 @@ void AbstractCamera::disconnect()
 {
   Q_D(AbstractCamera);
   bool connected = true;
-
+  if (d->rootDir)
+  {
+    d->rootDir->Close();
+  }
   if (d->commandPort && d->commandPort->isOpen())
   {
     d->commandPort->flush();
@@ -1682,7 +1711,7 @@ void AbstractCamera::setPedestalSignalGate(int pedMin, int pedMax, int sigMin, i
   d->pedestalSignalGateArray[3] = sigMax;
 }
 
-void AbstractCamera::processDataCounts(bool splitData,
+void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
   IntegratorType integType, ProfileRepresentationType profileType)
 {
   Q_D(AbstractCamera);
@@ -1789,17 +1818,24 @@ void AbstractCamera::processDataCounts(bool splitData,
     {
       double refAmpl = 0.;
       double refA = 0., refB = 0.;
+      double refResistorH = 1.;
+      double refResistorV = 1.;
+      if (fullChipCalibration)
+      {
+        refResistorH = d->ADC_CALIBRATION_RESISTORS[refAdcH.second];
+        refResistorV = d->ADC_CALIBRATION_RESISTORS[refAdcV.second];
+      }
       if (std::find(vertProfChips.begin(), vertProfChips.end(), chipAddress + 1) != vertProfChips.end())
       {
         refAmpl = refAmplV;
-        refA = refVA;
-        refB = refVB;
+        refA = refVA * refResistorV;
+        refB = refVB * refResistorV;
       }
       else if (std::find(horizProfChips.begin(), horizProfChips.end(), chipAddress + 1) != horizProfChips.end())
       {
         refAmpl = refAmplH;
-        refA = refHA;
-        refB = refHB;
+        refA = refHA * refResistorH;
+        refB = refHB * refResistorH;
       }
       else
       {
@@ -1808,6 +1844,11 @@ void AbstractCamera::processDataCounts(bool splitData,
         refB = -1.;
       }
       ChipChannelPair curr(chipAddress + 1, i + 1); // current chip, strip
+      double currResistor = 1.;
+      if (fullChipCalibration)
+      {
+        currResistor = d->ADC_CALIBRATION_RESISTORS[i];
+      }
       double currA = chipChannelCalibrationA[curr]; // current value side-A
       double currB = chipChannelCalibrationB[curr]; // current value side-B
       double currAmpl = chipChannelCalibrationAmplitude[curr]; // current amplitude value
@@ -1822,15 +1863,15 @@ void AbstractCamera::processDataCounts(bool splitData,
 
       for (int j = pedBegin; j < pedEnd; ++j)
       {
-        statCalibPedA(double(sideA[j]) * refA / currA);
-        statCalibPedB(double(sideB[j]) * refB / currB);
+        statCalibPedA(double(sideA[j]) * refA / (currA * currResistor));
+        statCalibPedB(double(sideB[j]) * refB / (currB * currResistor));
         statPedA(sideA[j]);
         statPedB(sideB[j]);
       }
       for (int j = sigBegin; j < sigEnd; ++j)
       {
-        statCalibSigA(double(sideA[j]) * refA / currA);
-        statCalibSigB(double(sideB[j]) * refB / currB);
+        statCalibSigA(double(sideA[j]) * refA / (currA * currResistor));
+        statCalibSigB(double(sideB[j]) * refB / (currB * currResistor));
         statSigA(sideA[j]);
         statSigB(sideB[j]);
       }

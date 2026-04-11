@@ -52,6 +52,8 @@
 
 #include "FullCamera.h"
 #include "Camera2.h"
+#include "FullCamera3.h"
+#include "FullCamera4.h"
 #include "CameraUtils.h"
 
 #include "CameraSpillsListModel.h"
@@ -122,6 +124,20 @@ RootFileCameraProfilesDialogPrivate::RootFileCameraProfilesDialogPrivate(RootFil
     {
       data = CameraUtils::getPartialCamera2Data();
       AbstractCamera* camera = new Camera2(data, &object);
+      this->camerasMap.insert(data.ID, camera);
+      camera->loadSettings(&settings);
+    }
+    else if (cameraID == "Camera3")
+    {
+      data = CameraUtils::getFullCameraData(i);
+      AbstractCamera* camera = new FullCamera3(data, &object);
+      this->camerasMap.insert(data.ID, camera);
+      camera->loadSettings(&settings);
+    }
+    else if (cameraID == "Camera4")
+    {
+      data = CameraUtils::getFullCameraData(i);
+      AbstractCamera* camera = new FullCamera4(data, &object);
       this->camerasMap.insert(data.ID, camera);
       camera->loadSettings(&settings);
     }

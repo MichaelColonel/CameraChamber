@@ -66,7 +66,7 @@ public:
   static constexpr std::array< double, CHAR_BIT > CHARGE_RANGE{ 12.5, 50., 100., 150., 200., 250., 300., 350. };
   static constexpr std::array< double, CHAR_BIT > CAPACITY_RANGE{ 3.0, 12.5, 25., 37.5, 50., 62.5, 75., 87.5 };
 
-  explicit AbstractCamera();
+//  explicit AbstractCamera();
   explicit AbstractCamera(const CameraDeviceData& data, QObject *parent = nullptr);
   virtual ~AbstractCamera();
   bool connect();
@@ -130,7 +130,7 @@ public:
 
   QString getChipsAddresses() const;
   void setInitiationList(const QByteArrayList& initList);
-  virtual void processDataCounts(bool splitData = false,
+  virtual void processDataCounts(bool fullChipCalibration = false, bool splitData = false,
     IntegratorType integType = IntegratorType::A,
     ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE);
   bool loadSettings(QSettings* settings);

@@ -255,11 +255,12 @@ Camera2::~Camera2()
 
 }
 
-void Camera2::processDataCounts(bool splitData,
+void Camera2::processDataCounts(bool fullChipCalibration, bool splitData,
   IntegratorType integType, ProfileRepresentationType profileType)
 {
   Q_D(Camera2);
-  AbstractCamera::processDataCounts(splitData, integType, profileType);
+  Q_UNUSED(fullChipCalibration);
+  AbstractCamera::processDataCounts(false, splitData, integType, profileType);
 
   std::array< ChipChannelPair, VERTICAL_PROFILE_STRIPS > VerticalProfileChipChannels; // for mixed channels between opposite chips
   std::array< ChipChannelPair, HORIZONTAL_PROFILE_STRIPS > HorizontalProfileChipChannels; // for mixed channels between opposite chips

@@ -17,7 +17,7 @@
  *
  */
 
-#include "FullCamera.h"
+#include "FullCamera3.h"
 
 #include <QDebug>
 
@@ -40,7 +40,7 @@ public:
   virtual ~FullCamera3Private();
 };
 
-FullCamera3Private::FullCamera3Private(FullCamera &object)
+FullCamera3Private::FullCamera3Private(FullCamera3 &object)
   :
   q_ptr(&object)
 {
@@ -63,6 +63,13 @@ FullCamera3::~FullCamera3()
 
 }
 
+void FullCamera3::processDataCounts(bool fullChipCalibration, bool splitData,
+  IntegratorType integType, ProfileRepresentationType profileType)
+{
+  Q_UNUSED(fullChipCalibration);
+  FullCamera::processDataCounts(false, splitData, integType, profileType);
+}
+
 void FullCamera3::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors)
 {
   Q_D(FullCamera3);
@@ -83,28 +90,18 @@ void FullCamera3::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool
   if (vertProfile)
   {
     double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
-    std::vector< double > vertProfDataCopy(vertProfData);
-    if (this->getCameraData().ID == "Camera4")
-    {
-      std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
-    }
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfData[i]));
     }
   }
 
   if (horizProf)
   {
     double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
-    std::vector< double > horizProfDataCopy(horizProfData);
-    if (this->getCameraData().ID == "Camera4")
-    {
-      std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
-    }
     for (Int_t i = 0; i < horizProfData.size(); ++i)
     {
-      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfDataCopy[i]));
+      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfData[i]));
     }
   }
 }
@@ -157,10 +154,6 @@ void FullCamera3::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
 
   std::vector< double > vertProfDataCopy(vertProfData);
   std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
-  if (this->getCameraData().ID == "Camera4")
-  {
-    std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
-  }
   if (pseudo2D)
   {
     pseudo2D->Reset();
