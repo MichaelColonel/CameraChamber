@@ -282,12 +282,12 @@ bool AbstractCameraPrivate::saveData()
   return true;
 }
 
-//AbstractCamera::AbstractCamera()
-//  :
-//  QObject(nullptr),
-//  d_ptr(new AbstractCameraPrivate(*this))
-//{
-//}
+AbstractCamera::AbstractCamera()
+  :
+  QObject(nullptr),
+  d_ptr(new AbstractCameraPrivate(*this))
+{
+}
 
 AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
   :
@@ -2170,6 +2170,7 @@ void AbstractCamera::setRootDirectory(TDirectory* dir)
 {
   Q_D(AbstractCamera);
   d->rootDir = dir;
+  qDebug() << Q_FUNC_INFO << d->rootDir->GetName();
 }
 
 ChipChannelPair AbstractCamera::getReferenceChipChannel(bool adcAmp, CameraProfileType profileType) const

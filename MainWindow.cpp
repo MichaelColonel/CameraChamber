@@ -401,7 +401,7 @@ void MainWindow::onConnectCameraClicked()
     // create TDirectory for camera data
     if (this->rootFile)
     {
-      TDirectory* dir = this->rootFile->mkdir(cameraID.toLatin1().data(), "camera data", kTRUE);
+      TDirectory* dir = this->rootFile->mkdir(cameraID.toLatin1().data(), "CameraData", kTRUE);
       cameraDevice->setRootDirectory(dir);
     }
     // Camera connect
