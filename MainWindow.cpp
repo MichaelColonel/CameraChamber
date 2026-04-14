@@ -259,7 +259,7 @@ MainWindow::closeEvent(QCloseEvent* event)
     {
       this->beamPathProfile->close();
     }
-    this->beamPathProfile.reset();
+//    this->beamPathProfile.reset();
 
     for (auto& cameraDialogPair : this->cameraDeviceProfilesMap)
     {

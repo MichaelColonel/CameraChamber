@@ -52,8 +52,6 @@
 
 #include "FullCamera.h"
 #include "Camera2.h"
-#include "FullCamera3.h"
-#include "FullCamera4.h"
 #include "CameraUtils.h"
 
 #include "CameraSpillsListModel.h"

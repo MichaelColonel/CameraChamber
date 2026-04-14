@@ -330,7 +330,7 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
 
 AbstractCamera::~AbstractCamera()
 {
-
+  Q_D(AbstractCamera);
 }
 
 bool AbstractCamera::connect()
@@ -638,12 +638,12 @@ void AbstractCamera::onCommandPortDataReady()
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << ": Acquisition ends: " << d->commandResponseBuffer.size() << " bytes of data";
 #endif
-    /// Save raw data
     this->processRawData();
+    /// Save raw data
     // store acquisition data into a file
     if (d->saveData())
     {
-      emit logMessage(QObject::tr("Spill data are saved"), d->cameraData.ID, Qt::green);
+      emit logMessage(QObject::tr("Spill data is saved"), d->cameraData.ID, Qt::green);
     }
     /// Data are saved => clear acquisition buffer
     emit commandWritten(d->lastCommandWritten);
@@ -2170,7 +2170,6 @@ void AbstractCamera::setRootDirectory(TDirectory* dir)
 {
   Q_D(AbstractCamera);
   d->rootDir = dir;
-  qDebug() << Q_FUNC_INFO << d->rootDir->GetName();
 }
 
 ChipChannelPair AbstractCamera::getReferenceChipChannel(bool adcAmp, CameraProfileType profileType) const
