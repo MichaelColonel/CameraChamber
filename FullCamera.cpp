@@ -422,7 +422,7 @@ void FullCamera::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool 
   {
     double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
     std::vector< double > horizProfDataCopy(horizProfData);
-    if (this->getCameraData().ID == "Camera4")
+    if (this->getCameraData().ID == "Camera4" || this->getCameraData().ID == "Camera1")
     {
       std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
     }

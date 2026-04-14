@@ -512,10 +512,12 @@ void Camera2::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool wit
 
   if (vertProfile)
   {
+    std::vector< double > vertProfDataCopy(vertProfData);
+    std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
     double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfData[i]));
+      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
     }
   }
   if (horizProfile)
@@ -551,8 +553,8 @@ void Camera2::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
 
 //  const double* xBinsBorders = horiz.data();
 
-  std::vector< double > horizProfDataCopy(horizProfData);
-  std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+  std::vector< double > vertProfDataCopy(vertProfData);
+  std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
   if (pseudo2D)
   {
     pseudo2D->Reset();
@@ -563,7 +565,7 @@ void Camera2::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
       for (Int_t column = 0; column < xBins; ++column)
       {
         Double_t centerX = pseudo2D->GetXaxis()->GetBinCenter(column + 1);
-        Double_t pixel = horizProfDataCopy[column] * vertProfData[row];
+        Double_t pixel = horizProfData[column] * vertProfDataCopy[row];
         pseudo2D->Fill(centerX, centerY, pixel);
       }
     }

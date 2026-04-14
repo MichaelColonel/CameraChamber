@@ -296,9 +296,10 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
 {
   Q_D(AbstractCamera);
 
-  if (this->loadCameraData(data.DataDirectory))
+  d->cameraData = data;
+
+  if (this->loadCameraData(d->cameraData.DataDirectory))
   {
-    d->cameraData = data;
 #if !QT_NO_DEBUG
     qDebug() << Q_FUNC_INFO << ": \" << d->cameraData.ID << \" data successfully loaded";
 #endif
@@ -386,10 +387,7 @@ void AbstractCamera::disconnect()
 {
   Q_D(AbstractCamera);
   bool connected = true;
-  if (d->rootDir)
-  {
-    d->rootDir->Close();
-  }
+
   if (d->commandPort && d->commandPort->isOpen())
   {
     d->commandPort->flush();
@@ -1948,7 +1946,7 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
       double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
       std::vector< double > vertProfDataCopy(vertProfData);
       std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
-      if (this->getCameraData().ID == "Camera4")
+      if (this->getCameraData().ID == "Camera4" || this->getCameraData().ID == "Camera2")
       {
         std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
       }
@@ -1971,7 +1969,7 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
       double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
       std::vector< double > horizProfDataCopy(horizProfData);
       std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
-      if (this->getCameraData().ID == "Camera4")
+      if (this->getCameraData().ID == "Camera4" || this->getCameraData().ID == "Camera1")
       {
           std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
       }

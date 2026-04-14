@@ -336,11 +336,15 @@ void MainWindow::onConnectCameraClicked()
     {
       cameraDevice = new FullCamera3(cameraData, this);
     }
-    else if (cameraID == "Camera4")
+    else if (cameraID == "Camera3")
+    {
+      cameraDevice = new FullCamera3(cameraData, this);
+    }
+    else if (cameraID == "Camera4" || cameraID == "Camera5" || cameraID == "Camera6")
     {
       cameraDevice = new FullCamera4(cameraData, this);
     }
-    else
+    else // Camera1
     {
       cameraDevice = new FullCamera(cameraData, this);
     }
