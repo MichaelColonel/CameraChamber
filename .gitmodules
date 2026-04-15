@@ -1,4 +1,4 @@
 [submodule "rapidjson"]
-	path = rapidjson
-	url = https://github.com/slicer/rapidjson.git
-	branch = 4da93e4b581f88fecc460e2259f468faaa438554
+    path = rapidjson
+    url = https://github.com/slicer/rapidjson.git
+    branch = 4da93e4b581f88fecc460e2259f468faaa438554
