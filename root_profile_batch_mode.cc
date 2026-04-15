@@ -114,8 +114,8 @@ int main(int argc, char **argv)
 
   if (theApp.Argc() == 1)
   {
-    std::cerr << "No input ROOT file." << std::endl;
-    std::cerr << "Usage: profile_offline profile_file.root" << std::endl;
+    std::cerr << "No input ROOT file." << '\n';
+    std::cerr << "Usage: profile_offline profile_file.root" << '\n';
     return EXIT_FAILURE;
   }
 
