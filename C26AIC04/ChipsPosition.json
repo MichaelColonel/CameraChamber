@@ -77,7 +77,7 @@
   "BrokenChipChannelsStrips": [
     {
       "Chip": 12,
-      "ChannelsStrips": [ 11 ]
+      "ChannelsStrips": [ 11, 32 ]
     }
   ]
 }

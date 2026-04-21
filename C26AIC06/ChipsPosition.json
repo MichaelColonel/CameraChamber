@@ -15,62 +15,62 @@
   "Chips": [
     {
       "Position": 1,
-      "Name": "X.X",
+      "Name": "3.19",
       "ReverseChannels": 0
     },
     {
       "Position": 2,
-      "Name": "X.X",
+      "Name": "4.5",
       "ReverseChannels": 0
     },
     {
       "Position": 3,
-      "Name": "X.X",
+      "Name": "4.6",
       "ReverseChannels": 0
     },
     {
       "Position": 4,
-      "Name": "X.X",
+      "Name": "4.7",
       "ReverseChannels": 1
     },
     {
       "Position": 5,
-      "Name": "X.X",
+      "Name": "4.3",
       "ReverseChannels": 1
     },
     {
       "Position": 6,
-      "Name": "X.X",
+      "Name": "3.21",
       "ReverseChannels": 1
     },
     {
       "Position": 7,
-      "Name": "X.X",
+      "Name": "4.2",
       "ReverseChannels": 1
     },
     {
       "Position": 8,
-      "Name": "X.X",
+      "Name": "4.1",
       "ReverseChannels": 1
     },
     {
       "Position": 9,
-      "Name": "X.X",
+      "Name": "3.20",
       "ReverseChannels": 1
     },
     {
       "Position": 10,
-      "Name": "X.X",
+      "Name": "4.4",
       "ReverseChannels": 0
     },
     {
       "Position": 11,
-      "Name": "X.X",
+      "Name": "4.8",
       "ReverseChannels": 0
     },
     {
       "Position": 12,
-      "Name": "X.X",
+      "Name": "3.22",
       "ReverseChannels": 0
     }
   ]

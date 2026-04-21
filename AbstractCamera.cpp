@@ -1800,6 +1800,13 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
   double refAmplV = chipChannelCalibrationAmplitude[refAmpV]; // reference vertical amplitude value
   d->chipChannelInfoMap.clear();
 
+  double refResistorH = 1.;
+  double refResistorV = 1.;
+  if (fullChipCalibration)
+  {
+    refResistorH = d->ADC_CALIBRATION_RESISTORS[refAdcH.second];
+    refResistorV = d->ADC_CALIBRATION_RESISTORS[refAdcV.second];
+  }
   for (auto iter = d->chipsAddressesVector.begin(); iter != d->chipsAddressesVector.end(); ++iter)
   {
     int chipAddress = *iter;
@@ -1816,24 +1823,17 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
     {
       double refAmpl = 0.;
       double refA = 0., refB = 0.;
-      double refResistorH = 1.;
-      double refResistorV = 1.;
-      if (fullChipCalibration)
-      {
-        refResistorH = d->ADC_CALIBRATION_RESISTORS[refAdcH.second];
-        refResistorV = d->ADC_CALIBRATION_RESISTORS[refAdcV.second];
-      }
       if (std::find(vertProfChips.begin(), vertProfChips.end(), chipAddress + 1) != vertProfChips.end())
       {
         refAmpl = refAmplV;
-        refA = refVA * refResistorV;
-        refB = refVB * refResistorV;
+        refA = refVA / refResistorV;
+        refB = refVB / refResistorV;
       }
       else if (std::find(horizProfChips.begin(), horizProfChips.end(), chipAddress + 1) != horizProfChips.end())
       {
         refAmpl = refAmplH;
-        refA = refHA * refResistorH;
-        refB = refHB * refResistorH;
+        refA = refHA / refResistorH;
+        refB = refHB / refResistorH;
       }
       else
       {
@@ -1861,15 +1861,15 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
 
       for (int j = pedBegin; j < pedEnd; ++j)
       {
-        statCalibPedA(double(sideA[j]) * refA / (currA * currResistor));
-        statCalibPedB(double(sideB[j]) * refB / (currB * currResistor));
+        statCalibPedA(sideA[j] * refA * currResistor / currA);
+        statCalibPedB(sideB[j] * refB * currResistor / currB);
         statPedA(sideA[j]);
         statPedB(sideB[j]);
       }
       for (int j = sigBegin; j < sigEnd; ++j)
       {
-        statCalibSigA(double(sideA[j]) * refA / (currA * currResistor));
-        statCalibSigB(double(sideB[j]) * refB / (currB * currResistor));
+        statCalibSigA(sideA[j] * refA * currResistor / currA);
+        statCalibSigB(sideB[j] * refB * currResistor / currB);
         statSigA(sideA[j]);
         statSigB(sideB[j]);
       }

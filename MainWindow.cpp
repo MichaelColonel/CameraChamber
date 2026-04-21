@@ -55,7 +55,8 @@
 #include "FullCamera.h" /// Camera-1
 #include "Camera2.h" /// Camera-2
 #include "FullCamera3.h" /// Camera-3
-#include "FullCamera4.h" /// Camera-4
+#include "FullCamera4.h" /// Camera-4, Camera-5
+#include "FullCamera6.h" /// Camera-6
 
 #include "CameraUtils.h"
 
@@ -270,16 +271,9 @@ MainWindow::closeEvent(QCloseEvent* event)
         camera->saveSettings(&settings);
         camera->disconnect();
       }
-      if (camera)
-      {
-        delete camera;
-        camera = nullptr;
-      }
       if (dialog)
       {
         dialog->close();
-        delete dialog;
-        dialog = nullptr;
       }
     }
     if (this->rootFile && this->rootFile->IsOpen())
@@ -340,9 +334,13 @@ void MainWindow::onConnectCameraClicked()
     {
       cameraDevice = new FullCamera3(cameraData, this);
     }
-    else if (cameraID == "Camera4" || cameraID == "Camera5" || cameraID == "Camera6")
+    else if (cameraID == "Camera4" || cameraID == "Camera5")
     {
       cameraDevice = new FullCamera4(cameraData, this);
+    }
+    else if (cameraID == "Camera6")
+    {
+      cameraDevice = new FullCamera6(cameraData, this);
     }
     else // Camera1
     {
