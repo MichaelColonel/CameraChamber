@@ -40,6 +40,9 @@
 #include <QtWebEngine>
 #endif
 
+// http:10.163.2.222
+// 8080
+
 int main(int argc, char **argv)
 {
 #if QT_VERSION < QT_VERSION_CHECK(6,0,0)

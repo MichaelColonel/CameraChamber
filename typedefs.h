@@ -103,13 +103,14 @@ enum CameraProfileType : int {
 enum IntegratorType : int {
   A = 0,
   B,
+  AB,
   IntegratorType_Last
 };
 
 enum AdcTimeType : int {
   INTEGRATOR_A = IntegratorType::A,
   INTEGRATOR_B = IntegratorType::B,
-  INTEGRATOR_AB,
+  INTEGRATOR_AB = IntegratorType::AB,
   AdcTimeType_Last
 };
 
@@ -197,6 +198,6 @@ struct AcquisitionParameters {
   }
 };
 
-typedef std::array< double, 3 > BeamProfileArray;
+typedef std::array< double, 4 > BeamProfileArray;
 typedef std::pair< BeamProfileArray, BeamProfileArray > BeamPathPair;
 typedef std::map< double, BeamPathPair > BeamPathMap;

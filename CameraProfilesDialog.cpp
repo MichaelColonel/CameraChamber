@@ -63,6 +63,15 @@ public:
   void updateHistSideA(int chipIndex, int channelIndex, AdcTimeType dataType);
   void updateHistSideB(int chipIndex, int channelIndex, AdcTimeType dataType);
   bool saveSpillProfiles();
+  void fillHorizontalProfileAccums(TGraph* horizProfile);
+  void fillVerticalProfileAccums(TGraph* vertProfile);
+  void updateHorizontalProfileFromAccums(TGraph* horizProfile);
+  void updateVerticalProfileFromAccums(TGraph* vertProfile);
+  void resetHorizontalProfileAccums();
+  void resetVerticalProfileAccums();
+
+  std::pair< double, double > homogenousValueOnVerticalGraph();
+  std::pair< double, double > homogenousValueOnHorizontalGraph();
 
   AbstractCamera* camera{ nullptr };
   QScopedPointer< ChannelInfoTableModel > chipChannelInfoModel;
@@ -91,6 +100,11 @@ public:
 
   std::unique_ptr< TH2 > histPseudo2D;
   std::unique_ptr< TH2 > histPseudoIntegral2D;
+  int IntegrationCount{ 0 };
+  const int NumberOfIntegralSpills{ 10 };
+
+  std::vector< MeanDispAccumSet > horizontalProfileAccums;
+  std::vector< MeanDispAccumSet > verticalProfileAccums;
 };
 
 CameraProfilesDialogPrivate::CameraProfilesDialogPrivate(CameraProfilesDialog &object)
@@ -217,6 +231,148 @@ void CameraProfilesDialogPrivate::updateHistSideA(int chipIndex, int channelInde
       this->histA->Draw();
     }
   }
+}
+
+void CameraProfilesDialogPrivate::fillHorizontalProfileAccums(TGraph* horizProfile)
+{
+  if (!horizProfile)
+  {
+    return;
+  }
+  for (Int_t i = 0; i < horizProfile->GetN(); ++i)
+  {
+    MeanDispAccumSet& stripAcc = this->horizontalProfileAccums[i];
+    stripAcc(horizProfile->GetPointY(i));
+  }
+}
+
+void CameraProfilesDialogPrivate::fillVerticalProfileAccums(TGraph* vertProfile)
+{
+  if (!vertProfile)
+  {
+    return;
+  }
+  for (Int_t i = 0; i < vertProfile->GetN(); ++i)
+  {
+    MeanDispAccumSet& stripAcc = this->verticalProfileAccums[i];
+    stripAcc(vertProfile->GetPointY(i));
+  }
+}
+
+void CameraProfilesDialogPrivate::updateVerticalProfileFromAccums(TGraph* vertProfile)
+{
+  if (!vertProfile)
+  {
+    return;
+  }
+  for (Int_t i = 0; i < vertProfile->GetN(); ++i)
+  {
+    MeanDispAccumSet& stripAcc = this->verticalProfileAccums[i];
+    Double_t mean = boost::accumulators::mean(stripAcc);
+    vertProfile->SetPointY(i, mean);
+  }
+}
+
+void CameraProfilesDialogPrivate::updateHorizontalProfileFromAccums(TGraph* horizProfile)
+{
+  if (!horizProfile)
+  {
+    return;
+  }
+  for (Int_t i = 0; i < horizProfile->GetN(); ++i)
+  {
+    MeanDispAccumSet& stripAcc = this->horizontalProfileAccums[i];
+    Double_t mean = boost::accumulators::mean(stripAcc);
+    horizProfile->SetPointY(i, mean);
+  }
+}
+
+void CameraProfilesDialogPrivate::resetHorizontalProfileAccums()
+{
+  for (MeanDispAccumSet& stripAcc : this->horizontalProfileAccums)
+  {
+    stripAcc = {};
+  }
+}
+
+void CameraProfilesDialogPrivate::resetVerticalProfileAccums()
+{
+  for (MeanDispAccumSet& stripAcc : this->verticalProfileAccums)
+  {
+    stripAcc = {};
+  }
+}
+
+std::pair< double, double > CameraProfilesDialogPrivate::homogenousValueOnHorizontalGraph()
+{
+  std::pair< double, double > res{ -1, -1 };
+  double hmin = this->ui->RangeWidget_HomoHorizontal->minimumValue();
+  double hmax = this->ui->RangeWidget_HomoHorizontal->maximumValue();
+
+  std::vector< Double_t > values;
+  for (Int_t i = 0; i < this->graphHorizontalProfile->GetN(); ++i)
+  {
+    Double_t x, y;
+    this->graphHorizontalProfile->GetPoint(i, x, y);
+    if (x >= hmin && x <= hmax)
+    {
+      values.push_back(y);
+    }
+  }
+  if (values.size() > 1)
+  {
+    Double_t min = *std::min_element(values.begin(), values.end());
+    Double_t max = *std::max_element(values.begin(), values.end());
+    res.first = min / max;
+    res.second = 1. - (max - min) / (max + min);
+  }
+  if (values.size() == 1)
+  {
+    res.first = 1.;
+    res.second = 0.;
+  }
+  if (!values.size())
+  {
+    res.first = -1.;
+    res.second = -1.;
+  }
+  return res;
+}
+
+std::pair< double, double > CameraProfilesDialogPrivate::homogenousValueOnVerticalGraph()
+{
+  std::pair< double, double > res{ -1, -1 };
+  double vmin = this->ui->RangeWidget_HomoVertical->minimumValue();
+  double vmax = this->ui->RangeWidget_HomoVertical->maximumValue();
+
+  std::vector< Double_t > values;
+  for (Int_t i = 0; i < this->graphVerticalProfile->GetN(); ++i)
+  {
+    Double_t x, y;
+    this->graphVerticalProfile->GetPoint(i, x, y);
+    if (x >= vmin && x <= vmax)
+    {
+      values.push_back(y);
+    }
+  }
+  if (values.size() > 1)
+  {
+    Double_t min = *std::min_element(values.begin(), values.end());
+    Double_t max = *std::max_element(values.begin(), values.end());
+    res.first = min / max;
+    res.second = 1. - (max - min) / (max + min);
+  }
+  if (values.size() == 1)
+  {
+    res.first = 1.;
+    res.second = 0.;
+  }
+  if (!values.size())
+  {
+    res.first = -1.;
+    res.second = -1.;
+  }
+  return res;
 }
 
 void CameraProfilesDialogPrivate::updateHistSideB(int chipIndex, int channelIndex, AdcTimeType dataType)
@@ -356,16 +512,38 @@ CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceDat
   QObject::connect(d->ui->RangeWidget_Signal, SIGNAL(maximumValueChanged(double)),
     this, SLOT(onSignalEndChanged(double)));
 
+  QObject::connect(d->ui->PushButton_ResetIntegration, SIGNAL(clicked()),
+    this, SLOT(onResetIntegrationClicked()));
+
   {
     QSignalBlocker block(d->ui->RangeWidget_Signal);
-    d->ui->RangeWidget_Signal->setMinimumValue(200.);
-    d->ui->RangeWidget_Signal->setMaximumValue(1100.);
+    d->ui->RangeWidget_Pedestal->setMinimumValue(40.);
+    d->ui->RangeWidget_Pedestal->setMaximumValue(240.);
+    d->ui->RangeWidget_Signal->setMinimumValue(250.);
+    d->ui->RangeWidget_Signal->setMaximumValue(1150.);
   }
 }
 
 CameraProfilesDialog::~CameraProfilesDialog()
 {
   Q_D(CameraProfilesDialog);
+
+  std::shared_ptr< THttpServer > server = d->httpServer.lock();
+  if (server)
+  {
+    if (d->padHorizontalProfile)
+    {
+      server->Unregister(d->padHorizontalProfile.get());
+    }
+    if (d->padVerticalProfile)
+    {
+      server->Unregister(d->padVerticalProfile.get());
+    }
+    if (d->padPseudo2D)
+    {
+      server->Unregister(d->padPseudo2D.get());
+    }
+  }
 
   if (d->padChannel)
   {
@@ -414,11 +592,24 @@ void CameraProfilesDialog::setCameraDevice(AbstractCamera* cam)
   d->padVerticalProfile->cd();
 
   TGraph* prof = d->camera->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
+  d->verticalProfileAccums.resize(prof->GetN());
+//  d->vecVInt.resize(prof->GetN());
   d->graphVerticalProfile.reset(prof);
   d->graphVerticalProfile->SetLineColor(kRed);
   d->graphVerticalProfile->SetLineWidth(2);
   d->graphVerticalProfile->SetMarkerColor(kBlue);
-  d->graphVerticalProfile->SetTitle("Vertical profile (horizontal strips);Strip position (mm);Charge (pC)");
+  if (d->camera->getCameraData().ID == "Camera2")
+  {
+    d->graphVerticalProfile->SetTitle("Wall: Y;Strip position (mm);Charge (pC)");
+  }
+  else if (d->camera->getCameraData().ID == "Camera4")
+  {
+    d->graphVerticalProfile->SetTitle("Isocenter: Y;Strip position (mm);Charge (pC)");
+  }
+  else
+  {
+    d->graphVerticalProfile->SetTitle("Vertical profile (horizontal strips);Strip position (mm);Charge (pC)");
+  }
   d->graphVerticalProfile->Draw("AL*");
 
   canvas = d->ui->RootCanvas_HorizontalProfile->getCanvas();
@@ -429,11 +620,25 @@ void CameraProfilesDialog::setCameraDevice(AbstractCamera* cam)
   d->padHorizontalProfile->cd();
 
   prof = d->camera->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
+  d->horizontalProfileAccums.resize(prof->GetN());
+//  d->vecH.resize(prof->GetN());
+//  d->vecHInt.resize(prof->GetN());
   d->graphHorizontalProfile.reset(prof);
   d->graphHorizontalProfile->SetLineColor(kRed);
   d->graphHorizontalProfile->SetLineWidth(2);
   d->graphHorizontalProfile->SetMarkerColor(kBlue);
-  d->graphHorizontalProfile->SetTitle("Horizontal profile (vertical strips);Strip position (mm);Charge (pC)");
+  if (d->camera->getCameraData().ID == "Camera2")
+  {
+    d->graphHorizontalProfile->SetTitle("Wall: X;Strip position (mm);Charge (pC)");
+  }
+  else if (d->camera->getCameraData().ID == "Camera4")
+  {
+    d->graphHorizontalProfile->SetTitle("Isocenter: X;Strip position (mm);Charge (pC)");
+  }
+  else
+  {
+    d->graphHorizontalProfile->SetTitle("Horizontal profile (vertical strips);Strip position (mm);Charge (pC)");
+  }
   d->graphHorizontalProfile->Draw("AL*");
 
   canvas = d->ui->RootCanvas_Current2D->getCanvas();
@@ -575,7 +780,7 @@ void CameraProfilesDialog::onSignalEndChanged(double pos)
 void CameraProfilesDialog::onAcquisitionStarted()
 {
   Q_D(CameraProfilesDialog);
-  QApplication::setOverrideCursor(Qt::WaitCursor);
+//  QApplication::setOverrideCursor(Qt::WaitCursor);
 }
 
 void CameraProfilesDialog::onAcquisitionFinished()
@@ -597,7 +802,7 @@ void CameraProfilesDialog::onAcquisitionFinished()
       emit logMessage("Spill profiles are saved", cameraID, Qt::green);
     }
   }
-  QApplication::restoreOverrideCursor();
+//  QApplication::restoreOverrideCursor();
 }
 
 void CameraProfilesDialog::onUpdateGraphClicked()
@@ -668,6 +873,15 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
   int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
 
+  // All graphics work is finished, reset accumulator counter
+  if (d->IntegrationCount >= d->NumberOfIntegralSpills)
+  {
+    d->IntegrationCount = 0;
+    d->resetHorizontalProfileAccums();
+    d->resetVerticalProfileAccums();
+    qDebug() << "Integration counter is reset";
+  }
+
   std::map< ChipChannelPair, ChannelInfoPair > infoMap;
   d->camera->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
   d->camera->processDataCounts();
@@ -688,11 +902,48 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   {
     d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
   }
-  d->graphVerticalProfile.reset(d->camera->createProfile(CameraProfileType::PROFILE_VERTICAL, false));
+
+  TGraph* gr = d->camera->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
+  if (d->IntegrationCount >= d->NumberOfIntegralSpills)
+  {
+//    d->resetVerticalProfileAccums();
+    qDebug() << "Reset vertical accums";
+  }
+  d->fillVerticalProfileAccums(gr);
+  d->graphVerticalProfile.reset(gr);
+//  d->graphVerticalProfile.reset(d->camera->createProfile(CameraProfileType::PROFILE_VERTICAL, false));
+  d->updateVerticalProfileFromAccums(d->graphVerticalProfile.get());
+
   d->graphVerticalProfile->SetLineColor(kRed);
   d->graphVerticalProfile->SetLineWidth(2);
   d->graphVerticalProfile->SetMarkerColor(kBlue);
-  d->graphVerticalProfile->SetTitle("Vertical profile (horizontal strips);Strip position (mm);Charge (pC)");
+//  d->graphVerticalProfile->SetTitle("Vertical profile (horizontal strips);Strip position (mm);Charge (pC)");
+
+  if (d->camera->getCameraData().ID == "Camera2")
+  {
+    TString scanTitle;
+    int minH = d->ui->RangeWidget_HomoHorizontal->minimumValue();
+    int maxH = d->ui->RangeWidget_HomoHorizontal->maximumValue();
+    std::pair< double, double > v = d->homogenousValueOnHorizontalGraph();
+    scanTitle.Form("Wall: Y, Count: %d, D = %d percent for range [%d, %d];Strip position (mm);Charge (pC)",
+      d->IntegrationCount, static_cast< int >(v.first * 100.), minH, maxH);
+    d->graphVerticalProfile->SetTitle(scanTitle.Data());
+  }
+  else if (d->camera->getCameraData().ID == "Camera4")
+  {
+    TString scanTitle;
+    int minH = d->ui->RangeWidget_HomoHorizontal->minimumValue();
+    int maxH = d->ui->RangeWidget_HomoHorizontal->maximumValue();
+    std::pair< double, double > v = d->homogenousValueOnHorizontalGraph();
+    scanTitle.Form("Isocenter: Y, Count: %d, D = %d percent for range [%d, %d];Strip position (mm);Charge (pC)",
+      d->IntegrationCount, static_cast< int >(v.first * 100.), minH, maxH);
+    d->graphVerticalProfile->SetTitle(scanTitle.Data());
+  }
+  else
+  {
+    d->graphVerticalProfile->SetTitle("Vertical profile (horizontal strips);Strip position (mm);Charge (pC)");
+  }
+
   d->graphVerticalProfile->Draw("AL*");
   d->padVerticalProfile->Modified();
   d->padVerticalProfile->Update();
@@ -704,11 +955,47 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   {
     d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
   }
-  d->graphHorizontalProfile.reset(d->camera->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false));
+  gr = d->camera->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
+  if (d->IntegrationCount >= d->NumberOfIntegralSpills)
+  {
+//    d->resetHorizontalProfileAccums();
+    qDebug() << "Reset horizontal accums";
+  }
+  d->fillHorizontalProfileAccums(gr);
+  d->graphHorizontalProfile.reset(gr);
+//  d->graphHorizontalProfile.reset(d->camera->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false));
+  d->updateHorizontalProfileFromAccums(d->graphHorizontalProfile.get());
+
   d->graphHorizontalProfile->SetLineColor(kRed);
   d->graphHorizontalProfile->SetLineWidth(2);
   d->graphHorizontalProfile->SetMarkerColor(kBlue);
-  d->graphHorizontalProfile->SetTitle("Horizontal profile (vertical strips);Strip position (mm);Charge (pC)");
+//  d->graphHorizontalProfile->SetTitle("Horizontal profile (vertical strips);Strip position (mm);Charge (pC)");
+
+  if (d->camera->getCameraData().ID == "Camera2")
+  {
+    TString scanTitle;
+    int minH = d->ui->RangeWidget_HomoHorizontal->minimumValue();
+    int maxH = d->ui->RangeWidget_HomoHorizontal->maximumValue();
+    std::pair< double, double > v = d->homogenousValueOnHorizontalGraph();
+    scanTitle.Form("Wall: X, Count: %d, D = %d percent for range [%d, %d];Strip position (mm);Charge (pC)",
+      d->IntegrationCount, static_cast< int >(v.first * 100.), minH, maxH);
+    d->graphHorizontalProfile->SetTitle(scanTitle.Data());
+  }
+  else if (d->camera->getCameraData().ID == "Camera4")
+  {
+    TString scanTitle;
+    int minH = d->ui->RangeWidget_HomoHorizontal->minimumValue();
+    int maxH = d->ui->RangeWidget_HomoHorizontal->maximumValue();
+    std::pair< double, double > v = d->homogenousValueOnHorizontalGraph();
+    scanTitle.Form("Isocenter: X, Count: %d, D = %d percent, for range [%d, %d];Strip position (mm);Charge (pC)",
+      d->IntegrationCount, static_cast< int >(v.first * 100.), minH, maxH);
+    d->graphHorizontalProfile->SetTitle(scanTitle.Data());
+  }
+  else
+  {
+    d->graphHorizontalProfile->SetTitle("Horizontal profile (vertical strips);Strip position (mm);Charge (pC)");
+  }
+
   d->graphHorizontalProfile->Draw("AL*");
   d->padHorizontalProfile->Modified();
   d->padHorizontalProfile->Update();
@@ -727,10 +1014,30 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   canvas = d->ui->RootCanvas_Integrated2D->getCanvas();
   canvas->cd();
   d->padPseudoIntegral2D->cd();
+  if (d->IntegrationCount >= d->NumberOfIntegralSpills)
+  {
+    d->histPseudoIntegral2D->Reset();
+    qDebug() << "Reset integral 2D";
+  }
   d->padPseudoIntegral2D->Modified();
   d->padPseudoIntegral2D->Update();
 
-  emit profilesUpdated();
+  // All graphics work is finished, reset accumulator counter
+  if (d->IntegrationCount >= d->NumberOfIntegralSpills)
+  {
+    d->IntegrationCount = 0;
+    d->resetHorizontalProfileAccums();
+    d->resetVerticalProfileAccums();
+    qDebug() << "Integration counter is reset";
+  }
+//  else
+  {
+    MeanDispAccumSet& hacc = d->horizontalProfileAccums[86];
+    MeanDispAccumSet& vacc = d->verticalProfileAccums[86];
+    qDebug() << "Integration counter: " << d->IntegrationCount << ' ' << boost::accumulators::count(hacc) << ' ' << boost::accumulators::count(vacc);
+    d->IntegrationCount++;
+  }
+//  emit profilesUpdated();
   emit profilesUpdated(d->camera->getCameraData().ID);
   d->chipChannelInfoModel->setChipChannelInfo(infoMap);
 
@@ -766,6 +1073,275 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   {
     dataFile->close();
   }
+/*
+  if (!d->camera)
+  {
+//    qWarning() << Q_FUNC_INFO << "Camera is invalid";
+    emit logMessage("Camera is invalid", "", Qt::red);
+    return;
+  }
+  int pedMin = static_cast< int >(d->ui->RangeWidget_Pedestal->minimumValue());
+  int pedMax = static_cast< int >(d->ui->RangeWidget_Pedestal->maximumValue());
+  int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
+  int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
+*/
+/*
+  for (Int_t i = 0; i < d->graphVerticalProfile->GetN(); i++)
+  {
+    Double_t y = d->graphVerticalProfile->GetPointY(i);
+    d->vecVInt[i] = y;
+  }
+
+  for (Int_t i = 0; i < d->graphHorizontalProfile->GetN(); i++)
+  {
+    Double_t y = d->graphHorizontalProfile->GetPointY(i);
+    d->vecHInt[i] = y;
+  }
+*/
+//  TGraph* gV = d->camera->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
+//  gV->Clear();
+//  TGraph* gH = d->camera->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
+//  gH->Clear();
+/**
+  std::map< ChipChannelPair, ChannelInfoPair > infoMap;
+  d->camera->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
+  d->camera->processDataCounts();
+  d->camera->getChipChannelInfo(infoMap);
+  if (!infoMap.size())
+  {
+//    qWarning() << Q_FUNC_INFO << "Camera data is empty";
+    emit logMessage("Camera data is empty", "", Qt::red);
+    return;
+  }
+
+  d->camera->updateProfiles(d->graphVerticalProfile.get(), d->graphHorizontalProfile.get(), false);
+//  d->camera->updateProfiles(gV, gH, false);
+//  d->camera->updateProfiles(nullptr, gH, false);
+  d->camera->updateProfiles2D(d->histPseudo2D.get(), d->histPseudoIntegral2D.get());
+*/
+/*
+  Double_t y1 = 0, yNew1 = 0, yNew2 = 0, y2 = 0;
+  for (Int_t i = 0; i < d->graphVerticalProfile->GetN(); i++)
+  {
+    y1 = d->graphVerticalProfile->GetPointY(i);
+    yNew1 = gV->GetPointY(i);
+    gV->SetPointY(i, (y1 + yNew1));
+  }
+
+  for (Int_t i = 0; i < d->graphHorizontalProfile->GetN(); i++)
+  {
+    y2 = d->graphHorizontalProfile->GetPointY(i);
+    yNew2 = gH->GetPointY(i);
+    gH->SetPointY(i, (y2 + yNew2));
+  }
+*/
+//  qDebug() << Q_FUNC_INFO << d->IntegrationCount << ' ' << y1 << ' ' << yNew1 << ' ' << y2 << yNew2;
+/*
+  TCanvas* canvas = d->ui->RootCanvas_VerticalProfile->getCanvas();
+  canvas->cd();
+  d->padVerticalProfile->cd();
+  if (d->padVerticalProfile)
+  {
+    d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
+  }
+///  d->graphVerticalProfile.reset(gV);
+  d->graphVerticalProfile.reset(d->camera->createProfile(CameraProfileType::PROFILE_VERTICAL, false));
+  for (Int_t i = 0; i < d->graphVerticalProfile->GetN(); i++)
+  {
+///    d->graphVerticalProfile->SetPointY(i, gV->GetPointY(i));
+  }
+  d->graphVerticalProfile->SetLineColor(kRed);
+  d->graphVerticalProfile->SetLineWidth(2);
+  d->graphVerticalProfile->SetMarkerColor(kBlue);
+  if (d->camera->getCameraData().ID == "Camera2")
+  {
+//      TString scanTitle;
+//      scanTitle.Form("Wall: Y, Count: %d;Strip position (mm);Charge (pC)", d->IntegrationCount);
+//      d->graphVerticalProfile->SetTitle(scanTitle.Data());
+    d->graphVerticalProfile->SetTitle("Wall: Y;Strip position (mm);Charge (pC)");
+  }
+  else if (d->camera->getCameraData().ID == "Camera4")
+  {
+//      TString scanTitle;
+//      scanTitle.Form("Isocenter: Y, Count: %d;Strip position (mm);Charge (pC)", d->IntegrationCount);
+//      d->graphVerticalProfile->SetTitle(scanTitle.Data());
+    d->graphVerticalProfile->SetTitle("Isocenter: Y;Strip position (mm);Charge (pC)");
+  }
+  else
+  {
+    d->graphVerticalProfile->SetTitle("Vertical profile (horizontal strips);Strip position (mm);Charge (pC)");
+  }
+
+  d->graphVerticalProfile->Draw("AL*");
+  d->padVerticalProfile->Modified();
+  d->padVerticalProfile->Update();
+
+  canvas = d->ui->RootCanvas_HorizontalProfile->getCanvas();
+  canvas->cd();
+  d->padHorizontalProfile->cd();
+  if (d->graphHorizontalProfile)
+  {
+    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
+  }
+
+  if (d->graphHorizontalProfile)
+  {
+//    qDebug() << Q_FUNC_INFO << d->IntegrationCount << ' ' << d->graphHorizontalProfile->GetPointY(86) << ' ' << gH->GetPointY(86);
+  }
+
+  d->graphHorizontalProfile.reset(d->camera->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false));
+  for (Int_t i = 0; i < d->graphHorizontalProfile->GetN(); i++)
+  {
+//    d->graphHorizontalProfile->SetPointY(i, gH->GetPointY(i));
+  }
+//  d->graphHorizontalProfile.reset(gH);
+  d->graphHorizontalProfile->SetLineColor(kRed);
+  d->graphHorizontalProfile->SetLineWidth(2);
+  d->graphHorizontalProfile->SetMarkerColor(kBlue);
+  if (d->camera->getCameraData().ID == "Camera2")
+  {
+//    TString scanTitle;
+//    scanTitle.Form("Wall: X, Count: %d;Strip position (mm);Charge (pC)", d->IntegrationCount);
+//    d->graphHorizontalProfile->SetTitle(scanTitle.Data());
+    d->graphHorizontalProfile->SetTitle("Wall: X;Strip position (mm);Charge (pC)");
+  }
+  else if (d->camera->getCameraData().ID == "Camera4")
+  {
+//    TString scanTitle;
+//    scanTitle.Form("Isocenter: X, Count: %d;Strip position (mm);Charge (pC)", d->IntegrationCount);
+//    d->graphHorizontalProfile->SetTitle(scanTitle.Data());
+    d->graphHorizontalProfile->SetTitle("Isocenter: X;Strip position (mm);Charge (pC)");
+  }
+  else
+  {
+    d->graphHorizontalProfile->SetTitle("Horizontal profile (vertical strips);Strip position (mm);Charge (pC)");
+  }
+
+  d->graphHorizontalProfile->Draw("AL*");
+
+  if (d->IntegrationCount >= 9)
+  {
+    d->graphHorizontalProfile->Clear();
+    d->graphVerticalProfile->Clear();
+
+    for (Int_t i = 0; i < d->graphVerticalProfile->GetN(); i++)
+    {
+//      d->graphVerticalProfile->SetPointY(i, 0.);
+    }
+
+    for (Int_t i = 0; i < d->graphHorizontalProfile->GetN(); i++)
+    {
+//      d->graphHorizontalProfile->SetPointY(i, 0.);
+    }
+    this->onResetIntegralPseudo2dClicked();
+    d->IntegrationCount = 0;
+    d->padHorizontalProfile->Modified();
+    d->padHorizontalProfile->Update();
+
+    d->padVerticalProfile->Modified();
+    d->padVerticalProfile->Update();
+//    std::fill(std::begin(d->vecHInt), std::end(d->vecHInt), 0.);
+//    std::fill(std::begin(d->vecVInt), std::end(d->vecVInt), 0.);
+  }
+  else
+  {
+*/
+/*
+      for (Int_t i = 0; i < d->graphVerticalProfile->GetN(); i++)
+      {
+        d->vecVInt[i] += d->vecV[i];
+      }
+
+      for (Int_t i = 0; i < d->graphHorizontalProfile->GetN(); i++)
+      {
+        d->vecHInt[i] += d->vecH[i];
+      }
+*/
+//    d->graphHorizontalProfile->Clear();
+//    d->graphVerticalProfile->Clear();
+/*
+  d->IntegrationCount++;
+  }
+  if (d->graphHorizontalProfile && d->graphVerticalProfile)
+  {
+//    qDebug() << Q_FUNC_INFO << d->IntegrationCount << ' ' << d->graphHorizontalProfile->GetPointY(86) << ' ' << d->graphVerticalProfile->GetPointY(86);
+  }
+  canvas = d->ui->RootCanvas_Current2D->getCanvas();
+  canvas->cd();
+  d->padPseudo2D->cd();
+  if (d->ui->CheckBox_ManualChargeRange->isChecked())
+  {
+    d->histPseudo2D->GetZaxis()->SetRangeUser(d->ui->RangeWidget_ChargeRange->minimumValue(),
+      d->ui->RangeWidget_ChargeRange->maximumValue());
+  }
+  d->padPseudo2D->Modified();
+  d->padPseudo2D->Update();
+
+  canvas = d->ui->RootCanvas_Integrated2D->getCanvas();
+  canvas->cd();
+  d->padPseudoIntegral2D->cd();
+  d->padPseudoIntegral2D->Modified();
+  d->padPseudoIntegral2D->Update();
+
+///  delete gV;
+///  delete gH;
+//  emit profilesUpdated();
+  emit profilesUpdated(d->camera->getCameraData().ID);
+  d->chipChannelInfoModel->setChipChannelInfo(infoMap);
+
+  // dump info into temporary text file
+  auto cameraData = d->camera->getCameraData();
+  QString dataFileName = QDir::tempPath() + QString(QDir::separator()) + cameraData.ID + "_infodump.txt";
+  QScopedPointer< QFile > dataFile(new QFile(dataFileName));
+  bool res = dataFile->open(QIODevice::WriteOnly | QIODevice::Text);
+  if (!res)
+  {
+    return;
+  }
+  QTextStream dataFileStream(dataFile.get()); // dump info to temp file for amplitude calibration
+  using MapConstIter = std::map< ChipChannelPair, ChannelInfoPair >::const_iterator;
+  for (MapConstIter iter = infoMap.begin(); iter != infoMap.end(); ++iter)
+  {
+    const ChipChannelPair& chipChannelPair = iter->first;
+    const ChannelInfoPair& infoPair = iter->second;
+    const ChannelInfo& rawInfo = infoPair.first;
+    const ChannelInfo& adcCalibInfo = infoPair.second;
+    double meanRawSignalNoAmp = (2. * rawInfo.SignalNoAmp) / (rawInfo.SigCountA + rawInfo.SigCountB);
+    double meanCalibSignalNoAmp = (2. * adcCalibInfo.SignalNoAmp) / (adcCalibInfo.SigCountA + adcCalibInfo.SigCountB);
+    if (res)
+    {
+      dataFileStream << qSetFieldWidth(10) \
+        << chipChannelPair.first << ' ' << chipChannelPair.second << ' ' \
+        << meanRawSignalNoAmp << ' ' << meanCalibSignalNoAmp << '\n';
+    }
+  }
+  dataFileStream.flush();
+  res = dataFile->flush();
+  if (res)
+  {
+    dataFile->close();
+  }
+  qDebug() << Q_FUNC_INFO << "Int count: " << d->IntegrationCount;
+*/
+//  d->padHorizontalProfile->Modified();
+//  d->padHorizontalProfile->Update();
+
+//  d->padVerticalProfile->Modified();
+//  d->padVerticalProfile->Update();
+}
+
+void CameraProfilesDialog::onResetIntegrationClicked()
+{
+  Q_D(CameraProfilesDialog);
+  qDebug() << Q_FUNC_INFO << "Reset integration";
+
+  d->resetHorizontalProfileAccums();
+  d->resetVerticalProfileAccums();
+  d->graphHorizontalProfile->Clear();
+  d->graphVerticalProfile->Clear();
+  d->histPseudo2D->Reset();
+  d->histPseudoIntegral2D->Reset();
+  d->IntegrationCount = 0;
 }
 
 void CameraProfilesDialog::onResetIntegralPseudo2dClicked()
@@ -774,9 +1350,13 @@ void CameraProfilesDialog::onResetIntegralPseudo2dClicked()
   d->histPseudoIntegral2D->Reset();
   d->padPseudoIntegral2D->Modified();
   d->padPseudoIntegral2D->Update();
+
+  d->histPseudo2D->Reset();
+  d->padPseudo2D->Modified();
+  d->padPseudo2D->Update();
 }
 
-void CameraProfilesDialog::addBeamProfilesToServer(THttpServer* server)
+void CameraProfilesDialog::addBeamProfilesToServer(std::shared_ptr< THttpServer > server)
 {
   Q_D(CameraProfilesDialog);
   if (!server)
@@ -792,12 +1372,16 @@ void CameraProfilesDialog::addBeamProfilesToServer(THttpServer* server)
   {
     return;
   }
+  d->httpServer = server;
+//  server->Register("/", d->padHorizontalProfile.get());
+//  server->Register("/", d->padVerticalProfile.get());
+//  server->Register("/", d->padPseudo2D.get());
   QByteArray bytesStr = QByteArray(1, '/') + cameraID.toLatin1();
   const char* id_str = bytesStr.data();
   server->Register(id_str, d->padHorizontalProfile.get());
   server->Register(id_str, d->padVerticalProfile.get());
   server->Register(id_str, d->padPseudo2D.get());
-  server->Register(id_str, d->padPseudoIntegral2D.get());
+//  server->Register(id_str, d->padPseudoIntegral2D.get());
 
 //  server->SetItemField(id_str, "_layout", "grid2x2");
 /*  QByteArray Str = cameraID.toLatin1();

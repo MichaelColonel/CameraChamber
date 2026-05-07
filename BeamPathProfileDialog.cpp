@@ -33,12 +33,19 @@
 #include <TPad.h>
 #include <TMultiGraph.h>
 #include <TStyle.h>
+#include <TImage.h>
+#include <TFile.h>
 
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QProcess>
 
 #include "AbstractCamera.h"
 #include "BeamPathTableModel.h"
+
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 QT_BEGIN_NAMESPACE
 
@@ -64,11 +71,11 @@ public:
   double getNorm(TGraph* profile);
   double getMean(TGraph* profile, double norm);
   double getSigma(TGraph* profile, double mean, double norm);
-  double homogenousValue();
+  std::pair< double, double > homogenousValue();
   int getBinScanningX(double posX);
   int getBinScanningY(double posY);
-  double getCenterPositionScanningX();
-  double getCenterPositionScanningY();
+  int getBinX(TH2* h2, double posX);
+  int getBinY(TH2* h2, double posY);
 
   BeamProfileArray getProfilesParameters(TGraph* profileX, TGraph* profileY);
   TGraph* getScanningProjection(TH1* histProjection);
@@ -86,11 +93,11 @@ public:
   QPair< bool, bool > camerasProfilesReady{ false, false };
 
   std::weak_ptr< THttpServer > httpServer;
-  std::unique_ptr< TLatex > latexBeamPathTable;
-  std::unique_ptr< TLatex > latexTestMessage;
+  std::unique_ptr< TLatex > latexBeamPathTable1;
+  std::unique_ptr< TLatex > latexBeamPathTable2;
 
-  std::unique_ptr< TPad > padTestMessage;
-  std::unique_ptr< TPad > padBeamPathTable;
+  std::unique_ptr< TPad > padBeamPathTable1;
+  std::unique_ptr< TPad > padBeamPathTable2;
   std::unique_ptr< TPad > padCalibration2D;
   std::unique_ptr< TPad > padScanning2D;
 
@@ -105,6 +112,9 @@ public:
   std::unique_ptr< TLine > lineScanningVerticalEnd;
   std::unique_ptr< TLine > lineScanningHorizontalBegin;
   std::unique_ptr< TLine > lineScanningHorizontalEnd;
+
+  std::unique_ptr< TImage > imageCalibration2D;
+  std::unique_ptr< TImage > imageScanning2D;
 
   QScopedPointer< BeamPathTableModel > beamPathModel;
   QScopedPointer< QTimer > timer;
@@ -130,6 +140,7 @@ public:
     kYellow, // (100-95)
     kRed // (> 100)
   };
+  int ScanningCount{ 1 };
 };
 
 BeamPathProfileDialogPrivate::BeamPathProfileDialogPrivate(BeamPathProfileDialog &object)
@@ -193,9 +204,9 @@ double BeamPathProfileDialogPrivate::getSigma(TGraph* profile, double mean, doub
   return std::sqrt(var / norm);
 }
 
-double BeamPathProfileDialogPrivate::homogenousValue()
+std::pair< double, double > BeamPathProfileDialogPrivate::homogenousValue()
 {
-  double d = -1.;
+  std::pair< double, double > res{ -1, -1 };
   double hmin = this->ui->RangeWidget_ScanHomoHorizontal->minimumValue();
   double hmax = this->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
   double vmin = this->ui->RangeWidget_ScanHomoVertical->minimumValue();
@@ -228,17 +239,20 @@ double BeamPathProfileDialogPrivate::homogenousValue()
   {
     Double_t min = *std::min_element(values.begin(), values.end());
     Double_t max = *std::max_element(values.begin(), values.end());
-    d = min / max;
+    res.first = min / max;
+    res.second = (max - min) / (max + min);
   }
   if (values.size() == 1)
   {
-    d = 1.;
+    res.first = 1.;
+    res.second = 0.;
   }
   if (!values.size())
   {
-    d = -1.;
+    res.first = -1.;
+    res.second = -1.;
   }
-  return d;
+  return res;
 }
 
 BeamProfileArray BeamPathProfileDialogPrivate::getProfilesParameters(TGraph* profileX, TGraph* profileY)
@@ -262,7 +276,8 @@ BeamProfileArray BeamPathProfileDialogPrivate::getProfilesParameters(TGraph* pro
   bp[2] = -1.;
   if (sigmaY >= 0. && sigmaX >= 0.)
   {
-    bp[2] = std::sqrt(sigmaX * sigmaX + sigmaY * sigmaY);
+    bp[2] = sigmaX;
+    bp[3] = sigmaY;
   }
   return bp;
 }
@@ -271,7 +286,7 @@ BeamProfileArray BeamPathProfileDialogPrivate::processBeamProfile(AbstractCamera
   int pedMin, int pedMax, int signalMin, int signalMax)
 {
   Q_Q(BeamPathProfileDialog);
-  BeamProfileArray prof{0., 0., -1.};
+  BeamProfileArray prof{0., 0., -1., -1.};
   if (!cam)
   {
     return prof;
@@ -332,6 +347,46 @@ int BeamPathProfileDialogPrivate::getBinScanningY(double posY)
   return binPos;
 }
 
+int BeamPathProfileDialogPrivate::getBinX(TH2* hist2, double posX)
+{
+  int binPos = -1;
+  if (!hist2)
+  {
+    return binPos;
+  }
+  for (int i = 1; i <= hist2->GetXaxis()->GetNbins(); ++i)
+  {
+    Double_t binLow = hist2->GetXaxis()->GetBinLowEdge(i);
+    Double_t binUp = hist2->GetXaxis()->GetBinUpEdge(i);
+    if ((posX >= binLow) && (posX < binUp))
+    {
+      binPos = i;
+      break;
+    }
+  }
+  return binPos;
+}
+
+int BeamPathProfileDialogPrivate::getBinY(TH2* hist2, double posY)
+{
+  int binPos = -1;
+  if (!hist2)
+  {
+    return binPos;
+  }
+  for (int i = 1; i <= hist2->GetYaxis()->GetNbins(); ++i)
+  {
+    Double_t binLow = hist2->GetYaxis()->GetBinLowEdge(i);
+    Double_t binUp = hist2->GetYaxis()->GetBinUpEdge(i);
+    if ((posY >= binLow) && (posY < binUp))
+    {
+      binPos = i;
+      break;
+    }
+  }
+  return binPos;
+}
+
 TGraph* BeamPathProfileDialogPrivate::getScanningProjection(TH1* histProj)
 {
   if (histProj)
@@ -364,12 +419,13 @@ bool BeamPathProfileDialogPrivate::createProfiles()
     if (histCalib)
     {
       histCalib->SetName("hCalib2D");
+      histCalib->SetTitle("Calibration Mode");
     }
 //    histCalib->SetDirectory(nullptr);
     this->histCalibration2D.reset(histCalib);
     this->histCalibration2D->GetXaxis()->SetTitle("Horizontal profile, mm");
     this->histCalibration2D->GetYaxis()->SetTitle("Vertical profile, mm");
-    this->histCalibration2D->Draw("COLZ");
+//    this->histCalibration2D->Draw("COLZ");
 
     this->padCalibration2D->Modified();
     this->padCalibration2D->Update();
@@ -384,6 +440,7 @@ bool BeamPathProfileDialogPrivate::createProfiles()
     if (histScan)
     {
       histScan->SetName("hScan2D");
+      histScan->SetTitle("Scanning Mode");
     }
 //    histScan->SetDirectory(nullptr);
     this->histScanning2D.reset(histScan);
@@ -400,9 +457,28 @@ bool BeamPathProfileDialogPrivate::createProfiles()
 void BeamPathProfileDialogPrivate::processBeamPathProfile(TGraph* profile)
 {
   Q_Q(BeamPathProfileDialog);
-//  Double_t max = profile->GetMaximum();
 
-  profile->Scale(100. / profile->GetMaximum());
+  std::vector< Double_t > v;
+  for (Int_t i = 0; i < profile->GetN(); ++i)
+  {
+    Double_t y = profile->GetPointY(i);
+    v.push_back(y);
+  }
+  Double_t max = *std::max_element(std::begin(v), std::end(v));
+
+  profile->Scale(100. / max);
+  for (Int_t i = 0; i < profile->GetN(); ++i)
+  {
+    Double_t x, y;
+    profile->GetPoint(i, x, y);
+    constexpr Double_t thres = 3.;
+    Double_t new_y = (y < thres) ? 0. : y;
+    profile->SetPoint(i, x, new_y);
+  }
+/*
+  Double_t max = profile->GetMaximum();
+
+//  profile->Scale(100. / max);
   for (Int_t i = 0; i < profile->GetN(); ++i)
   {
     Double_t x = -1000., y = -1000.;
@@ -410,9 +486,12 @@ void BeamPathProfileDialogPrivate::processBeamPathProfile(TGraph* profile)
 //    Double_t v = 100. * y / max;
 //    profile->SetPoint(i, x, v);
     constexpr Double_t thres = 3.;
-//    Double_t v = 100. * y / max;
-    profile->SetPoint(i, x, (y < thres) ? 0. : y);
+    Double_t v = profile->GetMaximum();
+    Double_t new_y = (y < thres) ? 0. : y;
+    profile->SetPoint(i, x, new_y);
+    qDebug() << Q_FUNC_INFO << x << ' ' << y << ' ' << v << ' ' << new_y << ' ' << max;
   }
+*/
 }
 
 void BeamPathProfileDialogPrivate::calculateBeamPath()
@@ -425,36 +504,43 @@ void BeamPathProfileDialogPrivate::calculateBeamPath()
     return;
   }
 
-  const int offset = 200;
+//  const int offset = 20;
   const int integInterval = 100;
   constexpr int steps = 9;
-  constexpr std::array< double, steps > pos{.7, .65, .6, .55, .6, .45, .4, .35, .3 };
-  BeamPathMap beamPathMap;
+  constexpr std::array< double, steps > pos{.7, .65, .6, .55, .5, .45, .4, .35, .3};
+//  constexpr int steps = 7;
+//  constexpr std::array< double, steps > pos{.7, .65, .6, .55, .5, .45, .4};
 
-  this->padBeamPathTable->cd();
-  this->padBeamPathTable->Clear();
-  this->latexBeamPathTable = std::unique_ptr< TLatex >(new TLatex);
+  this->padBeamPathTable1->cd();
+  this->padBeamPathTable1->Clear();
+  this->latexBeamPathTable1 = std::unique_ptr< TLatex >(new TLatex);
+  this->latexBeamPathTable2 = std::unique_ptr< TLatex >(new TLatex);
   QDateTime dt = QDateTime::currentDateTime();
-  QString msg = QObject::tr("Местное время -- %1").arg(dt.toString("hh:mm:ss"));
+  QString msg = QObject::tr("Местное время -- %1, Count %2").arg(dt.toString("hh:mm:ss")).arg(this->ScanningCount);
   std::string msgBytes = msg.toStdString();
   const char* str = msgBytes.data();
 
-  this->latexBeamPathTable->DrawLatex(.2, 0.95, str);
+  this->latexBeamPathTable1->DrawLatex(.2, 0.95, str);
+  this->latexBeamPathTable1->SetTextSize(0.05);
+  this->latexBeamPathTable1->SetTextAlign(13);  //align at top
+  this->latexBeamPathTable1->DrawLatex(.0, .9,"Время, (мс)");
+  this->latexBeamPathTable1->DrawLatex(.3, .9,"X");
+  this->latexBeamPathTable1->DrawLatex(.5, .9,"Y");
+  this->latexBeamPathTable1->DrawLatex(.7, .9,"Dx");
+  this->latexBeamPathTable1->DrawLatex(.9, .9,"Dy");
 
-  this->latexBeamPathTable->SetTextSize(0.05);
-  this->latexBeamPathTable->SetTextAlign(13);  //align at top
-  this->latexBeamPathTable->DrawLatex(.0, .9,"Время, (мс)");
-  this->latexBeamPathTable->DrawLatex(.3, .9,"ПР1 / Стена");
-  this->latexBeamPathTable->DrawLatex(.6, .9,"ПР2 / Изоцентр");
-
-  this->latexBeamPathTable->DrawLatex(.0,.85,"           ");
-  this->latexBeamPathTable->DrawLatex(.3,.85,"X,Y,D (мм)");
-  this->latexBeamPathTable->DrawLatex(.6,.85,"X,Y,D (мм)");
+  this->latexBeamPathTable1->DrawLatex(.0,.85,"           ");
+  this->latexBeamPathTable1->DrawLatex(.3,.85,"     ");
+  this->latexBeamPathTable1->DrawLatex(.5,.85,"     ");
+  this->latexBeamPathTable1->DrawLatex(.7,.85,"     ");
+  this->latexBeamPathTable1->DrawLatex(.9,.85,"     ");
 
   if (!this->camera1() || !this->camera2() || !this->areCamerasProfilesReady())
   {
-    this->padBeamPathTable->Modified();
-    this->padBeamPathTable->Update();
+    this->padBeamPathTable1->Modified();
+    this->padBeamPathTable1->Update();
+    this->padBeamPathTable2->Modified();
+    this->padBeamPathTable2->Update();
     return;
   }
 
@@ -462,8 +548,9 @@ void BeamPathProfileDialogPrivate::calculateBeamPath()
   this->camera1()->getPedestalSignalGate(gatecam1);
   std::array< int, 4 > gatecam2;
   this->camera2()->getPedestalSignalGate(gatecam2);
-
-  this->latexBeamPathTable->SetTextSize(0.04);
+/*
+  this->latexBeamPathTable1->SetTextSize(0.04);
+  this->latexBeamPathTable2->SetTextSize(0.04);
   for (int i = 0; i < steps; ++i)
   {
     int sigBegin = offset + (i * integInterval);
@@ -492,24 +579,163 @@ void BeamPathProfileDialogPrivate::calculateBeamPath()
     delete cam2ProfileH;
     beamPathMap[double(i + 1) * double(integInterval)] = std::make_pair(pBegin, pEnd);
     QString integrTime = QString::number((i + 1) * integInterval);
-    QString cam1Position("No Beam");
+    QString cam1PositionPos("No Beam");
+    QString cam1PositionDia("No Beam");
     if (pBegin[2] >= 0)
     {
-      cam1Position = QObject::tr("%1, %2, %3").arg(pBegin[0], 0, 'g', 1).arg(pBegin[1], 0, 'g', 1).arg(pBegin[2], 0, 'g', 2);
+      std::stringstream ssPos;
+      ssPos << std::right << std::fixed << std::setw(6) << std::setprecision(2) << pBegin[0] << ", " << pBegin[1];
+      std::string strPos = ssPos.str();
+      cam1PositionPos = QString::fromStdString(strPos);
+
+      std::stringstream ssDia;
+      ssDia << std::right << std::fixed << std::setw(6) << std::setprecision(2) << 6. * pBegin[2] << ", " << 6. * pBegin[3];
+      std::string strDia = ssDia.str();
+      cam1PositionDia = QString::fromStdString(strDia);
+//      cam1Position = QObject::tr("%1, %2, %3").arg(pBegin[0], 5, 'f', 1).arg(pBegin[1], 5, 'f', 1).arg(6. * pBegin[2], 5, 'f', 1);
     }
-    QString cam2Position("No Beam");
+    QString cam2PositionPos("No Beam");
+    QString cam2PositionDia("No Beam");
     if (pEnd[2] >= 0)
     {
-      cam2Position = QObject::tr("%1, %2, %3").arg(pEnd[0], 0, 'g', 1).arg(pEnd[1], 0, 'g', 1).arg(pEnd[2], 0, 'g', 2);
+        std::stringstream ssPos;
+        ssPos << std::right << std::fixed << std::setw(6) << std::setprecision(2) << pEnd[0] << ", " << pEnd[1];
+        std::string strPos = ssPos.str();
+        cam2PositionPos = QString::fromStdString(strPos);
+
+        std::stringstream ssDia;
+        ssDia << std::right << std::fixed << std::setw(6) << std::setprecision(2) << 6. * pEnd[2] << ", " << 6. * pEnd[3];
+        std::string strDia = ssDia.str();
+        cam2PositionDia = QString::fromStdString(strDia);
+  //      cam1Position = QObject::tr("%1, %2, %3").arg(pBegin[0], 5, 'f', 1).arg(pBegin[1], 5, 'f', 1).arg(6. * pBegin[2], 5, 'f', 1);
     }
 
-    this->latexBeamPathTable->DrawLatex(.0, pos[i], integrTime.toLatin1().data());
-    this->latexBeamPathTable->DrawLatex(.3, pos[i], cam1Position.toLatin1().data());
-    this->latexBeamPathTable->DrawLatex(.6, pos[i], cam1Position.toLatin1().data());
+    this->latexBeamPathTable1->DrawLatex(.0, pos[i], integrTime.toLatin1().data());
+    this->latexBeamPathTable1->DrawLatex(.3, pos[i], cam1PositionPos.toLatin1().data());
+    this->latexBeamPathTable1->DrawLatex(.6, pos[i], cam1PositionDia.toLatin1().data());
+
+    this->latexBeamPathTable2->DrawLatex(.0, pos[i], integrTime.toLatin1().data());
+    this->latexBeamPathTable2->DrawLatex(.3, pos[i], cam2PositionPos.toLatin1().data());
+    this->latexBeamPathTable2->DrawLatex(.6, pos[i], cam2PositionDia.toLatin1().data());
   }
   this->beamPathModel->setBeamPath(beamPathMap);
-  this->padBeamPathTable->Modified();
-  this->padBeamPathTable->Update();
+  this->padBeamPathTable1->Modified();
+  this->padBeamPathTable1->Update();
+
+
+  this->padBeamPathTable2->Modified();
+  this->padBeamPathTable2->Update();
+*/
+
+  int offset = gatecam1[2];
+  this->latexBeamPathTable1->SetTextSize(0.04);
+  for (int i = 0; i < steps; ++i)
+  {
+    int sigBegin = offset + (i * integInterval);
+    int sigEnd = sigBegin + integInterval;
+    this->camera1()->setPedestalSignalGate(gatecam1[0], gatecam1[1], sigBegin, sigEnd);
+    this->camera1()->processDataCounts();
+    TGraph* cam1ProfileV = this->camera1()->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
+    TGraph* cam1ProfileH = this->camera1()->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
+
+    this->processBeamPathProfile(cam1ProfileV);
+    this->processBeamPathProfile(cam1ProfileH);
+
+    BeamProfileArray pBegin = this->getProfilesParameters(cam1ProfileH, cam1ProfileV);
+
+    delete cam1ProfileV;
+    delete cam1ProfileH;
+    QString integrTime = QString::number((i + 1) * integInterval);
+    QString cam1PositionPos("No Beam");
+    QString cam1PositionDia("No Beam");
+    if (pBegin[2] >= 0)
+    {
+      std::stringstream ssPos;
+      ssPos << std::right << std::fixed << std::setw(8) << std::setprecision(1) << pBegin[0] << ' ' << std::setw(6) << pBegin[1];
+      std::string strPos = ssPos.str();
+      cam1PositionPos = QObject::tr("%1  %2").arg(pBegin[0], 5, 'f', 1, QChar(' ')).arg(pBegin[1], 5, 'f', 1, QChar(' '));
+
+      std::stringstream ssDia;
+      ssDia << std::right << std::fixed << std::setw(8) << std::setprecision(1) << 6. * pBegin[2] << ' ' << std::setw(5) << 6. * pBegin[3];
+      std::string strDia = ssDia.str();
+      cam1PositionDia = QObject::tr("%1  %2").arg(6. * pBegin[2], 5, 'f', 1, QChar(' ')).arg(6. * pBegin[3], 5, 'f', 1, QChar(' '));
+    }
+
+    this->latexBeamPathTable1->DrawLatex(.0, pos[i], integrTime.toLatin1().data());
+    QString val1 = QObject::tr("%1").arg(pBegin[0], 5, 'f', 1, QChar(' '));
+    this->latexBeamPathTable1->DrawLatex(.3, pos[i], val1.toLatin1().data());
+    QString val2 = QObject::tr("%1").arg(pBegin[1], 5, 'f', 1, QChar(' '));
+    this->latexBeamPathTable1->DrawLatex(.5, pos[i], val2.toLatin1().data());
+    QString val3 = QObject::tr("%1").arg(6. * pBegin[2], 5, 'f', 1, QChar(' '));
+    this->latexBeamPathTable1->DrawLatex(.7, pos[i], val3.toLatin1().data());
+    QString val4 = QObject::tr("%1").arg(6. * pBegin[3], 5, 'f', 1, QChar(' '));
+    this->latexBeamPathTable1->DrawLatex(.9, pos[i], val4.toLatin1().data());
+  }
+  this->padBeamPathTable1->Modified();
+  this->padBeamPathTable1->Update();
+
+  offset = gatecam2[2];
+  this->padBeamPathTable2->cd();
+  this->padBeamPathTable2->Clear();
+  this->latexBeamPathTable2->DrawLatex(.2, 0.95, str);
+  this->latexBeamPathTable2->SetTextSize(0.05);
+  this->latexBeamPathTable2->SetTextAlign(13);  //align at top
+  this->latexBeamPathTable2->DrawLatex(.0, .9,"Время, (мс)");
+  this->latexBeamPathTable2->DrawLatex(.3, .9,"X");
+  this->latexBeamPathTable2->DrawLatex(.5, .9,"Y");
+  this->latexBeamPathTable2->DrawLatex(.7, .9,"Dx");
+  this->latexBeamPathTable2->DrawLatex(.9, .9,"Dy");
+  this->latexBeamPathTable2->DrawLatex(.0,.85,"           ");
+  this->latexBeamPathTable2->DrawLatex(.3,.85,"     ");
+  this->latexBeamPathTable2->DrawLatex(.5,.85,"     ");
+  this->latexBeamPathTable2->DrawLatex(.7,.85,"     ");
+  this->latexBeamPathTable2->DrawLatex(.9,.85,"     ");
+  this->latexBeamPathTable2->SetTextSize(0.04);
+  for (int i = 0; i < steps; ++i)
+  {
+    int sigBegin = offset + (i * integInterval);
+    int sigEnd = sigBegin + integInterval;
+
+//    qDebug() << Q_FUNC_INFO << sigBegin << ' ' << sigEnd;
+    this->camera2()->setPedestalSignalGate(gatecam2[0], gatecam2[1], sigBegin, sigEnd);
+    this->camera2()->processDataCounts();
+    TGraph* cam2ProfileV = this->camera2()->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
+    TGraph* cam2ProfileH = this->camera2()->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
+    this->processBeamPathProfile(cam2ProfileV);
+    this->processBeamPathProfile(cam2ProfileH);
+
+    BeamProfileArray pEnd = this->getProfilesParameters(cam2ProfileH, cam2ProfileV);
+
+    delete cam2ProfileV;
+    delete cam2ProfileH;
+    QString integrTime = QString::number((i + 1) * integInterval);
+
+    QString cam2PositionPos("No Beam");
+    QString cam2PositionDia("No Beam");
+    if (pEnd[2] >= 0)
+    {
+        std::stringstream ssPos;
+        ssPos << std::right << std::fixed << std::setw(6) << std::setprecision(1) << pEnd[0] << ' ' << std::setw(6) << pEnd[1];
+        std::string strPos = ssPos.str();
+        cam2PositionPos = QObject::tr("%1  %2").arg(pEnd[0], 5, 'f', 1, QChar(' ')).arg(pEnd[1], 5, 'f', 1, QChar(' '));
+
+        std::stringstream ssDia;
+        ssDia << std::right << std::fixed << std::setw(6) << std::setprecision(1) << 6. * pEnd[2] << ' ' << std::setw(6) << 6. * pEnd[3];
+        std::string strDia = ssDia.str();
+        cam2PositionDia = QObject::tr("%1  %2").arg(6. * pEnd[1], 5, 'f', 1, QChar(' ')).arg(6. * pEnd[2], 5, 'f', 1, QChar(' '));
+    }
+    this->latexBeamPathTable2->DrawLatex(.0, pos[i], integrTime.toLatin1().data());
+    QString val1 = QObject::tr("%1").arg(pEnd[0], 5, 'f', 1, QChar(' '));
+    this->latexBeamPathTable2->DrawLatex(.3, pos[i], val1.toLatin1().data());
+    QString val2 = QObject::tr("%1").arg(pEnd[1], 5, 'f', 1, QChar(' '));
+    this->latexBeamPathTable2->DrawLatex(.5, pos[i], val2.toLatin1().data());
+    QString val3 = QObject::tr("%1").arg(6. * pEnd[2], 5, 'f', 1, QChar(' '));
+    this->latexBeamPathTable2->DrawLatex(.7, pos[i], val3.toLatin1().data());
+    QString val4 = QObject::tr("%1").arg(6. * pEnd[3], 5, 'f', 1, QChar(' '));
+    this->latexBeamPathTable2->DrawLatex(.9, pos[i], val4.toLatin1().data());
+  }
+  this->padBeamPathTable2->Modified();
+  this->padBeamPathTable2->Update();
 }
 
 void BeamPathProfileDialogPrivate::calculateScanning()
@@ -538,45 +764,105 @@ void BeamPathProfileDialogPrivate::calculateScanning()
   }
 
   // pedestals signal gate time is default for full beam spill
-  this->camera2()->processDataCounts();
-  TH2* cam2Hist2 = this->camera2()->createProfile2D();
-  this->camera2()->updateProfiles2D(cam2Hist2, nullptr);
-  this->histScanning2D->Add(cam2Hist2);
-  delete cam2Hist2;
+  std::array< int, 4 > gatecam2;
+  this->camera2()->getPedestalSignalGate(gatecam2);
 
-  this->histScanning2D->Scale(100. / this->histScanning2D->GetMaximum());
-//  this->histScanning2D->GetZaxis()->SetRangeUser(0., 100.);
+  const double time = 900.;
+  const double step = 30.;
+  const int steps = time / step;
+
+  if (this->ScanningCount >= 10)
+  {
+    this->histScanning2D->Reset();
+//    this->ScanningCount = 1;
+  }
+  else
+  {
+//    this->ScanningCount++;
+  }
+  for (int j = 0; j < steps; ++j)
+  {
+    int sigBegin = gatecam2[2] + (j * step);
+    int sigEnd = sigBegin + step;
+    this->camera2()->setPedestalSignalGate(gatecam2[0], gatecam2[1], sigBegin, sigEnd);
+    this->camera2()->processDataCounts();
+    TH2* cam2Hist2 = this->camera2()->createProfile2D();
+    this->camera2()->updateProfiles2D(cam2Hist2, nullptr);
+    this->histScanning2D->Add(cam2Hist2);
+    delete cam2Hist2;
+  }
+/*
+  TH2* normHist2 = dynamic_cast< TH2* >(this->histScanning2D->Clone("_cloned"));
+
+  if (normHist2)
+  {
+    normHist2->SetDirectory(nullptr);
+    normHist2->Scale(100. / this->histScanning2D->GetMaximum());
+    normHist2->GetZaxis()->SetRangeUser(0., 100.);
+  }
+*/
+
   // calculate and display homogenous value D
-  double homoValue = this->homogenousValue();
+  std::pair< double, double > homoValue = this->homogenousValue();
   scanIter--;
   TString scanTitle;
-  if (homoValue > 0.)
+  if (homoValue.first > 0.)
   {
     if (scanIter > 0)
     {
-      scanTitle.Form("Scanning mode: D = %1.3f, Spills left: %d", homoValue, scanIter);
+      scanTitle.Form("Scanning: D = %1.3f, Spills left: %d", homoValue.first, scanIter);
     }
     else if (scanIter == 0)
     {
-      scanTitle.Form("Scanning mode: D = %1.3f, no more spills", homoValue);
+      scanTitle.Form("Scanning: D = %1.3f, no more spills", homoValue.first);
     }
     else
     {
-      scanTitle.Form("Scanning mode: D = %1.3f");
+      scanTitle.Form("Scanning: D = %1.3f");
     }
   }
-  if (homoValue > 0.)
+  if (homoValue.first > 0.)
   {
-    this->ui->Label_Homogeneous->setText(QObject::tr("%1 %").arg(homoValue * 100., 0, 'g', 1));
+    this->ui->Label_Homogeneous->setText(QObject::tr("%1 %, %2 %").arg(homoValue.first * 100., 0, 'f', 1).arg(homoValue.second * 100., 0, 'f', 1));
   }
   else
   {
     this->ui->Label_Homogeneous->setText("");
   }
   this->histScanning2D->SetTitle(scanTitle.Data());
+//  this->histScanning2D->SetStats(kFALSE);
   this->padScanning2D->Modified();
   this->padScanning2D->Update();
+/*
+  auto file = std::unique_ptr< TFile >(new TFile("/tmp/profile.root", "RECREATE"));
+  if (file)
+  {
+    file->WriteTObject(normHist2, "hist2_cloned");
+    file->Close();
+  }
+  delete normHist2;
 
+  QString program = "./profile_offline";
+  QStringList arguments;
+  arguments << "/tmp/profile.root";
+
+  QProcess *myProcess = new QProcess(q);
+  myProcess->start(program, arguments);
+  if (myProcess->waitForFinished())
+  {
+    qDebug() << Q_FUNC_INFO << "2D is ready";
+    TImage* img = TImage::Open("/tmp/profile2.png");
+    if (img)
+    {
+      this->padScanning2D->cd();
+      img->Draw("SAME");
+      qDebug() << Q_FUNC_INFO << "Image is ready";
+      this->padScanning2D->Modified();
+      this->padScanning2D->Update();
+    }
+  }
+  delete myProcess;
+*/
   double hmin = this->ui->RangeWidget_ScanHomoHorizontal->minimumValue();
   double hmax = this->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
   double vmin = this->ui->RangeWidget_ScanHomoVertical->minimumValue();
@@ -586,7 +872,7 @@ void BeamPathProfileDialogPrivate::calculateScanning()
   double centerPosY = vmin + (vmax - vmin) / 2.;
   int binCenterPosX = this->getBinScanningX(centerPosX);
   int binCenterPosY = this->getBinScanningY(centerPosY);
-
+/*
   if (this->graphScanningHorizontalProfile)
   {
     this->padScanningProfiles->GetListOfPrimitives()->Remove(this->graphScanningHorizontalProfile.get());
@@ -612,6 +898,7 @@ void BeamPathProfileDialogPrivate::calculateScanning()
   {
     this->ui->SliderWidget_ScanningSpills->setValue(scanIter);
   }
+*/
   qDebug() << Q_FUNC_INFO << ": Scanning calculation, time elapsed " << timer.elapsed() << ' ' \
     << ", bin center X: " << binCenterPosX << ", bin center Y: " << binCenterPosY;
 }
@@ -637,7 +924,7 @@ void BeamPathProfileDialogPrivate::calculateCalibration()
   std::array< int, 4 > gatecam2;
   this->camera2()->getPedestalSignalGate(gatecam2);
 
-  const int offset = 200;
+  const int offset = gatecam2[2];
   double maxv = this->ui->RangeWidget_CalibBatchAcqTime->maximumValue();
   double minv = this->ui->RangeWidget_CalibBatchAcqTime->minimumValue();
 
@@ -666,10 +953,43 @@ void BeamPathProfileDialogPrivate::calculateCalibration()
     this->histCalibration2D->Add(cam2Hist2, 1. / Double_t(steps));
     delete cam2Hist2;
   }
-  this->histCalibration2D->Scale(100. / this->histCalibration2D->GetMaximum());
+//  this->histCalibration2D->Scale(100. / this->histCalibration2D->GetMaximum());
 //  this->histCalibration2D->GetZaxis()->SetRangeUser(0., 100.);
-  this->padCalibration2D->Modified();
-  this->padCalibration2D->Update();
+  this->histCalibration2D->SetStats(kFALSE);
+
+  auto file = std::unique_ptr< TFile >(new TFile("/tmp/profile.root", "RECREATE"));
+  if (file)
+  {
+    file->WriteTObject(this->histCalibration2D.get(), "hist2");
+    file->Close();
+  }
+  QString program = "./profile_offline";
+  QStringList arguments;
+  arguments << "/tmp/profile.root";
+
+  QProcess *myProcess = new QProcess(q);
+  myProcess->start(program, arguments);
+  if (myProcess->waitForFinished())
+  {
+    qDebug() << Q_FUNC_INFO << "2D is ready";
+    TImage* img = TImage::Open("/tmp/profile.png");
+    if (img)
+    {
+      this->padCalibration2D->cd();
+      img->Draw();
+      qDebug() << Q_FUNC_INFO << "Image is ready";
+      this->padCalibration2D->Modified();
+      this->padCalibration2D->Update();
+    }
+  }
+  delete myProcess;
+
+//  this->padCalibration2D->Modified();
+//  this->padCalibration2D->Update();
+
+//  std::unique_ptr< TImage > img(TImage::Create());
+//  img->FromPad(this->padCalibration2D.get());
+//  img->WriteImage("/tmp/test.png");
 }
 
 BeamPathProfileDialog::BeamPathProfileDialog(QWidget *parent) :
@@ -679,26 +999,31 @@ BeamPathProfileDialog::BeamPathProfileDialog(QWidget *parent) :
   Q_D(BeamPathProfileDialog);
   d->ui->setupUi(this);
 
-  TCanvas* canvas = d->ui->RootCanvas_BeamPathTable->getCanvas();
+  TCanvas* canvas = d->ui->RootCanvas_BeamPathTable1->getCanvas();
   canvas->cd();
-  d->padBeamPathTable = std::unique_ptr< TPad >(new TPad("pBeamPathTable", "Grid", 0., 0., 1., 1.));
-  d->padBeamPathTable->Draw();
+  d->padBeamPathTable1 = std::unique_ptr< TPad >(new TPad("BeamPathTable1", "Grid", 0., 0., 1., 1.));
+  d->padBeamPathTable1->Draw();
+
+  canvas = d->ui->RootCanvas_BeamPathTable2->getCanvas();
+  canvas->cd();
+  d->padBeamPathTable2 = std::unique_ptr< TPad >(new TPad("BeamPathTable2", "Grid", 0., 0., 1., 1.));
+  d->padBeamPathTable2->Draw();
 
   canvas = d->ui->RootCanvas_Calibration2D->getCanvas();
   canvas->cd();
-  d->padCalibration2D = std::unique_ptr< TPad >(new TPad("pCalib2D", "Calibration Grid", 0., 0., 1., 1.));
-  d->padCalibration2D->SetGrid();
+  d->padCalibration2D = std::unique_ptr< TPad >(new TPad("Calibration2D", "Calibration Grid", 0., 0., 1., 1.));
+//  d->padCalibration2D->SetGrid();
   d->padCalibration2D->Draw();
 
   canvas = d->ui->RootCanvas_Scanning2D->getCanvas();
   canvas->cd();
-  d->padScanning2D = std::unique_ptr< TPad >(new TPad("pScan2D", "Scanning Grid", 0., 0., 1., 1.));
-  d->padScanning2D->SetGrid();
+  d->padScanning2D = std::unique_ptr< TPad >(new TPad("Scanning2D", "Scanning Grid", 0., 0., 1., 1.));
+//  d->padScanning2D->SetGrid();
   d->padScanning2D->Draw();
 
   canvas = d->ui->RootCanvas_ScanningProfiles->getCanvas();
   canvas->cd();
-  d->padScanningProfiles = std::unique_ptr< TPad >(new TPad("pScanProf", "Profiles Grid", 0., 0., 1., 1.));
+  d->padScanningProfiles = std::unique_ptr< TPad >(new TPad("ScanningProfiles", "Profiles Grid", 0., 0., 1., 1.));
   d->padScanningProfiles->SetGrid();
   d->padScanningProfiles->Draw();
 
@@ -722,12 +1047,17 @@ BeamPathProfileDialog::BeamPathProfileDialog(QWidget *parent) :
   QObject::connect(d->ui->RangeWidget_ScanHomoVertical, SIGNAL(maximumValueChanged(double)),
     this, SLOT(onScanHomoVerticalEndChanged(double)));
 
+  QObject::connect(d->ui->PushButton_ResetCalibration, SIGNAL(clicked()),
+    this, SLOT(onResetCalibrationClicked()));
+  QObject::connect(d->ui->PushButton_ResetScanning, SIGNAL(clicked()),
+    this, SLOT(onResetScanningClicked()));
+
   gStyle->SetPalette(d->calibrationScanningPalette.size(),
     const_cast< Int_t* >(d->calibrationScanningPalette.data()));
 
-  QObject::connect(d->timer.get(), SIGNAL(timeout()), this, SLOT(onTimeoutUpdate()));
-  d->timer->setInterval(1000);
-  d->timer->start();
+//  QObject::connect(d->timer.get(), SIGNAL(timeout()), this, SLOT(onTimeoutUpdate()));
+//  d->timer->setInterval(1000);
+//  d->timer->start();
 }
 
 BeamPathProfileDialog::~BeamPathProfileDialog()
@@ -736,9 +1066,13 @@ BeamPathProfileDialog::~BeamPathProfileDialog()
   std::shared_ptr< THttpServer > server = d->httpServer.lock();
   if (server)
   {
-    if (d->padBeamPathTable)
+    if (d->padBeamPathTable1)
     {
-      server->Unregister(d->padBeamPathTable.get());
+      server->Unregister(d->padBeamPathTable1.get());
+    }
+    if (d->padBeamPathTable2)
+    {
+      server->Unregister(d->padBeamPathTable2.get());
     }
     if (d->padCalibration2D)
     {
@@ -807,11 +1141,16 @@ void BeamPathProfileDialog::addBeamProfilesToServer(std::shared_ptr< THttpServer
     return;
   }
   d->httpServer = server;
-  server->Register("/", d->padBeamPathTable.get());
+  server->Register("/", d->padBeamPathTable1.get());
+  server->Register("/", d->padBeamPathTable2.get());
   server->Register("/", d->padCalibration2D.get());
   server->Register("/", d->padScanning2D.get());
   server->Register("/", d->padScanningProfiles.get());
   server->SetItemField("/","_monitoring","1000");
+  server->SetItemField("/","_layout","grid3x2");
+  server->SetItemField("/","_drawitem","[Camera2/pHorProf,Camera2/pVerProf,BeamPathTable1,Camera4/pHorProf,Camera4/pVerProf,BeamPathTable2]");
+//  server->SetItemField("/","_layout","simple");
+//  server->SetItemField("/","_drawitem","[Scanning2D]");
 }
 
 void BeamPathProfileDialog::processCameraProfiles(const QString &cameraID)
@@ -825,14 +1164,28 @@ void BeamPathProfileDialog::processCameraProfiles(const QString &cameraID)
   {
     d->camerasProfilesReady.second = true;
   }
+
+  if (d->camerasProfilesReady.second)
+  {
+//    qDebug() << Q_FUNC_INFO << "Process scanning";
+    // get profiles data, start processing of beam path, calibration, scanning
+  }
+
   if (d->camerasProfilesReady.first && d->camerasProfilesReady.second)
   {
     // get profiles data, start processing of beam path, calibration, scanning
     d->calculateBeamPath();
-    d->calculateCalibration();
     d->calculateScanning();
     d->camerasProfilesReady.first = false;
     d->camerasProfilesReady.second = false;
+    if (d->ScanningCount >= 10)
+    {
+      d->ScanningCount = 1;
+    }
+    else
+    {
+      d->ScanningCount++;
+    }
   }
 }
 
@@ -851,6 +1204,7 @@ void BeamPathProfileDialog::processCameraEndProfiles()
   if (d->camera2())
   {
     d->camerasProfilesReady.second = true;
+    qDebug() << Q_FUNC_INFO << "Isocenter is ready";
   }
 }
 
@@ -974,6 +1328,28 @@ void BeamPathProfileDialog::onTimeoutUpdate()
 {
   Q_D(BeamPathProfileDialog);
   d->calculateBeamPath();
+}
+
+
+void BeamPathProfileDialog::onResetCalibrationClicked()
+{
+  Q_D(BeamPathProfileDialog);
+  d->histCalibration2D->Reset();
+  d->padCalibration2D->Modified();
+  d->padCalibration2D->Update();
+}
+
+void BeamPathProfileDialog::onResetScanningClicked()
+{
+  Q_D(BeamPathProfileDialog);
+  d->histScanning2D->Reset();
+  d->padScanning2D->Modified();
+  d->padScanning2D->Update();
+}
+
+void BeamPathProfileDialog::onResetIntegrationClicked()
+{
+  Q_D(BeamPathProfileDialog);
 }
 
 QT_END_NAMESPACE

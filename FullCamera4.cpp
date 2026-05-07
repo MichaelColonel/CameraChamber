@@ -56,6 +56,15 @@ FullCamera4::FullCamera4(const AbstractCamera::CameraDeviceData& data, QObject *
   d_ptr(new FullCamera4Private(*this))
 {
   Q_D(FullCamera4);
+  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
+  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
+  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
+  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
+
+  refAdcV = std::make_pair(5, 15); // vert prof
+  refAdcH = std::make_pair(2, 15); // horiz prof
+  refAmpV = std::make_pair(5, 15); // vert prof
+  refAmpH = std::make_pair(2, 15); // horiz prof
 }
 
 FullCamera4::~FullCamera4()
@@ -102,7 +111,7 @@ void FullCamera4::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool
   {
     double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
     std::vector< double > horizProfDataCopy(horizProfData);
-    std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+//    std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
     for (Int_t i = 0; i < horizProfData.size(); ++i)
     {
       horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfDataCopy[i]));
@@ -141,7 +150,13 @@ TH2* FullCamera4::createProfile2D(bool integral)
 
   QString histName = (integral) ? hist2IntegName : hist2Name;
   QByteArray name = histName.toLatin1();
-  TH2* hist = new TH2D(name.data(), "Pseudo 2D Distribution", xBins, xBinsBorders, yBins, yBinsBorders);
+  QString titleStr = cameraData.ID + ": " + "Pseudo 2D Distribution";
+  if (cameraData.ID == "Camera4")
+  {
+    titleStr = "Isocenter : 2D Distribution";
+  }
+  QByteArray titleData = titleStr.toLatin1();
+  TH2* hist = new TH2D(name.data(), titleData.data(), xBins, xBinsBorders, yBins, yBinsBorders);
   return hist;
 }
 
@@ -155,6 +170,9 @@ void FullCamera4::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
   }
   const std::vector< double >& vertProfData = this->getVerticalProfile();
   const std::vector< double >& horizProfData = this->getHorizontalProfile();
+
+  std::vector< double > horizProfDataCopy(horizProfData);
+  std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
   if (pseudo2D)
   {
     pseudo2D->Reset();
@@ -164,14 +182,14 @@ void FullCamera4::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
       for (Int_t column = 0; column < horizProfData.size(); ++column)
       {
         Double_t centerX = pseudo2D->GetXaxis()->GetBinCenter(column + 1);
-        Double_t pixel = horizProfData[column] * vertProfData[row];
+        Double_t pixel = horizProfDataCopy[column] * vertProfData[row];
         pseudo2D->Fill(centerX, centerY, pixel);
       }
     }
   }
-  if (integPseudo2D && pseudo2D)
+  if (integPseudo2D && pseudo2D && integPseudo2D->Add(pseudo2D))
   {
-    integPseudo2D->Add(pseudo2D, 1.);
+    emit AbstractCamera::logMessage("2D is added to integral", this->getCameraData().ID, Qt::green);
 //    for (Int_t row = 0; row < vertProfData.size(); ++row)
 //    {
 //      for (Int_t column = 0; column < horizProfData.size(); ++column)

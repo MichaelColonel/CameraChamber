@@ -137,7 +137,9 @@ TH2* FullCamera3::createProfile2D(bool integral)
 
   QString histName = (integral) ? hist2IntegName : hist2Name;
   QByteArray name = histName.toLatin1();
-  TH2* hist = new TH2D(name.data(), "Pseudo 2D Distribution", xBins, xBinsBorders, yBins, yBinsBorders);
+  QString titleStr = cameraData.ID + ": " + "Pseudo 2D Distribution";
+  QByteArray titleData = titleStr.toLatin1();
+  TH2* hist = new TH2D(name.data(), titleData.data(), xBins, xBinsBorders, yBins, yBinsBorders);
   return hist;
 }
 
@@ -168,9 +170,9 @@ void FullCamera3::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
       }
     }
   }
-  if (integPseudo2D && pseudo2D)
+  if (integPseudo2D && pseudo2D && integPseudo2D->Add(pseudo2D))
   {
-    integPseudo2D->Add(pseudo2D, 1.);
+    emit AbstractCamera::logMessage("2D is added to integral", this->getCameraData().ID, Qt::green);
 //    for (Int_t row = 0; row < vertProfData.size(); ++row)
 //    {
 //      for (Int_t column = 0; column < horizProfData.size(); ++column)

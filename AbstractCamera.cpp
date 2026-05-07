@@ -106,6 +106,10 @@ public:
   std::map< ChipChannelPair, ChannelInfoPair > chipChannelInfoMap;
   std::vector< std::vector< double > > profileFramesVector;
 
+  std::vector< MeanDispAccumSet > horizontalProfileAccums; // for integral profiles
+  std::vector< MeanDispAccumSet > verticalProfileAccums; // for integral profiles
+  std::vector< MeanDispAccumSet > pseude2DAccums; // for
+
   int dataNumber{ 1 };
   QDateTime dataDateTime;
   TDirectory* rootDir{ nullptr };
@@ -797,11 +801,12 @@ void AbstractCamera::processRawData()
   Q_D(AbstractCamera);
   d->channelsCountsA.clear();
   d->channelsCountsB.clear();
-
+#if !QT_NO_DEBUG
   QString dataFileName = QDir::tempPath() + QString(QDir::separator()) + "raw_data_bits.txt";
   QScopedPointer< QFile > dataFile(new QFile(dataFileName));
   bool res = dataFile->open(QIODevice::WriteOnly | QIODevice::Text);
   QTextStream dataFileStream(dataFile.get()); // dump bits to temp file for debug
+#endif
 
   const QByteArray& arr = d->adcDataBuffer;
   constexpr int BYTES_CHUNK = 4; // bytes per adc data chunk (channel, chip, ADC count, sync bits)
@@ -840,8 +845,8 @@ void AbstractCamera::processRawData()
     qWarning() << Q_FUNC_INFO << ": Raw data offset is way too high, no correct data left";
     return;
   }
-
   // dump raw data bits for debug
+#if !QT_NO_DEBUG
   if (res)
   {
     for (int i = offset; i < arr.size() - BYTES_CHUNK; i += BYTES_CHUNK)
@@ -855,10 +860,29 @@ void AbstractCamera::processRawData()
       dataFileStream << qSetFieldWidth(10) << string_d0 << string_d1 << string_d2 << string_d3 << '\n';
     }
   }
+#endif
 
   constexpr int SIDE_BIT = 6;
   constexpr int CHIP_BITS = 4;
   std::map< int, bool > chipPresenceMap;
+//  bool untilSideFlagAFound = true;
+//  bool flagSideA = false;
+  // find first Side-A data
+  for (int i = offset; i < arr.size() - BYTES_CHUNK; i += BYTES_CHUNK)
+  {
+    std::bitset< CHAR_BIT > d0(arr.at(i));
+    this->ReverseBits(d0);
+    bool sideFlag = d0.test(SIDE_BIT); // true == Side-A, false == Side-B
+    if (!sideFlag)
+    {
+      offset += BYTES_CHUNK;
+    }
+    else
+    {
+      break;
+    }
+  }
+
   for (int i = offset; i < arr.size() - BYTES_CHUNK; i += BYTES_CHUNK)
   {
     std::bitset< CHAR_BIT > d0(arr.at(i)), d1(arr.at(i + 1)), d2(arr.at(i + 2)), d3(arr.at(i + 3));
@@ -870,6 +894,20 @@ void AbstractCamera::processRawData()
     this->ReverseBits(chipBits);
 
     bool sideFlag = d0.test(SIDE_BIT);
+/*
+    if (untilSideFlagAFound)
+    {
+      if (sideFlag)
+      {
+        untilSideFlagAFound = false;
+        flagSideA = true;
+      }
+    }
+    if (!flagSideA)
+    {
+      continue;
+    }
+*/
     int channel = static_cast<int>(((d0 >> 1) & std::bitset< CHAR_BIT >(0x1F)).to_ulong());
     int chip = chipBits.to_ulong() - CHIP_BITS;
     int count = static_cast< int >((d3.to_ulong() << CHAR_BIT) | d2.to_ulong());
@@ -887,12 +925,14 @@ void AbstractCamera::processRawData()
       channelVectorB.push_back(count);
     }
   }
+#if !QT_NO_DEBUG
   dataFileStream.flush();
   res = dataFile->flush();
   if (res)
   {
     dataFile->close();
   }
+#endif
 
   d->chipsAddressesVector.reserve(CHIPS_PER_CAMERA);
   for (const std::pair< int, bool >& chipFlagPair : chipPresenceMap)
@@ -1714,7 +1754,6 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
 {
   Q_D(AbstractCamera);
   Q_UNUSED(splitData);
-  Q_UNUSED(integType);
   Q_UNUSED(profileType);
 
   std::bitset< CHIPS_PER_CAMERA > chips(this->getChipsEnabledCode());
@@ -1821,8 +1860,8 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
     const std::vector< int >& horizProfChips = d->horizontalProfileChipsVector;
     for (int i = 0; i < CHANNELS_PER_CHIP; ++i)
     {
-      double refAmpl = 0.;
-      double refA = 0., refB = 0.;
+      double refAmpl = 1.;
+      double refA = 1., refB = 1.;
       if (std::find(vertProfChips.begin(), vertProfChips.end(), chipAddress + 1) != vertProfChips.end())
       {
         refAmpl = refAmplV;
@@ -1895,6 +1934,20 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
 
       info.Signal = signal;
       info.SignalNoAmp = signalNoAmp;
+      switch (integType)
+      {
+      case IntegratorType::A:
+        info.Signal = signalA;
+        info.SignalNoAmp = refAmpl * signalA / currAmpl;
+        break;
+      case IntegratorType::B:
+        info.Signal = signalB;
+        info.SignalNoAmp = refAmpl * signalB / currAmpl;
+        break;
+      case IntegratorType::AB:
+        default:
+        break;
+      }
 
       infoCalib.PedMeanA = boost::accumulators::mean(statCalibPedA);
       infoCalib.PedMeanB = boost::accumulators::mean(statCalibPedB);
@@ -1916,6 +1969,20 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
 
       infoCalib.Signal = signal;
       infoCalib.SignalNoAmp = signalNoAmp;
+      switch (integType)
+      {
+      case IntegratorType::A:
+        infoCalib.Signal = signalA;
+        infoCalib.SignalNoAmp = refAmpl * signalA / currAmpl;
+        break;
+      case IntegratorType::B:
+        infoCalib.Signal = signalB;
+        infoCalib.SignalNoAmp = refAmpl * signalB / currAmpl;
+        break;
+      case IntegratorType::AB:
+        default:
+        break;
+      }
       d->chipChannelInfoMap[curr] = std::make_pair(info, infoCalib);
     }
   }
@@ -1971,7 +2038,11 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
       std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
       if (this->getCameraData().ID == "Camera4" || this->getCameraData().ID == "Camera1")
       {
-          std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+//        std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+      }
+      else if (this->getCameraData().ID == "Camera2")
+      {
+        std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
       }
       for (Int_t i = 0; i < horizProfData.size(); ++i)
       {

@@ -55,15 +55,40 @@
 namespace
 {
 
+const int BEAM_PATH_CUSTOM_COLORS_PALETTE = 20;
+
+const std::array< Int_t, BEAM_PATH_CUSTOM_COLORS_PALETTE > CalibrationScanningPalette{
+  kBlack, // (< 0)
+  kBlue + 4, // (5-0)
+  kBlue + 3, // (10-5)
+  kBlue, // (15-10)
+  51 + 6, // (20-15)
+  51 + 9, // (25-20)
+  51 + 12, // (30-25)
+  51 + 15, // (35-30)
+  51 + 18, // (40-35)
+  51 + 21, // (45-40)
+  51 + 24, // (50-45)
+  51 + 27, // (55-50)
+  51 + 30, // (60-55)
+  51 + 31, // (75-60)
+  51 + 33, // (80-75)
+  51 + 34, // (85-80)
+  51 + 36, // (90-85)
+  51 + 39, // (95-90)
+  kYellow, // (100-95)
+  kRed // (> 100)
+};
+
 void profile_offline(const char* fileName)
 {
-  TCanvas* canvas = new TCanvas("canvas", "Graph", 200, 10, 600, 600);
+  TCanvas* canvas = new TCanvas("canvas", "Graph", 200, 10, 900, 900);
   canvas->GetFrame()->SetBorderSize(6);
   canvas->GetFrame()->SetBorderMode(-1);
-  canvas->Divide(1, 2);
+//  canvas->Divide(1, 2);
 
   std::unique_ptr< TFile > rootFile(TFile::Open(fileName));
-
+/*
   canvas->cd(1);
   TPad* pad1 = new TPad("pad1", "Grid", 0., 0., 1., 1.);
   pad1->Divide(2, 1);
@@ -82,28 +107,49 @@ void profile_offline(const char* fileName)
   {
     horizProf->Draw();
   }
-
   canvas->cd(2);
+*/
+  canvas->cd();
   TPad* pad2 = new TPad("pad2", "Grid", 0., 0., 1., 1.);
   pad2->SetGrid();
   pad2->Draw();
   pad2->cd();
 
 
-  TH2* h2p = dynamic_cast< TH2* >(rootFile->Get("h2p"));
+  Int_t* ptr = const_cast< Int_t* >(CalibrationScanningPalette.data());
+  Int_t SIZE = CalibrationScanningPalette.size();
+  gStyle->SetPalette(SIZE, ptr);
+
+//  TH2* h2p = dynamic_cast< TH2* >(rootFile->Get("hist2"));
+  TH2* h2p = dynamic_cast< TH2* >(rootFile->Get("hist2_cloned"));
   if (h2p)
   {
+/*
+    h2p->Scale(100. / h2p->GetMaximum());
+    for (Int_t row = 1; row <= h2p->GetYaxis()->GetNbins(); ++row)
+    {
+      for (Int_t column = 1; column <= h2p->GetXaxis()->GetNbins(); ++column)
+      {
+        Double_t value = h2p->GetBinContent(column, row);
+        if (value < 3.)
+        {
+          h2p->SetBinContent(column, row, 0.);
+        }
+      }
+    }
+*/
+    h2p->SetStats(kFALSE);
     h2p->Draw("COLZ");
   }
-  pad1->Modified();
-  pad1->Update();
+//  pad1->Modified();
+//  pad1->Update();
 
   pad2->Modified();
   pad2->Update();
 
   std::unique_ptr< TImage > img(TImage::Create());
   img->FromPad(canvas);
-  img->WriteImage("/tmp/profile.png");
+  img->WriteImage("/tmp/profile2.png");
 }
 
 } // namespace

@@ -26,7 +26,7 @@
       <string>Table of statistic information of channel pedestals and signals</string>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tabChannelGraph">
       <attribute name="title">
@@ -236,8 +236,11 @@
               <property name="maximum">
                <double>2000.000000000000000</double>
               </property>
+              <property name="minimumValue">
+               <double>40.000000000000000</double>
+              </property>
               <property name="maximumValue">
-               <double>198.000000000000000</double>
+               <double>240.000000000000000</double>
               </property>
               <property name="suffix">
                <string> ms</string>
@@ -271,10 +274,10 @@
                <double>2000.000000000000000</double>
               </property>
               <property name="minimumValue">
-               <double>200.000000000000000</double>
+               <double>250.000000000000000</double>
               </property>
               <property name="maximumValue">
-               <double>1100.000000000000000</double>
+               <double>1150.000000000000000</double>
               </property>
               <property name="suffix">
                <string> ms</string>
@@ -309,13 +312,96 @@
        <string>Profiles</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_6">
-       <item row="0" column="0">
+       <item row="2" column="0">
         <layout class="QVBoxLayout" name="verticalLayout">
          <item>
-          <widget class="TCanvasWidget" name="RootCanvas_VerticalProfile" native="true"/>
+          <widget class="TCanvasWidget" name="RootCanvas_VerticalProfile" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
          </item>
          <item>
-          <widget class="TCanvasWidget" name="RootCanvas_HorizontalProfile" native="true"/>
+          <widget class="TCanvasWidget" name="RootCanvas_HorizontalProfile" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="0" column="0">
+        <layout class="QGridLayout" name="gridLayout_7">
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Vertical:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Horizontal:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="ctkRangeWidget" name="RangeWidget_HomoHorizontal">
+           <property name="decimals">
+            <number>0</number>
+           </property>
+           <property name="minimum">
+            <double>-87.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>87.000000000000000</double>
+           </property>
+           <property name="minimumValue">
+            <double>-60.000000000000000</double>
+           </property>
+           <property name="maximumValue">
+            <double>60.000000000000000</double>
+           </property>
+           <property name="suffix">
+            <string> mm</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="ctkRangeWidget" name="RangeWidget_HomoVertical">
+           <property name="decimals">
+            <number>0</number>
+           </property>
+           <property name="minimum">
+            <double>-87.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>87.000000000000000</double>
+           </property>
+           <property name="minimumValue">
+            <double>-60.000000000000000</double>
+           </property>
+           <property name="maximumValue">
+            <double>60.000000000000000</double>
+           </property>
+           <property name="suffix">
+            <string> mm</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2" rowspan="2">
+          <widget class="QPushButton" name="PushButton_ResetIntegration">
+           <property name="text">
+            <string>Reset integration</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>
@@ -373,14 +459,14 @@
             <string>Manual charge range</string>
            </property>
            <property name="checked">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
           </widget>
          </item>
          <item>
           <widget class="ctkRangeWidget" name="RangeWidget_ChargeRange">
            <property name="enabled">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
            <property name="minimum">
             <double>-10.000000000000000</double>

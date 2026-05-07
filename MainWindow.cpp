@@ -1034,15 +1034,24 @@ void MainWindow::onBeamActionTriggered()
   if (!beamPathProfile)
   {
     beamPathProfile.reset(new BeamPathProfileDialog(this));
+    beamPathProfile->addBeamProfilesToServer(httpServer);
+    beamPathProfile->setCamerasDevices(camera1, camera2);
     if (dialog1 && dialog2)
     {
       connect(dialog1, SIGNAL(profilesUpdated(const QString&)),
         beamPathProfile.get(), SLOT(processCameraProfiles(const QString&)));
       connect(dialog2, SIGNAL(profilesUpdated(const QString&)),
         beamPathProfile.get(), SLOT(processCameraProfiles(const QString&)));
+      dialog1->addBeamProfilesToServer(httpServer);
+      dialog2->addBeamProfilesToServer(httpServer);
     }
-    beamPathProfile->setCamerasDevices(camera1, camera2);
-    beamPathProfile->addBeamProfilesToServer(httpServer);
+
+    QByteArray com = camera1->getSetExternalStartCommand(true);
+    camera1->writeCommand(com);
+
+    com = camera2->getSetExternalStartCommand(true);
+    camera2->writeCommand(com);
+
     beamPathProfile->show();
   }
   if (beamPathProfile && beamPathProfile->isHidden())
@@ -1074,7 +1083,7 @@ bool MainWindow::loadSettings(QSettings *settings)
     QString hostPortString = host + QString(':') + QString::number(port);
     QByteArray bytesString = hostPortString.toLatin1();
     this->httpServer = std::shared_ptr< THttpServer >(new THttpServer(bytesString.data()));
-//    this->httpServer = std::shared_ptr< THttpServer >(new THttpServer("http:8080"));
+//    this->httpServer = std::shared_ptr< THttpServer >(new THttpServer("10.163.2.222:8080"));
   }
   return true;
 }

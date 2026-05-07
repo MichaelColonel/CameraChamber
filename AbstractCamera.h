@@ -131,7 +131,7 @@ public:
   QString getChipsAddresses() const;
   void setInitiationList(const QByteArrayList& initList);
   virtual void processDataCounts(bool fullChipCalibration = false, bool splitData = false,
-    IntegratorType integType = IntegratorType::A,
+    IntegratorType integType = IntegratorType::AB,
     ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE);
   bool loadSettings(QSettings* settings);
   bool saveSettings(QSettings* settings);

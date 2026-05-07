@@ -49,6 +49,12 @@ public Q_SLOTS:
   void onPlayProfilesClicked();
   void updateProfileFrame();
   void onCameraSpillsModelIndexClicked(const QModelIndex& index);
+  void onProcessSpillsClicked();
+  void onScanHomoHorizonalBeginChanged(double pos);
+  void onScanHomoHorizonalEndChanged(double pos);
+  void onScanHomoVerticalBeginChanged(double pos);
+  void onScanHomoVerticalEndChanged(double pos);
+  void onCalculateHomogenousClicked();
 
 Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);

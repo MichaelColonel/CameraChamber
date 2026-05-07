@@ -20,6 +20,9 @@
 #include "Camera2.h"
 
 #include <QDebug>
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
 
 #include <TH1.h>
 #include <TH2.h>
@@ -227,15 +230,16 @@ Camera2::Camera2(const AbstractCamera::CameraDeviceData& data, QObject *parent)
   d_ptr(new Camera2Private(*this))
 {
   Q_D(Camera2);
-//  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
-//  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
-//  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
-//  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
 
-//  refAdcV = std::make_pair(3, 15); // vert prof
-//  refAdcH = std::make_pair(1, 15); // horiz prof
-//  refAmpV = std::make_pair(3, 15); // vert prof
-//  refAmpH = std::make_pair(1, 15); // horiz prof
+  ChipChannelPair& refAdcV = this->getReferenceAdcVerticalChipChannel();
+  ChipChannelPair& refAdcH = this->getReferenceAdcHorizontalChipChannel();
+  ChipChannelPair& refAmpV = this->getReferenceAmplitudeVerticalChipChannel();
+  ChipChannelPair& refAmpH = this->getReferenceAmplitudeHorizontalChipChannel();
+
+  refAdcV = std::make_pair(3, 15); // vert prof
+  refAdcH = std::make_pair(1, 15); // horiz prof
+  refAmpV = std::make_pair(3, 15); // vert prof
+  refAmpH = std::make_pair(1, 15); // horiz prof
 
   std::vector< double > vertProf = this->getVerticalProfile();
   std::vector< double > horizProf = this->getHorizontalProfile();
@@ -329,6 +333,7 @@ void Camera2::processDataCounts(bool fullChipCalibration, bool splitData,
   {
     IntegralAdcSignalToCharge /= double(AbstractCamera::RESOLUTION_16BIT);
   }
+  IntegralAdcSignalToCharge = 1.;
   std::map< ChipChannelPair, ChannelInfoPair > infoMap = this->getChipChannelInfoMap();
   const std::vector< int >& vertProfChips = this->getVerticalProfileChips();
   const std::vector< int >& horizProfChips = this->getHorizontalProfileChips();
@@ -400,16 +405,27 @@ void Camera2::processDataCounts(bool fullChipCalibration, bool splitData,
         {
         case ProfileRepresentationType::MEAN:
           v = 0.5 * calibInfo.Signal / (calibInfo.SigCountA + calibInfo.SigCountB);
-//          v = 0.5 * (info.PedMeanA + info.PedMeanB);
+          {
+            switch (integType)
+            {
+            case IntegratorType::A:
+              v = calibInfo.Signal / calibInfo.SigCountA;
+              break;
+            case IntegratorType::B:
+              v = calibInfo.Signal / calibInfo.SigCountB;
+              break;
+            case IntegratorType::AB:
+            default:
+              break;
+            }
+          }
           break;
         case ProfileRepresentationType::CHARGE:
           v = IntegralAdcSignalToCharge * calibInfo.Signal;
-//          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         case ProfileRepresentationType::INTEGRAL:
         default:
           v = calibInfo.Signal;
-//          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         }
         vertProf[chipStrip] = v;
@@ -426,23 +442,34 @@ void Camera2::processDataCounts(bool fullChipCalibration, bool splitData,
         chipStrip = findChipStripVectorH(horizChipChannels);
       }
       // fill horizontal profile
-      double v = calibInfo.Signal;
+      double v = calibInfo.SignalNoAmp;
       if (chipStrip >= 0 && chipStrip < HORIZONTAL_PROFILE_STRIPS)
       {
         switch (profileType)
         {
         case ProfileRepresentationType::MEAN:
           v = 0.5 * calibInfo.Signal / (calibInfo.SigCountA + calibInfo.SigCountB);
-//          v = 0.5 * (info.PedMeanA + info.PedMeanB);
+          {
+            switch (integType)
+            {
+            case IntegratorType::A:
+              v = calibInfo.Signal / calibInfo.SigCountA;
+              break;
+            case IntegratorType::B:
+              v = calibInfo.Signal / calibInfo.SigCountB;
+              break;
+            case IntegratorType::AB:
+            default:
+              break;
+            }
+          }
           break;
         case ProfileRepresentationType::CHARGE:
           v = IntegralAdcSignalToCharge * calibInfo.Signal;
-//          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         case ProfileRepresentationType::INTEGRAL:
         default:
           v = calibInfo.Signal;
-//          v = 0.5 * (info.PedMeanA + info.PedMeanB);
           break;
         }
         horizProf[chipStrip] = v;
@@ -512,24 +539,57 @@ void Camera2::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool wit
 
   if (vertProfile)
   {
+      QString dataFileNameV = QDir::tempPath() + QString(QDir::separator()) + "VertProfile.txt";
+      QScopedPointer< QFile > dataFileV(new QFile(dataFileNameV));
+      bool res = dataFileV->open(QIODevice::WriteOnly | QIODevice::Text);
+      QTextStream dataFileStreamV(dataFileV.get()); // dump bits to temp file for debug
+
+
     std::vector< double > vertProfDataCopy(vertProfData);
     std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
     double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
+//      int v = static_cast< int >(vertProfDataCopy[i]);
+//      dataFileStreamV << qSetFieldWidth(10) << (v >> 8) << (v & 0xFF) << '\n';
       vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+    }
+
+    for (Int_t i = 0; i < vertProfData.size(); ++i)
+    {
+      Double_t d = vertProfile->GetPointY(i);
+      int v = static_cast< int >(d);
+      dataFileStreamV << qSetFieldWidth(10) << (v >> 8) << (v & 0xFF) << '\n';
+//      qDebug() << Q_FUNC_INFO << d;
     }
   }
   if (horizProfile)
   {
+      QString dataFileNameH = QDir::tempPath() + QString(QDir::separator()) + "HorizProfile.txt";
+      QScopedPointer< QFile > dataFileH(new QFile(dataFileNameH));
+      bool res = dataFileH->open(QIODevice::WriteOnly | QIODevice::Text);
+      QTextStream dataFileStreamH(dataFileH.get()); // dump bits to temp file for debug
+
     size_t xBins = horizProfData.size();
     std::vector< double > horiz = Camera2::GenerateHorizontalProfileStripsBinsBorders(xBins + 1);
     double halfSizeHoriz = *std::max_element(horiz.begin(), horiz.end()) / 2.;
+    std::vector< double > horizProfDataCopy(horizProfData);
+    std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
     const double* xBinsBorders = horiz.data();
     const double& step1 = STRIP_STEP_MM;
     for (Int_t i = 0; i < xBins; ++i)
     {
-      horizProfile->SetPoint(i, xBinsBorders[i] + step1 - halfSizeHoriz, Double_t(horizProfData[i]));
+//      int v = static_cast< int >(horizProfDataCopy[i]);
+//      dataFileStreamH << qSetFieldWidth(10) << (v >> 8) << (v & 0xFF) << '\n';
+      horizProfile->SetPoint(i, xBinsBorders[i] + step1 - halfSizeHoriz, Double_t(horizProfDataCopy[i]));
+    }
+
+    for (Int_t i = 0; i < xBins; ++i)
+    {
+      Double_t d = horizProfile->GetPointY(i);
+      int v = static_cast< int >(d);
+      dataFileStreamH << qSetFieldWidth(10) << (v >> 8) << (v & 0xFF) << '\n';
+//      qDebug() << Q_FUNC_INFO << d;
     }
   }
 }
@@ -555,6 +615,9 @@ void Camera2::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
 
   std::vector< double > vertProfDataCopy(vertProfData);
   std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
+
+  std::vector< double > horizProfDataCopy(horizProfData);
+  std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
   if (pseudo2D)
   {
     pseudo2D->Reset();
@@ -565,14 +628,15 @@ void Camera2::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
       for (Int_t column = 0; column < xBins; ++column)
       {
         Double_t centerX = pseudo2D->GetXaxis()->GetBinCenter(column + 1);
-        Double_t pixel = horizProfData[column] * vertProfDataCopy[row];
+        Double_t pixel = horizProfDataCopy[column] * vertProfDataCopy[row];
         pseudo2D->Fill(centerX, centerY, pixel);
       }
     }
   }
-  if (integPseudo2D && pseudo2D)
+
+  if (integPseudo2D && pseudo2D && integPseudo2D->Add(pseudo2D))
   {
-    integPseudo2D->Add(pseudo2D, 1.);
+    emit AbstractCamera::logMessage("2D is added to integral", this->getCameraData().ID, Qt::green);
 //    for (Int_t row = 0; row < vertProfData.size(); ++row)
 //    {
 //      for (Int_t column = 0; column < xBins; ++column)
@@ -614,7 +678,13 @@ TH2* Camera2::createProfile2D(bool integral)
 
   QString histName = (integral) ? hist2IntegName : hist2Name;
   QByteArray name = histName.toLatin1();
-  TH2* hist = new TH2D(name.data(), "Pseudo 2D Distribution", xBins, xBinsBorders, yBins, yBinsBorders);
+  QString titleStr = cameraData.ID + ": " + "Pseudo 2D Distribution";
+  if (cameraData.ID == "Camera2")
+  {
+    titleStr = "Wall : 2D Distribution";
+  }
+  QByteArray titleData = titleStr.toLatin1();
+  TH2* hist = new TH2D(name.data(), titleData.data(), xBins, xBinsBorders, yBins, yBinsBorders);
   return hist;
 }
 

@@ -32,6 +32,7 @@ public:
   explicit FullCamera6(const AbstractCamera::CameraDeviceData& data, QObject* parent = nullptr);
   ~FullCamera6() override;
 public:
+  virtual TGraph* createProfile(CameraProfileType profileType, bool withErrors = false);
   void updateProfiles(TGraph* vertProfile = nullptr, TGraph* horizProfile = nullptr, bool withErrors = false) override;
 
 protected:

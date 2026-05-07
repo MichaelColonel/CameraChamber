@@ -38,7 +38,7 @@ public:
   virtual ~CameraProfilesDialog();
   void setCameraDevice(AbstractCamera* cam);
 //  void getProfiles(TGraph* horiz, TGraph* vert, TH2* hist2d);
-  void addBeamProfilesToServer(THttpServer* server); // register TPad or TCanvas
+  void addBeamProfilesToServer(std::shared_ptr< THttpServer > server); // register TPad or TCanvas
 
 public Q_SLOTS:
   void onAcquisitionStarted();
@@ -50,6 +50,7 @@ public Q_SLOTS:
   void onSignalBeginChanged(double pos);
   void onSignalEndChanged(double pos);
   void onResetIntegralPseudo2dClicked();
+  void onResetIntegrationClicked();
 
 Q_SIGNALS:
   void profilesUpdated();

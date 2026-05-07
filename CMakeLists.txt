@@ -115,6 +115,18 @@ set(RESOURCE_FILES
   C26AIC05/Chip3.34.json
   C26AIC06/ChipsPosition.json
   C26AIC06/ChipX.X.json
+  C26AIC06/Chip3.19.json
+  C26AIC06/Chip3.20.json
+  C26AIC06/Chip3.21.json
+  C26AIC06/Chip3.22.json
+  C26AIC06/Chip4.1.json
+  C26AIC06/Chip4.2.json
+  C26AIC06/Chip4.3.json
+  C26AIC06/Chip4.4.json
+  C26AIC06/Chip4.5.json
+  C26AIC06/Chip4.6.json
+  C26AIC06/Chip4.7.json
+  C26AIC06/Chip4.8.json
 )
 
 file(GLOB forms ${PROJECT_SOURCE_DIR}/*.ui)
