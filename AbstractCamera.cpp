@@ -67,8 +67,6 @@ public:
   QByteArray lastCommandWritten;
   bool initiationFlag{ false };
   bool acquisitionFlag{ false };
-  bool profilesProcessingBusyFlag{ false };
-//  QMutex busyMutex;
   bool onceTimeExternalStartFlag{ false };
 
   std::vector< int > chipsAddressesVector; // acquired chips addresses
@@ -104,15 +102,11 @@ public:
   std::array< int, 4 > pedestalSignalGateArray = { 1, 199, 200, 1100 };
 
   std::map< ChipChannelPair, ChannelInfoPair > chipChannelInfoMap;
-  std::vector< std::vector< double > > profileFramesVector;
-
-  std::vector< MeanDispAccumSet > horizontalProfileAccums; // for integral profiles
-  std::vector< MeanDispAccumSet > verticalProfileAccums; // for integral profiles
-  std::vector< MeanDispAccumSet > pseude2DAccums; // for
 
   int dataNumber{ 1 };
   QDateTime dataDateTime;
   TDirectory* rootDir{ nullptr };
+  BeamChamberFaceOrientationType beamChamberFaceOrientation{ BeamChamberFaceOrientationType::Along };
 
   const QByteArray FirstContactCommand = QByteArray(1, 'A');
   const QByteArray OnceTimeExternalStartCommand = QByteArray("S\0\0", AbstractCamera::BUFFER_SIZE);
@@ -155,6 +149,9 @@ public:
     1.947,
     1.941
   };
+  static constexpr double LOCAL_DBL_EPSILON = 0.0001;
+  static constexpr double LOCAL_DBL_EPSILON2 = 1.E-08;
+  static constexpr double SIGNAL_PEDESTAL_DIFFERENCE_RATIO = 3.;
 };
 
 AbstractCameraPrivate::AbstractCameraPrivate(AbstractCamera &object)
@@ -302,6 +299,9 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
 
   d->cameraData = data;
 
+  d->commandPort->setPortName(d->cameraData.CommandDeviceName);
+  d->dataPort->setPortName(d->cameraData.DataDeviceName);
+
   if (this->loadCameraData(d->cameraData.DataDirectory))
   {
 #if !QT_NO_DEBUG
@@ -342,12 +342,17 @@ bool AbstractCamera::connect()
 {
   Q_D(AbstractCamera);
   bool connected = false;
-  if (d->commandPort && !d->commandPort->isOpen())
+  if (d->commandPort->isOpen() || d->dataPort->isOpen())
+  {
+    this->disconnect();
+  }
+
+  d->commandPort->setPortName(d->cameraData.CommandDeviceName);
+  if (d->commandPort->open(QIODevice::ReadWrite))
   {
     d->lastCommandWritten.clear();
     d->adcDataBuffer.clear();
 
-    d->commandPort->setPortName(d->cameraData.CommandDeviceName);
     d->commandPort->setBaudRate(QSerialPort::Baud57600);
     d->commandPort->setDataBits(QSerialPort::Data8);
     d->commandPort->setParity(QSerialPort::NoParity);
@@ -361,12 +366,12 @@ bool AbstractCamera::connect()
     QObject::connect(d->commandPort.data(), SIGNAL(errorOccurred(QSerialPort::SerialPortError)),
       this, SLOT(onCommandPortError(QSerialPort::SerialPortError)));
 
-    connected = d->commandPort->open(QIODevice::ReadWrite);
+    connected = d->commandPort->flush();
   }
 
-  if (d->dataPort && !d->dataPort->isOpen())
+  d->dataPort->setPortName(d->cameraData.DataDeviceName);
+  if (d->dataPort->open(QIODevice::ReadOnly))
   {
-    d->dataPort->setPortName(d->cameraData.DataDeviceName);
     d->dataPort->setBaudRate(QSerialPort::Baud57600);
     d->dataPort->setDataBits(QSerialPort::Data8);
     d->dataPort->setParity(QSerialPort::NoParity);
@@ -381,7 +386,7 @@ bool AbstractCamera::connect()
     QObject::connect(d->dataPort.data(), SIGNAL(errorOccurred(QSerialPort::SerialPortError)),
       this, SLOT(onDataPortError(QSerialPort::SerialPortError)));
 
-    connected &= d->dataPort->open(QIODevice::ReadOnly);
+    connected &= d->dataPort->flush();
   }
 
   return connected;
@@ -392,23 +397,32 @@ void AbstractCamera::disconnect()
   Q_D(AbstractCamera);
   bool connected = true;
 
-  if (d->commandPort && d->commandPort->isOpen())
+  if (d->commandPort->isOpen())
   {
-    d->commandPort->flush();
+    QObject::disconnect(d->commandPort.data(), SIGNAL(readyRead()),
+      this, SLOT(onCommandPortDataReady()));
+    QObject::disconnect(d->commandPort.data(), SIGNAL(bytesWritten(qint64)),
+      this, SLOT(onCommandPortBytesWritten(qint64)));
+    QObject::disconnect(d->commandPort.data(), SIGNAL(errorOccurred(QSerialPort::SerialPortError)),
+      this, SLOT(onCommandPortError(QSerialPort::SerialPortError)));
     d->commandPort->close();
   }
-  else if (d->commandPort && !d->commandPort->isOpen())
+  else
   {
   }
 
-  if (d->dataPort && d->dataPort->isOpen())
+  if (d->dataPort->isOpen())
   {
-    d->dataPort->flush();
+    QObject::disconnect(d->dataPort.data(), SIGNAL(readyRead()),
+      this, SLOT(onDataPortDataReady()));
+    QObject::disconnect(d->dataPort.data(), SIGNAL(errorOccurred(QSerialPort::SerialPortError)),
+      this, SLOT(onDataPortError(QSerialPort::SerialPortError)));
     d->dataPort->close();
   }
-  else if (d->dataPort && !d->dataPort->isOpen())
+  else
   {
   }
+
   d->dataNumber = 1;
   d->cameraData = AbstractCamera::CameraDeviceData();
   connected = false;
@@ -652,9 +666,9 @@ void AbstractCamera::onCommandPortDataReady()
     d->adcDataBuffer.clear();
     d->commandResponseBuffer.clear();
     d->lastCommandWritten.clear();
-    emit acquisitionFinished();
     d->acquisitionFlag = false;
     d->onceTimeExternalStartFlag = false;
+    emit acquisitionFinished();
     return;
   }
   if (d->commandResponseBuffer.startsWith('L')
@@ -865,8 +879,7 @@ void AbstractCamera::processRawData()
   constexpr int SIDE_BIT = 6;
   constexpr int CHIP_BITS = 4;
   std::map< int, bool > chipPresenceMap;
-//  bool untilSideFlagAFound = true;
-//  bool flagSideA = false;
+
   // find first Side-A data
   for (int i = offset; i < arr.size() - BYTES_CHUNK; i += BYTES_CHUNK)
   {
@@ -894,20 +907,6 @@ void AbstractCamera::processRawData()
     this->ReverseBits(chipBits);
 
     bool sideFlag = d0.test(SIDE_BIT);
-/*
-    if (untilSideFlagAFound)
-    {
-      if (sideFlag)
-      {
-        untilSideFlagAFound = false;
-        flagSideA = true;
-      }
-    }
-    if (!flagSideA)
-    {
-      continue;
-    }
-*/
     int channel = static_cast<int>(((d0 >> 1) & std::bitset< CHAR_BIT >(0x1F)).to_ulong());
     int chip = chipBits.to_ulong() - CHIP_BITS;
     int count = static_cast< int >((d3.to_ulong() << CHAR_BIT) | d2.to_ulong());
@@ -984,11 +983,7 @@ std::vector< double > AbstractCamera::GenerateFullProfileStripsBinsBorders(size_
 bool AbstractCamera::loadCameraData(const QString &cameraDirectory, int capacityCode, int timeCode)
 {
   Q_D(AbstractCamera);
-//  d->capacityTimeAdcAmpCalibrationMap.clear();
   d->chipCalibrationMap.clear();
-//  d->chipChannelCalibrationA.clear();
-//  d->chipChannelCalibrationB.clear();
-//  d->chipChannelCalibrationAmplitude.clear();
 
   // Load JSON descriptor file
   QString path = QDir::currentPath() + QDir::separator() \
@@ -1599,6 +1594,39 @@ const std::array< int, 4 >& AbstractCamera::getPedestalSignalGate() const
   return d->pedestalSignalGateArray;
 }
 
+void AbstractCamera::setPedestalSignalGate(int pedMin, int pedMax, int sigMin, int sigMax)
+{
+  Q_D(AbstractCamera);
+  d->pedestalSignalGateArray[0] = pedMin;
+  d->pedestalSignalGateArray[1] = pedMax;
+  d->pedestalSignalGateArray[2] = sigMin;
+  d->pedestalSignalGateArray[3] = sigMax;
+}
+
+BeamChamberFaceOrientationType AbstractCamera::getBeamChamberFaceOrientation() const
+{
+  Q_D(const AbstractCamera);
+  return d->beamChamberFaceOrientation;
+}
+
+void AbstractCamera::setBeamChamberFaceOrientation(BeamChamberFaceOrientationType orientType)
+{
+  Q_D(AbstractCamera);
+  d->beamChamberFaceOrientation = orientType;
+}
+
+void AbstractCamera::getVerticalProfileChips(std::vector< int >& vertProfChipsVector) const
+{
+  Q_D(const AbstractCamera);
+  vertProfChipsVector = d->verticalProfileChipsVector;
+}
+
+void AbstractCamera::getHorizontalProfileChips(std::vector< int >& horizProfChipsVector) const
+{
+  Q_D(const AbstractCamera);
+  horizProfChipsVector = d->horizontalProfileChipsVector;
+}
+
 const std::vector< int >& AbstractCamera::getVerticalProfileChips() const
 {
   Q_D(const AbstractCamera);
@@ -1645,12 +1673,6 @@ const std::vector< double >& AbstractCamera::getHorizontalProfileStripsNumbers()
 {
   Q_D(const AbstractCamera);
   return d->horizontalProfileStripsNumbersVector;
-}
-
-std::vector< std::vector< double > >& AbstractCamera::getProfileFramesVector()
-{
-  Q_D(AbstractCamera);
-  return d->profileFramesVector;
 }
 
 const std::map< ChipChannelPair, ChannelInfoPair >& AbstractCamera::getChipChannelInfoMap() const
@@ -1738,15 +1760,6 @@ bool AbstractCamera::getAdcData(int chipIndex, int channelIndex, std::vector< in
     break;
   }
   return res;
-}
-
-void AbstractCamera::setPedestalSignalGate(int pedMin, int pedMax, int sigMin, int sigMax)
-{
-  Q_D(AbstractCamera);
-  d->pedestalSignalGateArray[0] = pedMin;
-  d->pedestalSignalGateArray[1] = pedMax;
-  d->pedestalSignalGateArray[2] = sigMin;
-  d->pedestalSignalGateArray[3] = sigMax;
 }
 
 void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
@@ -1839,6 +1852,7 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
   double refAmplV = chipChannelCalibrationAmplitude[refAmpV]; // reference vertical amplitude value
   d->chipChannelInfoMap.clear();
 
+//  qDebug() << Q_FUNC_INFO << refAmplH << ' ' << refAmplH;
   double refResistorH = 1.;
   double refResistorV = 1.;
   if (fullChipCalibration)
@@ -1880,6 +1894,7 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
         refA = -1.;
         refB = -1.;
       }
+
       ChipChannelPair curr(chipAddress + 1, i + 1); // current chip, strip
       double currResistor = 1.;
       if (fullChipCalibration)
@@ -1889,6 +1904,8 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       double currA = chipChannelCalibrationA[curr]; // current value side-A
       double currB = chipChannelCalibrationB[curr]; // current value side-B
       double currAmpl = chipChannelCalibrationAmplitude[curr]; // current amplitude value
+
+//      qDebug() << Q_FUNC_INFO << refAmpl << ' ' << refA << ' ' << refB << ' ' << currAmpl;
 
       std::vector<int>& sideA = d->channelsCountsA[chipAddress][i];
       std::vector<int>& sideB = d->channelsCountsB[chipAddress][i];
@@ -1931,22 +1948,41 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       double signalB = (info.SigSumB - info.SigCountB * info.PedMeanB);
       double signalNoAmp = (signalA + signalB) / 2.;
       double signal = refAmpl * signalNoAmp / currAmpl;
-
-      info.Signal = signal;
-      info.SignalNoAmp = signalNoAmp;
       switch (integType)
       {
       case IntegratorType::A:
-        info.Signal = signalA;
-        info.SignalNoAmp = refAmpl * signalA / currAmpl;
+        info.Signal = refAmpl * signalA / currAmpl;
+        info.SignalNoAmp = signalA;
         break;
       case IntegratorType::B:
-        info.Signal = signalB;
-        info.SignalNoAmp = refAmpl * signalB / currAmpl;
+        info.Signal = refAmpl * signalB / currAmpl;
+        info.SignalNoAmp = signalB;
         break;
       case IntegratorType::AB:
-        default:
+      default:
+        info.Signal = signal;
+        info.SignalNoAmp = signalNoAmp;
         break;
+      }
+
+      double pedVarianceA = info.PedMom2A - info.PedMeanA * info.PedMeanA;
+      double pedVarianceB = info.PedMom2B - info.PedMeanB * info.PedMeanB;
+      double pedSigDiffA = std::abs(info.SigMeanA - info.PedMeanA);
+      double pedSigDiffB = std::abs(info.SigMeanB - info.PedMeanB);
+      if (std::abs(currAmpl) < d->LOCAL_DBL_EPSILON)
+      {
+        info.Signal = d->LOCAL_DBL_EPSILON2;
+      }
+      if (pedVarianceA < 0. || pedVarianceB < 0.)
+      {
+        info.Signal = d->LOCAL_DBL_EPSILON2;
+        info.SignalNoAmp = d->LOCAL_DBL_EPSILON2;
+      }
+      else if (pedSigDiffA < (std::sqrt(pedVarianceA) * d->SIGNAL_PEDESTAL_DIFFERENCE_RATIO)
+       || (pedSigDiffB < (std::sqrt(pedVarianceB) * d->SIGNAL_PEDESTAL_DIFFERENCE_RATIO)))
+      {
+        info.Signal = d->LOCAL_DBL_EPSILON2;
+        info.SignalNoAmp = d->LOCAL_DBL_EPSILON2;
       }
 
       infoCalib.PedMeanA = boost::accumulators::mean(statCalibPedA);
@@ -1967,8 +2003,6 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       signalNoAmp = (signalA + signalB) / 2.;
       signal = refAmpl * signalNoAmp / currAmpl;
 
-      infoCalib.Signal = signal;
-      infoCalib.SignalNoAmp = signalNoAmp;
       switch (integType)
       {
       case IntegratorType::A:
@@ -1980,14 +2014,37 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
         infoCalib.SignalNoAmp = refAmpl * signalB / currAmpl;
         break;
       case IntegratorType::AB:
-        default:
+      default:
+        infoCalib.Signal = signal;
+        infoCalib.SignalNoAmp = signalNoAmp;
         break;
       }
+
+      pedVarianceA = infoCalib.PedMom2A - infoCalib.PedMeanA * infoCalib.PedMeanA;
+      pedVarianceB = infoCalib.PedMom2B - infoCalib.PedMeanB * infoCalib.PedMeanB;
+      pedSigDiffA = std::abs(infoCalib.SigMeanA - infoCalib.PedMeanA);
+      pedSigDiffB = std::abs(infoCalib.SigMeanB - infoCalib.PedMeanB);
+      if (std::abs(currAmpl) < d->LOCAL_DBL_EPSILON)
+      {
+        infoCalib.Signal = d->LOCAL_DBL_EPSILON2;
+      }
+      if (pedVarianceA < 0. || pedVarianceB < 0.)
+      {
+        infoCalib.Signal = d->LOCAL_DBL_EPSILON2;
+        infoCalib.SignalNoAmp = d->LOCAL_DBL_EPSILON2;
+      }
+      else if (pedSigDiffA < (std::sqrt(pedVarianceA) * d->SIGNAL_PEDESTAL_DIFFERENCE_RATIO)
+       || (pedSigDiffB < (std::sqrt(pedVarianceB) * d->SIGNAL_PEDESTAL_DIFFERENCE_RATIO)))
+      {
+        infoCalib.Signal = d->LOCAL_DBL_EPSILON2;
+        infoCalib.SignalNoAmp = d->LOCAL_DBL_EPSILON2;
+      }
+
       d->chipChannelInfoMap[curr] = std::make_pair(info, infoCalib);
     }
   }
 }
-
+/*
 TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withErrors)
 {
   Q_D(AbstractCamera);
@@ -2013,9 +2070,9 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
       double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
       std::vector< double > vertProfDataCopy(vertProfData);
       std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
-      if (this->getCameraData().ID == "Camera4" || this->getCameraData().ID == "Camera2")
+//      if (this->getCameraData().ID == "Camera4" || this->getCameraData().ID == "Camera2")
       {
-        std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
+//        std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
       }
       for (Int_t i = 0; i < vertProfData.size(); ++i)
       {
@@ -2036,13 +2093,13 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
       double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
       std::vector< double > horizProfDataCopy(horizProfData);
       std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
-      if (this->getCameraData().ID == "Camera4" || this->getCameraData().ID == "Camera1")
+//      if (this->getCameraData().ID == "Camera4" || this->getCameraData().ID == "Camera1")
       {
 //        std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
       }
-      else if (this->getCameraData().ID == "Camera2")
+//      else if (this->getCameraData().ID == "Camera2")
       {
-        std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+//        std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
       }
       for (Int_t i = 0; i < horizProfData.size(); ++i)
       {
@@ -2055,7 +2112,7 @@ TGraph* AbstractCamera::createProfile(CameraProfileType profileType, bool withEr
   }
   return profile;
 }
-
+*/
 CameraProfileType AbstractCamera::getProfileBrokenChipChannelsStrips(int chip, std::vector< int >& strips) const
 {
   Q_D(const AbstractCamera);
@@ -2296,36 +2353,6 @@ bool AbstractCamera::setReferenceChipChannel(const ChipChannelPair& pair, bool a
     }
   }
   return res;
-}
-
-void AbstractCamera::setProfilesProcessingBusyFlag(bool busyFlag)
-{
-  Q_D(AbstractCamera);
-  if (busyFlag)
-  {
-    QObject::disconnect(d->commandPort.data(), SIGNAL(readyRead()),
-      this, SLOT(onCommandPortDataReady()));
-    QObject::disconnect(d->dataPort.data(), SIGNAL(readyRead()),
-      this, SLOT(onDataPortDataReady()));
-  }
-  else
-  {
-    bool flushed = d->commandPort->flush();
-    flushed &= d->dataPort->flush();
-    d->commandResponseBuffer.clear();
-    d->adcDataBuffer.clear();
-    QObject::connect(d->commandPort.data(), SIGNAL(readyRead()),
-      this, SLOT(onCommandPortDataReady()));
-    QObject::connect(d->dataPort.data(), SIGNAL(readyRead()),
-      this, SLOT(onDataPortDataReady()));
-  }
-  d->profilesProcessingBusyFlag = busyFlag;
-}
-
-bool AbstractCamera::getProfilesProcessingBusyFlag() const
-{
-  Q_D(const AbstractCamera);
-  return d->profilesProcessingBusyFlag;
 }
 
 QT_END_NAMESPACE

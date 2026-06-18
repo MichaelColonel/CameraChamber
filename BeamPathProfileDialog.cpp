@@ -257,7 +257,7 @@ std::pair< double, double > BeamPathProfileDialogPrivate::homogenousValue()
 
 BeamProfileArray BeamPathProfileDialogPrivate::getProfilesParameters(TGraph* profileX, TGraph* profileY)
 {
-  BeamProfileArray bp{ 0.0, 0.0, -1. };
+  BeamProfileArray bp{ 0.0, 0.0, -1., -1. };
   double normX = this->getNorm(profileX);
   double sigmaX = -1.;
   if (std::abs(normX) > DBL_EPSILON)

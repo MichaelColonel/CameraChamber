@@ -79,6 +79,30 @@ void FullCamera4::processDataCounts(bool fullChipCalibration, bool splitData,
   FullCamera::processDataCounts(true, splitData, integType, profileType);
 }
 
+TGraph* FullCamera4::createProfile(CameraProfileType profileType, bool withErrors)
+{
+  Q_D(FullCamera4);
+
+  size_t vertProfSize = this->getVerticalProfile().size();
+  size_t horizProfSize = this->getHorizontalProfile().size();
+
+  TGraph* profile = nullptr;
+  switch (profileType)
+  {
+  case CameraProfileType::PROFILE_VERTICAL:
+    profile = (withErrors) ? new TGraphErrors(vertProfSize) : new TGraph(vertProfSize);
+    this->updateProfiles(profile, nullptr, withErrors);
+    break;
+  case CameraProfileType::PROFILE_HORIZONTAL:
+    profile = (withErrors) ? new TGraphErrors(horizProfSize) : new TGraph(horizProfSize);
+    this->updateProfiles(nullptr, profile, withErrors);
+    break;
+  default:
+    break;
+  }
+  return profile;
+}
+
 void FullCamera4::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors)
 {
   Q_D(FullCamera4);
@@ -99,22 +123,21 @@ void FullCamera4::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool
   if (vertProfile)
   {
     double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
-    std::vector< double > vertProfDataCopy(vertProfData);
-    std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+      vertProfile->SetPoint(i, Double_t(vertProfData[i]), Double_t(vertProfStrips[i] - halfSizeVert));
+///      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfData[i]));
     }
   }
 
-  if (horizProf)
+  if (horizProfile)
   {
     double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
     std::vector< double > horizProfDataCopy(horizProfData);
-//    std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+    std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
     for (Int_t i = 0; i < horizProfData.size(); ++i)
     {
-      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfDataCopy[i]));
+      horizProfile->SetPoint(i, Double_t(halfSizeHoriz - horizProfStrips[i]), Double_t(horizProfDataCopy[i]));
     }
   }
 }
@@ -128,6 +151,7 @@ TH2* FullCamera4::createProfile2D(bool integral)
 
   int xBins = static_cast< int >(horizProfData.size());
   std::vector< double > horiz = AbstractCamera::GenerateFullProfileStripsBinsBorders(xBins + 1);
+//  std::reverse(std::begin(horiz), std::end(horiz));
 
   double halfSizeHoriz = *std::max_element(horiz.begin(), horiz.end()) / 2.;
   auto shiftHoriz = [halfSizeHoriz](double& v) { v -= halfSizeHoriz; };
@@ -172,7 +196,7 @@ void FullCamera4::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
   const std::vector< double >& horizProfData = this->getHorizontalProfile();
 
   std::vector< double > horizProfDataCopy(horizProfData);
-  std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+///  std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
   if (pseudo2D)
   {
     pseudo2D->Reset();
@@ -186,18 +210,6 @@ void FullCamera4::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
         pseudo2D->Fill(centerX, centerY, pixel);
       }
     }
-  }
-  if (integPseudo2D && pseudo2D && integPseudo2D->Add(pseudo2D))
-  {
-    emit AbstractCamera::logMessage("2D is added to integral", this->getCameraData().ID, Qt::green);
-//    for (Int_t row = 0; row < vertProfData.size(); ++row)
-//    {
-//      for (Int_t column = 0; column < horizProfData.size(); ++column)
-//      {
-//        Double_t pixel = horizProfData[column] * vertProfData[row];
-//        integPseudo2D->Fill(column, (horizProfData.size() - 1) - row, pixel);
-//      }
-//    }
   }
 }
 

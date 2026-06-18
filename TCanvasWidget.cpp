@@ -205,4 +205,14 @@ TPad* TCanvasWidget::getPad(int subPadNumber) const
   return (this->rootCanvas) ? dynamic_cast< TPad* >(this->rootCanvas->GetPad(subPadNumber)) : nullptr;
 }
 
+TPad* TCanvasWidget::getGridPad() const
+{
+  TPad* pad = this->getPad(0);
+  if (pad)
+  {
+    pad->SetGrid();
+  }
+  return pad;
+}
+
 QT_END_NAMESPACE

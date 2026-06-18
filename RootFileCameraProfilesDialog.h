@@ -35,6 +35,7 @@ class RootFileCameraProfilesDialog : public QDialog
 public:
   explicit RootFileCameraProfilesDialog(const QString& rootFile, QWidget *parent = nullptr);
   virtual ~RootFileCameraProfilesDialog();
+  void addBeamProfilesToServer(std::shared_ptr< THttpServer > server); // register TPad or TCanvas
 
 public Q_SLOTS:
 //  void onCurrentRootTreeItemChanged(QListWidgetItem* newItem,QListWidgetItem*); // not used
@@ -55,6 +56,7 @@ public Q_SLOTS:
   void onScanHomoVerticalBeginChanged(double pos);
   void onScanHomoVerticalEndChanged(double pos);
   void onCalculateHomogenousClicked();
+  void onProcessBeamPathClicked();
 
 Q_SIGNALS:
   void logMessage(const QString& msg, const QString& context, QColor color);

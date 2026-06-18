@@ -107,6 +107,7 @@ private slots:
 
 private:
   void updateUiState();
+  void initCameras();
   bool loadSettings(QSettings* settings);
   bool saveSettings(QSettings* settings);
   int getChipsEnabledCode() const;
@@ -132,10 +133,6 @@ protected:
   QString rootFileName;
   std::unique_ptr< TFile > rootFile;
   std::shared_ptr< THttpServer > httpServer;
-
-//  OpcUaModel* opcUaModelData{ nullptr };
-//  QOpcUaProvider* opcUaProvider{ nullptr };
-//  QOpcUaClient* opcUaClient{ nullptr };
 
   typedef QPair< AbstractCamera* , CameraProfilesDialog* > CameraDeviceProfilesPair;
   typedef QMap< QString, CameraDeviceProfilesPair > CameraDeviceProfilesMap;

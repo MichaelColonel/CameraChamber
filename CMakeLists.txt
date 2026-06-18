@@ -129,6 +129,8 @@ set(RESOURCE_FILES
   C26AIC06/Chip4.8.json
 )
 
+SET(icons ProfileCamera2D.qrc)
+
 file(GLOB forms ${PROJECT_SOURCE_DIR}/*.ui)
 file(GLOB sources ${PROJECT_SOURCE_DIR}/*.cpp)
 file(GLOB headers ${PROJECT_SOURCE_DIR}/*.h)
@@ -138,6 +140,7 @@ add_executable(ProfileCamera2D
   ${sources}
   ${headers}
   ${forms}
+  ${icons}
 )
 
 add_executable(profile_offline ${batch_mode})

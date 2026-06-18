@@ -47,6 +47,7 @@ public:
 
   /// returns canvas shown in the widget
   TCanvas* getCanvas() const { return rootCanvas; }
+  TPad* getGridPad() const;
   TPad* getPad(int subPadNumber = 0) const;
 
 signals:
@@ -64,8 +65,8 @@ protected:
   void resizeEvent(QResizeEvent *event) override;
   void paintEvent(QPaintEvent* e) override;
   void SetPrivateCanvasFields(bool on_init);
-  QWebEngineView* view{nullptr};  ///< qt webwidget to show
-  TCanvas* rootCanvas{nullptr};
+  QWebEngineView* view{ nullptr };  ///< qt webwidget to show
+  TCanvas* rootCanvas{ nullptr };
 };
 
 QT_END_NAMESPACE

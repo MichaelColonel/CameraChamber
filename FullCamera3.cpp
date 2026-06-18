@@ -92,7 +92,8 @@ void FullCamera3::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool
     double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfData[i]));
+      vertProfile->SetPoint(i, Double_t(vertProfData[i]), Double_t(vertProfStrips[i] - halfSizeVert));
+///      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfData[i]));
     }
   }
 

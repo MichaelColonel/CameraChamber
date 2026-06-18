@@ -539,37 +539,17 @@ void Camera2::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool wit
 
   if (vertProfile)
   {
-      QString dataFileNameV = QDir::tempPath() + QString(QDir::separator()) + "VertProfile.txt";
-      QScopedPointer< QFile > dataFileV(new QFile(dataFileNameV));
-      bool res = dataFileV->open(QIODevice::WriteOnly | QIODevice::Text);
-      QTextStream dataFileStreamV(dataFileV.get()); // dump bits to temp file for debug
-
-
     std::vector< double > vertProfDataCopy(vertProfData);
     std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
     double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
-//      int v = static_cast< int >(vertProfDataCopy[i]);
-//      dataFileStreamV << qSetFieldWidth(10) << (v >> 8) << (v & 0xFF) << '\n';
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
-    }
-
-    for (Int_t i = 0; i < vertProfData.size(); ++i)
-    {
-      Double_t d = vertProfile->GetPointY(i);
-      int v = static_cast< int >(d);
-      dataFileStreamV << qSetFieldWidth(10) << (v >> 8) << (v & 0xFF) << '\n';
-//      qDebug() << Q_FUNC_INFO << d;
+      vertProfile->SetPoint(i, Double_t(vertProfDataCopy[i]), Double_t(vertProfStrips[i] - halfSizeVert));
+///      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
     }
   }
   if (horizProfile)
   {
-      QString dataFileNameH = QDir::tempPath() + QString(QDir::separator()) + "HorizProfile.txt";
-      QScopedPointer< QFile > dataFileH(new QFile(dataFileNameH));
-      bool res = dataFileH->open(QIODevice::WriteOnly | QIODevice::Text);
-      QTextStream dataFileStreamH(dataFileH.get()); // dump bits to temp file for debug
-
     size_t xBins = horizProfData.size();
     std::vector< double > horiz = Camera2::GenerateHorizontalProfileStripsBinsBorders(xBins + 1);
     double halfSizeHoriz = *std::max_element(horiz.begin(), horiz.end()) / 2.;
@@ -579,17 +559,7 @@ void Camera2::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool wit
     const double& step1 = STRIP_STEP_MM;
     for (Int_t i = 0; i < xBins; ++i)
     {
-//      int v = static_cast< int >(horizProfDataCopy[i]);
-//      dataFileStreamH << qSetFieldWidth(10) << (v >> 8) << (v & 0xFF) << '\n';
-      horizProfile->SetPoint(i, xBinsBorders[i] + step1 - halfSizeHoriz, Double_t(horizProfDataCopy[i]));
-    }
-
-    for (Int_t i = 0; i < xBins; ++i)
-    {
-      Double_t d = horizProfile->GetPointY(i);
-      int v = static_cast< int >(d);
-      dataFileStreamH << qSetFieldWidth(10) << (v >> 8) << (v & 0xFF) << '\n';
-//      qDebug() << Q_FUNC_INFO << d;
+      horizProfile->SetPoint(i, halfSizeHoriz - xBinsBorders[i] - step1, Double_t(horizProfDataCopy[i]));
     }
   }
 }
@@ -617,7 +587,7 @@ void Camera2::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
   std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
 
   std::vector< double > horizProfDataCopy(horizProfData);
-  std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+//  std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
   if (pseudo2D)
   {
     pseudo2D->Reset();
@@ -633,19 +603,6 @@ void Camera2::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
       }
     }
   }
-
-  if (integPseudo2D && pseudo2D && integPseudo2D->Add(pseudo2D))
-  {
-    emit AbstractCamera::logMessage("2D is added to integral", this->getCameraData().ID, Qt::green);
-//    for (Int_t row = 0; row < vertProfData.size(); ++row)
-//    {
-//      for (Int_t column = 0; column < xBins; ++column)
-//      {
-//        Double_t pixel = horizProfData[column] * vertProfData[row];
-//        integPseudo2D->Fill(xBinsBorders[column], (vertProfData.size() - 1) - row, pixel);
-//      }
-//    }
-  }
 }
 
 TH2* Camera2::createProfile2D(bool integral)
@@ -656,6 +613,7 @@ TH2* Camera2::createProfile2D(bool integral)
 
   size_t xBins = horizProfData.size();
   std::vector< double > horiz = Camera2::GenerateHorizontalProfileStripsBinsBorders(xBins + 1);
+//  std::reverse(std::begin(horiz), std::end(horiz));
 
   double halfSizeHoriz = *std::max_element(horiz.begin(), horiz.end()) / 2.;
   auto shiftHoriz = [halfSizeHoriz](double& v) { v -= halfSizeHoriz; };

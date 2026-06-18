@@ -27,9 +27,14 @@
 #include <TLine.h>
 #include <TImage.h>
 #include <TImageDump.h>
+#include <THttpServer.h>
 #include <TAttImage.h>
 #include <TSystem.h>
 #include <TStyle.h>
+#include <TF1.h>
+#include <TF2.h>
+#include <TGaxis.h>
+#include <TMultiGraph.h>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -58,8 +63,10 @@
 #include "Camera2.h" /// Camera-2
 #include "FullCamera3.h" /// Camera-3
 #include "FullCamera4.h" /// Camera-4
+#include "FullCamera5.h" /// Camera-5
 #include "FullCamera6.h" /// Camera-6
 #include "CameraUtils.h"
+#include "CameraProfiles.h"
 
 #include "CameraSpillsListModel.h"
 #include "ChannelInfoTableModel.h"
@@ -90,17 +97,22 @@ public:
   void processBeamPathProfile(TGraph* profile);
   BeamProfileArray getProfilesParameters(TGraph* profileX, TGraph* profileY);
   void updateScanningBorders();
+  void updateTimeIntensityProfiles();
 
   int getBinScanningX(double posX);
   int getBinScanningY(double posY);
   int getBinX(TH2* h2, double posX);
   int getBinY(TH2* h2, double posY);
   int getProfileBin(TH1* hist, double pos);
+  void reversePseudo2dAxisX();
+  void reverseScanning2dAxisX();
+  void reverseHorizontalProfileAxisX();
 
   std::pair< double, double > homogenousValue();
   std::pair< double, double > homogenousValueOnHorizontalProfile();
   std::pair< double, double > homogenousValueOnVerticalProfile();
 
+  std::weak_ptr< THttpServer > httpServer;
   QMap< QString, QPointer< AbstractCamera > > camerasMap;
   std::unique_ptr< TFile > rootFile;
   QScopedPointer< CameraSpillsListModel > cameraDirectorySpillsModel;
@@ -108,6 +120,11 @@ public:
 
   std::unique_ptr< TGraph > graphChannel; // TGraph adc time data
   std::unique_ptr< TPad > padChannel;
+
+  std::unique_ptr< TGraph > graphIntensityVertical;
+  std::unique_ptr< TGraph > graphIntensityHorizontal;
+  std::unique_ptr< TMultiGraph > multiGraphIntensity;
+  std::unique_ptr< TPad > padIntensity;
 
   std::unique_ptr< TLine > linePedBegin;
   std::unique_ptr< TLine > linePedEnd;
@@ -119,9 +136,12 @@ public:
 
   std::unique_ptr< TGraph > graphHorizontalProfile;
   std::unique_ptr< TPad > padHorizontalProfile;
+  std::unique_ptr< TGaxis > axisHorizontalProfileReverseX;
 
   std::unique_ptr< TH2 > histPseudo2D;
   std::unique_ptr< TPad > padPseudo2D;
+  std::unique_ptr< TGaxis > axisPseudo2dReverseX;
+
   QScopedPointer< QTimer > timer;
   std::unique_ptr< TFile > rootFramesFile;
   QString cameraID;
@@ -134,6 +154,7 @@ public:
   std::unique_ptr< TLegend > legendScanningProfiles;
 
   std::unique_ptr< TH2 > histScanning2D;
+  std::unique_ptr< TGaxis > axisScanning2dReverseX;
 
   std::unique_ptr< TLine > lineScanningVerticalBegin;
   std::unique_ptr< TLine > lineScanningVerticalEnd;
@@ -162,6 +183,9 @@ public:
     kYellow, // (100-95)
     kRed // (> 100)
   };
+  IntegratorType integratorProfile = IntegratorType::IntegratorType_Last;
+  QMap< QString, QPair< TDirectory*, TTree* > > beamPathMap;
+  std::unique_ptr< TF2 > fit2D;
 };
 
 RootFileCameraProfilesDialogPrivate::RootFileCameraProfilesDialogPrivate(RootFileCameraProfilesDialog &object)
@@ -192,10 +216,17 @@ RootFileCameraProfilesDialogPrivate::RootFileCameraProfilesDialogPrivate(RootFil
       this->camerasMap.insert(data.ID, camera);
       camera->loadSettings(&settings);
     }
-    else if (cameraID == "Camera4" || cameraID == "Camera5")
+    else if (cameraID == "Camera4")
     {
       data = CameraUtils::getFullCameraData(i);
       AbstractCamera* camera = new FullCamera4(data, &object);
+      this->camerasMap.insert(data.ID, camera);
+      camera->loadSettings(&settings);
+    }
+    else if (cameraID == "Camera5")
+    {
+      data = CameraUtils::getFullCameraData(i);
+      AbstractCamera* camera = new FullCamera5(data, &object);
       this->camerasMap.insert(data.ID, camera);
       camera->loadSettings(&settings);
     }
@@ -432,30 +463,117 @@ int RootFileCameraProfilesDialogPrivate::getProfileBin(TH1* hist, double pos)
   return binPos;
 }
 
+void RootFileCameraProfilesDialogPrivate::reversePseudo2dAxisX()
+{
+  if (!this->padPseudo2D || !this->histPseudo2D)
+  {
+    return;
+  }
+  this->padPseudo2D->cd();
+  // Remove the current axis
+  this->histPseudo2D->GetXaxis()->SetLabelOffset(999);
+  this->histPseudo2D->GetXaxis()->SetTickLength(0);
+
+  // Redraw the new axis
+  this->padPseudo2D->Update();
+  if (this->axisPseudo2dReverseX)
+  {
+    this->padPseudo2D->GetListOfPrimitives()->Remove(this->axisPseudo2dReverseX.get());
+  }
+  TGaxis *newaxis = new TGaxis(this->padPseudo2D->GetUxmax(),
+    this->padPseudo2D->GetUymin(),
+    this->padPseudo2D->GetUxmin(),
+    this->padPseudo2D->GetUymin(),
+    this->histPseudo2D->GetXaxis()->GetXmin(),
+    this->histPseudo2D->GetXaxis()->GetXmax(),
+    510, "-");
+  this->axisPseudo2dReverseX.reset(newaxis);
+  this->axisPseudo2dReverseX->SetLabelOffset(-0.01);
+  this->axisPseudo2dReverseX->Draw();
+}
+
+void RootFileCameraProfilesDialogPrivate::reverseScanning2dAxisX()
+{
+  if (!this->padScanning2D || !this->histScanning2D)
+  {
+    return;
+  }
+  this->padScanning2D->cd();
+  // Remove the current axis
+  this->histScanning2D->GetXaxis()->SetLabelOffset(999);
+  this->histScanning2D->GetXaxis()->SetTickLength(0);
+
+  // Redraw the new axis
+  this->padScanning2D->Update();
+  if (this->axisScanning2dReverseX)
+  {
+    this->padScanning2D->GetListOfPrimitives()->Remove(this->axisScanning2dReverseX.get());
+  }
+  TGaxis *newaxis = new TGaxis(this->padScanning2D->GetUxmax(),
+    this->padScanning2D->GetUymin(),
+    this->padScanning2D->GetUxmin(),
+    this->padScanning2D->GetUymin(),
+    this->histScanning2D->GetXaxis()->GetXmin(),
+    this->histScanning2D->GetXaxis()->GetXmax(),
+    510, "-");
+  this->axisScanning2dReverseX.reset(newaxis);
+  this->axisScanning2dReverseX->SetLabelOffset(-0.01);
+  this->axisScanning2dReverseX->Draw();
+}
+
+void RootFileCameraProfilesDialogPrivate::reverseHorizontalProfileAxisX()
+{
+  if (!this->graphHorizontalProfile || !this->padHorizontalProfile)
+  {
+    return;
+  }
+  this->padHorizontalProfile->cd();
+  // Remove the current axis
+  this->graphHorizontalProfile->GetXaxis()->SetLabelOffset(999);
+  this->graphHorizontalProfile->GetXaxis()->SetTickLength(0);
+
+  // Redraw the new axis
+  this->padHorizontalProfile->Update();
+  if (this->axisHorizontalProfileReverseX)
+  {
+    this->padHorizontalProfile->GetListOfPrimitives()->Remove(this->axisHorizontalProfileReverseX.get());
+  }
+  TGaxis *newaxis = new TGaxis(this->padHorizontalProfile->GetUxmax(),
+    this->padHorizontalProfile->GetUymin(),
+    this->padHorizontalProfile->GetUxmin(),
+    this->padHorizontalProfile->GetUymin(),
+    this->graphHorizontalProfile->GetXaxis()->GetXmin(),
+    this->graphHorizontalProfile->GetXaxis()->GetXmax(),
+    510, "-");
+  this->axisHorizontalProfileReverseX.reset(newaxis);
+  this->axisHorizontalProfileReverseX->SetLabelOffset(-0.01);
+  this->axisHorizontalProfileReverseX->Draw();
+}
+
 std::pair< double, double > RootFileCameraProfilesDialogPrivate::homogenousValue()
 {
   std::pair< double, double > res{ -1, -1 };
-  double hmin = this->ui->RangeWidget_ScanHomoHorizontal->minimumValue();
-  double hmax = this->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
+  double hmin = -1. * this->ui->RangeWidget_ScanHomoHorizontal->minimumValue();
+  double hmax = -1. * this->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
   double vmin = this->ui->RangeWidget_ScanHomoVertical->minimumValue();
   double vmax = this->ui->RangeWidget_ScanHomoVertical->maximumValue();
 
-  int binMinX = this->getBinScanningX(hmin);
-  int binMaxX = this->getBinScanningX(hmax);
+  int binMinX = this->getBinScanningX(hmax);
+  int binMaxX = this->getBinScanningX(hmin);
   int binMinY = this->getBinScanningY(vmin);
   int binMaxY = this->getBinScanningY(vmax);
 
-  qDebug() << Q_FUNC_INFO << "X min" << binMinX << "X max" << binMaxX << "Y min" << binMinY <<"Y max" << binMaxY;
+//  qDebug() << Q_FUNC_INFO << "X min" << binMinX << "X max" << binMaxX << "Y min" << binMinY <<"Y max" << binMaxY;
 
   std::vector< Double_t > values;
   for (Int_t h = binMinX; h <= binMaxX; ++h)
   {
     for (Int_t v = binMinY; v <= binMaxY; ++v)
     {
-      Double_t posX = this->histScanning2D->GetXaxis()->GetBinCenter(h);
-      Double_t posY = this->histScanning2D->GetYaxis()->GetBinCenter(v);
+//      Double_t posX = this->histScanning2D->GetXaxis()->GetBinCenter(h);
+//      Double_t posY = this->histScanning2D->GetYaxis()->GetBinCenter(v);
       Double_t content = this->histScanning2D->GetBinContent(h, v);
-      qDebug() << Q_FUNC_INFO << posX << ' ' << posY << ' ' << content;
+//      qDebug() << Q_FUNC_INFO << posX << ' ' << posY << ' ' << content;
       values.push_back(content);
     }
   }
@@ -463,6 +581,7 @@ std::pair< double, double > RootFileCameraProfilesDialogPrivate::homogenousValue
   {
     Double_t min = *std::min_element(values.begin(), values.end());
     Double_t max = *std::max_element(values.begin(), values.end());
+    qDebug() << Q_FUNC_INFO << "V min:" << min << ",V max:" << max;
     res.first = min / max;
     res.second = 1. - (max - min) / (max + min);
   }
@@ -482,8 +601,8 @@ std::pair< double, double > RootFileCameraProfilesDialogPrivate::homogenousValue
 std::pair< double, double > RootFileCameraProfilesDialogPrivate::homogenousValueOnHorizontalProfile()
 {
   std::pair< double, double > res{ -1, -1 };
-  double hmin = this->ui->RangeWidget_ScanHomoHorizontal->minimumValue();
-  double hmax = this->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
+  double hmin = -1. * this->ui->RangeWidget_ScanHomoHorizontal->minimumValue();
+  double hmax = -1. * this->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
   int binMin = this->getProfileBin(this->histScanningHorizontalProfile.get(), hmin);
   int binMax = this->getProfileBin(this->histScanningHorizontalProfile.get(), hmax);
 
@@ -491,7 +610,7 @@ std::pair< double, double > RootFileCameraProfilesDialogPrivate::homogenousValue
   for (Int_t i = 1; i < this->histScanningHorizontalProfile->GetXaxis()->GetNbins(); ++i)
   {
     Double_t y = this->histScanningHorizontalProfile->GetBinContent(i);
-    if (i >= binMin && i <= binMax)
+    if (i >= binMax && i <= binMin)
     {
       values.push_back(y);
     }
@@ -576,7 +695,7 @@ void RootFileCameraProfilesDialogPrivate::processBeamPathProfile(TGraph* profile
 
 BeamProfileArray RootFileCameraProfilesDialogPrivate::getProfilesParameters(TGraph* profileX, TGraph* profileY)
 {
-  BeamProfileArray bp{ 0.0, 0.0, -1. };
+  BeamProfileArray bp{ 0.0, 0.0, -1., -1. };
   double normX = this->getNorm(profileX);
   double sigmaX = -1.;
   if (std::abs(normX) > DBL_EPSILON)
@@ -595,7 +714,8 @@ BeamProfileArray RootFileCameraProfilesDialogPrivate::getProfilesParameters(TGra
   bp[2] = -1.;
   if (sigmaY >= 0. && sigmaX >= 0.)
   {
-    bp[2] = std::sqrt(sigmaX * sigmaX + sigmaY * sigmaY);
+    bp[2] = sigmaX;
+    bp[3] = sigmaY;
   }
   return bp;
 }
@@ -633,7 +753,7 @@ void RootFileCameraProfilesDialogPrivate::updateScanningBorders()
   Double_t rangeMinH = this->histScanning2D->GetYaxis()->GetXmin();
   Double_t rangeMaxH = this->histScanning2D->GetYaxis()->GetXmax();
 
-  this->lineScanningHorizontalBegin.reset(new TLine(pos, rangeMinH, pos, rangeMaxH));
+  this->lineScanningHorizontalBegin.reset(new TLine(-1. * pos, rangeMinH, -1. * pos, rangeMaxH));
   this->lineScanningHorizontalBegin->SetLineColor(kWhite);
   this->lineScanningHorizontalBegin->SetLineStyle(7);
   this->lineScanningHorizontalBegin->SetLineWidth(3.);
@@ -645,7 +765,7 @@ void RootFileCameraProfilesDialogPrivate::updateScanningBorders()
     this->padScanning2D->GetListOfPrimitives()->Remove(this->lineScanningHorizontalEnd.get());
   }
   pos = this->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
-  this->lineScanningHorizontalEnd.reset(new TLine(pos, rangeMinH, pos, rangeMaxH));
+  this->lineScanningHorizontalEnd.reset(new TLine(-1. * pos, rangeMinH, -1. * pos, rangeMaxH));
   this->lineScanningHorizontalEnd->SetLineColor(kWhite);
   this->lineScanningHorizontalEnd->SetLineStyle(7);
   this->lineScanningHorizontalEnd->SetLineWidth(3.);
@@ -679,6 +799,60 @@ void RootFileCameraProfilesDialogPrivate::updateScanningBorders()
   this->padScanning2D->Update();
 }
 
+void RootFileCameraProfilesDialogPrivate::updateTimeIntensityProfiles()
+{
+  Q_Q(RootFileCameraProfilesDialog);
+
+  if (!this->getCamera())
+  {
+//    qWarning() << Q_FUNC_INFO << "Camera is invalid";
+    emit q->logMessage("Camera is invalid", "", Qt::red);
+    return;
+  }
+  int pedMin = static_cast< int >(this->ui->RangeWidget_Pedestal->minimumValue());
+  int pedMax = static_cast< int >(this->ui->RangeWidget_Pedestal->maximumValue());
+  int sigMin = static_cast< int >(this->ui->RangeWidget_Signal->minimumValue());
+  int sigMax = static_cast< int >(this->ui->RangeWidget_Signal->maximumValue());
+
+  CameraProfiles profs(this->getCamera());
+  TGraph* horizGraph = profs.createTimeIntensityProfile(pedMin, pedMax, sigMin, sigMax, CameraProfileType::PROFILE_HORIZONTAL,
+    ProfileRepresentationType::CHARGE);
+  TGraph* vertGraph = profs.createTimeIntensityProfile(pedMin, pedMax, sigMin, sigMax, CameraProfileType::PROFILE_VERTICAL,
+    ProfileRepresentationType::CHARGE);
+  if (horizGraph && vertGraph)
+  {
+    horizGraph->SetTitle("Horizontal;Time (ms);Charge (pF)");
+    horizGraph->SetLineColor(kRed);
+    horizGraph->SetLineWidth(2);
+    vertGraph->SetTitle("Vertical;Time (ms);Charge (pF)");
+    vertGraph->SetLineColor(kBlue);
+    vertGraph->SetLineWidth(2);
+
+    this->padIntensity->cd();
+    if (this->multiGraphIntensity)
+    {
+      if (this->graphIntensityVertical)
+      {
+        this->multiGraphIntensity->GetListOfGraphs()->Remove(this->graphIntensityVertical.get());
+      }
+      if (this->graphIntensityHorizontal)
+      {
+        this->multiGraphIntensity->GetListOfGraphs()->Remove(this->graphIntensityHorizontal.get());
+      }
+      this->padIntensity->GetListOfPrimitives()->Remove(this->multiGraphIntensity.get());
+    }
+    this->multiGraphIntensity.reset(new TMultiGraph());
+    this->multiGraphIntensity->SetTitle("Profile intensities");
+    this->graphIntensityVertical.reset(vertGraph);
+    this->graphIntensityHorizontal.reset(horizGraph);
+    this->multiGraphIntensity->Add(horizGraph, "l");
+    this->multiGraphIntensity->Add(vertGraph, "l");
+    this->multiGraphIntensity->Draw();
+    this->padIntensity->Modified();
+    this->padIntensity->Update();
+  }
+}
+
 RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFileName, QWidget *parent)
   :
   QDialog(parent),
@@ -689,6 +863,13 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
   this->setWindowTitle(tr("ROOT File Camera Profiles & Data Dialog"));
   this->setWindowFlag(Qt::WindowMaximizeButtonHint, true);
 
+  QStringList camerasID = CameraUtils::getCameraIDs();
+  for (const QString& cameraID : camerasID)
+  {
+    d->ui->ComboBox_Camera1->addItem(cameraID);
+    d->ui->ComboBox_Camera2->addItem(cameraID);
+  }
+
   d->ui->ListView_CameraSpills->setModel(d->cameraDirectorySpillsModel.data());
   d->ui->TableView_ChannelsInfo->setModel(d->chipChannelInfoModel.data());
 
@@ -696,10 +877,10 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
     QSignalBlocker blockerPed(d->ui->RangeWidget_Pedestal);
     d->ui->RangeWidget_Pedestal->setValues(1010., 1190.);
     QSignalBlocker blockerSig(d->ui->RangeWidget_Signal);
-    d->ui->RangeWidget_Signal->setValues(335., 345.);
+    d->ui->RangeWidget_Signal->setValues(100., 1000.);
   }
 
-  d->timer->setInterval(100);
+  d->timer->setInterval(33);
 
   this->setWindowTitle(tr("Process ROOT file data"));
   this->setWindowFlag(Qt::WindowMaximizeButtonHint, true);
@@ -726,8 +907,11 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
     this, SLOT(onCameraSpillsModelIndexClicked(QModelIndex)));
   QObject::connect(d->ui->PushButton_ProcessSpills, SIGNAL(clicked()),
     this, SLOT(onProcessSpillsClicked()));
-  QObject::connect(d->ui->PushButton_ResetScanning, SIGNAL(clicked()),
+  QObject::connect(d->ui->PushButton_CalculateHomogenous, SIGNAL(clicked()),
     this, SLOT(onCalculateHomogenousClicked()));
+
+  QObject::connect(d->ui->PushButton_ProcessBeamPath, SIGNAL(clicked()),
+    this, SLOT(onProcessBeamPathClicked()));
 
   QObject::connect(d->timer.data(), SIGNAL(timeout()), this, SLOT(updateProfileFrame()));
 
@@ -772,6 +956,12 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
   d->padScanningProfiles->SetGrid();
   d->padScanningProfiles->Draw();
 
+  canvas = d->ui->RootCanvas_SignalIntensityTimeGraph->getCanvas();
+  canvas->cd();
+  d->padIntensity = std::unique_ptr< TPad >(new TPad("TimeIntenProfiles", "Profiles Grid", 0., 0., 1., 1.));
+  d->padIntensity->SetGrid();
+  d->padIntensity->Draw();
+
   QObject::connect(d->ui->RangeWidget_ScanHomoHorizontal, SIGNAL(minimumValueChanged(double)),
     this, SLOT(onScanHomoHorizonalBeginChanged(double)));
   QObject::connect(d->ui->RangeWidget_ScanHomoHorizontal, SIGNAL(maximumValueChanged(double)),
@@ -788,8 +978,69 @@ RootFileCameraProfilesDialog::RootFileCameraProfilesDialog(const QString& rootFi
 RootFileCameraProfilesDialog::~RootFileCameraProfilesDialog()
 {
   Q_D(RootFileCameraProfilesDialog);
+
+  std::shared_ptr< THttpServer > server = d->httpServer.lock();
+  if (server)
+  {
+    if (d->padPseudo2D)
+    {
+      server->Unregister(d->padPseudo2D.get());
+    }
+  }
   QObject::disconnect(d->ui->ListView_CameraSpills, SIGNAL(clicked(QModelIndex)),
     this, SLOT(onCameraSpillsModelIndexClicked(QModelIndex)));
+
+  if (d->multiGraphIntensity)
+  {
+    if (d->graphIntensityVertical)
+    {
+      d->multiGraphIntensity->GetListOfGraphs()->Remove(d->graphIntensityVertical.get());
+    }
+    if (d->graphIntensityHorizontal)
+    {
+      d->multiGraphIntensity->GetListOfGraphs()->Remove(d->graphIntensityHorizontal.get());
+    }
+    d->padIntensity->GetListOfPrimitives()->Remove(d->multiGraphIntensity.get());
+  }
+  if (d->axisPseudo2dReverseX)
+  {
+    d->padPseudo2D->GetListOfPrimitives()->Remove(d->axisPseudo2dReverseX.get());
+  }
+  if (d->axisHorizontalProfileReverseX)
+  {
+    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->axisHorizontalProfileReverseX.get());
+  }
+  if (d->axisScanning2dReverseX)
+  {
+    d->padScanning2D->GetListOfPrimitives()->Remove(d->axisScanning2dReverseX.get());
+  }
+
+  if (d->histPseudo2D)
+  {
+    d->padPseudo2D->GetListOfPrimitives()->Remove(d->histPseudo2D.get());
+  }
+  if (d->histScanning2D)
+  {
+    d->padScanning2D->GetListOfPrimitives()->Remove(d->histScanning2D.get());
+  }
+  if (d->graphHorizontalProfile)
+  {
+    d->padHorizontalProfile->GetListOfPrimitives()->Remove(d->graphHorizontalProfile.get());
+  }
+  if (d->graphVerticalProfile)
+  {
+    d->padVerticalProfile->GetListOfPrimitives()->Remove(d->graphVerticalProfile.get());
+  }
+  d->padChannel->Clear();
+  d->padIntensity->Clear();
+
+  d->padPseudo2D->Clear();
+  d->padHorizontalProfile->Clear();
+  d->padVerticalProfile->Clear();
+
+  d->padScanning2D->Clear();
+  d->padScanningProfiles->Clear();
+
   d->rootFile->Close();
 }
 
@@ -912,6 +1163,9 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
     emit logMessage("Camera is invalid", "", Qt::red);
     return;
   }
+
+  d->updateTimeIntensityProfiles();
+
   int pedMin = static_cast< int >(d->ui->RangeWidget_Pedestal->minimumValue());
   int pedMax = static_cast< int >(d->ui->RangeWidget_Pedestal->maximumValue());
   int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
@@ -933,52 +1187,37 @@ void RootFileCameraProfilesDialog::onUpdateProfilesClicked()
   TGraph* gV = cam->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
   TGraph* gH = cam->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
 
-//  cam->updateProfiles(gV, gH, false);
   cam->updateProfiles2D(d->histPseudo2D.get(), nullptr);
-/*
-  for (Int_t i = 0; i < d->graphVerticalProfile->GetN(); i++)
-  {
-    Double_t y2 = d->graphVerticalProfile->GetPointY(i);
-    Double_t yNew2 = gV->GetPointY(i);
-    gV->SetPointY(i, y2 + yNew2);
-  }
 
-  for (Int_t i = 0; i < d->graphHorizontalProfile->GetN(); i++)
-  {
-    Double_t y2 = d->graphHorizontalProfile->GetPointY(i);
-    Double_t yNew2 = gV->GetPointY(i);
-    gH->SetPointY(i, y2 + yNew2);
-  }
-*/
   // clear vertical profile pad, reset vertical profile graph
   d->padVerticalProfile->cd();
   d->padVerticalProfile->Clear();
 
-//  d->graphVerticalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_VERTICAL, false));
   d->graphVerticalProfile.reset(gV);
-  d->graphVerticalProfile->SetLineColor(kRed);
+  d->graphVerticalProfile->SetLineColor(kBlue);
   d->graphVerticalProfile->SetLineWidth(2);
   d->graphVerticalProfile->SetMarkerColor(kBlue);
   d->graphVerticalProfile->SetTitle("Vertical profile;Strip position (mm);Charge (pC)");
-  d->graphVerticalProfile->Draw("AL*");
+  d->graphVerticalProfile->Draw();
   d->padVerticalProfile->Modified();
   d->padVerticalProfile->Update();
 
   // clear horizontal profile pad, reset horizontal profile graph
   d->padHorizontalProfile->cd();
   d->padHorizontalProfile->Clear();
-//  d->graphHorizontalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false));
   d->graphHorizontalProfile.reset(gH);
   d->graphHorizontalProfile->SetLineColor(kRed);
   d->graphHorizontalProfile->SetLineWidth(2);
-  d->graphHorizontalProfile->SetMarkerColor(kBlue);
+  d->graphHorizontalProfile->SetMarkerColor(kRed);
   d->graphHorizontalProfile->SetTitle("Horizontal profile;Strip position (mm);Charge (pC)");
-  d->graphHorizontalProfile->Draw("AL*");
+  d->graphHorizontalProfile->Draw();
+  d->reverseHorizontalProfileAxisX();
   d->padHorizontalProfile->Modified();
   d->padHorizontalProfile->Update();
 
   // update pseudo 2D histogram
   d->padPseudo2D->cd();
+  d->reversePseudo2dAxisX();
   d->padPseudo2D->Modified();
   d->padPseudo2D->Update();
 
@@ -1232,6 +1471,7 @@ void RootFileCameraProfilesDialog::onClearProfilesClicked()
   d->ui->HorizontalSlider_FramesRange->setValue(d->ui->HorizontalSlider_FramesRange->minimum());
   qDebug() << Q_FUNC_INFO << d->ui->HorizontalSlider_FramesRange->minimum() << ' ' << d->ui->HorizontalSlider_FramesRange->singleStep() << ' ' \
     << d->ui->HorizontalSlider_FramesRange->maximum();
+  d->histPseudo2D->Reset();
 }
 
 
@@ -1246,7 +1486,7 @@ void RootFileCameraProfilesDialog::onScanHomoHorizonalBeginChanged(double pos)
 
   Double_t rangeMin = d->histScanning2D->GetYaxis()->GetXmin();
   Double_t rangeMax = d->histScanning2D->GetYaxis()->GetXmax();
-  d->lineScanningHorizontalBegin = std::make_unique< TLine >(pos, rangeMin, pos, rangeMax);
+  d->lineScanningHorizontalBegin = std::make_unique< TLine >(-1. * pos, rangeMin, -1. * pos, rangeMax);
 
   d->padScanning2D->cd();
 
@@ -1273,7 +1513,7 @@ void RootFileCameraProfilesDialog::onScanHomoHorizonalEndChanged(double pos)
 
   Double_t rangeMin = d->histScanning2D->GetYaxis()->GetXmin();
   Double_t rangeMax = d->histScanning2D->GetYaxis()->GetXmax();
-  d->lineScanningHorizontalEnd = std::make_unique< TLine >(pos, rangeMin, pos, rangeMax);
+  d->lineScanningHorizontalEnd = std::make_unique< TLine >(-1. * pos, rangeMin, -1. * pos, rangeMax);
 
   d->padScanning2D->cd();
 
@@ -1348,8 +1588,11 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
 {
   Q_D(RootFileCameraProfilesDialog);
   d->timer->stop();
+  double step = (d->ui->HorizontalSlider_FramesRange->value() - d->ui->HorizontalSlider_FramesRange->minimum()) / d->ui->SliderWidget_TimeFrameStep->value();
+
   if (d->ui->HorizontalSlider_FramesRange->value() == d->ui->HorizontalSlider_FramesRange->maximum())
   {
+    d->integratorProfile = IntegratorType::IntegratorType_Last;
     this->onUpdateProfilesClicked();
     d->rootFramesFile->Close();
     d->rootFramesFile.release();
@@ -1367,11 +1610,36 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
   int sigMax = static_cast< int >(d->ui->HorizontalSlider_FramesRange->value() + d->ui->SliderWidget_TimeFrameStep->value());
 
   cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
-  cam->processDataCounts();
-
   TString scanTitle;
-  scanTitle.Form("Wobbler time from %d ms to %d ms", sigMin - d->ui->HorizontalSlider_FramesRange->minimum(),
-    sigMax - d->ui->HorizontalSlider_FramesRange->minimum());
+  TString title;
+/**
+  cam->processDataCounts(false, false, IntegratorType::AB);
+  Int_t timeBegin = static_cast< Int_t >(sigMin - d->ui->HorizontalSlider_FramesRange->minimum());
+  Int_t timeEnd = static_cast< Int_t >(sigMax - d->ui->HorizontalSlider_FramesRange->minimum());
+  scanTitle.Form("Time from %d ms to %d ms", timeBegin, timeEnd);
+  title.Form("time_%d", timeBegin);
+*/
+
+  if (d->integratorProfile == IntegratorType::A)
+  {
+    cam->processDataCounts(false, false, IntegratorType::B);
+    d->integratorProfile = IntegratorType::B;
+    Int_t timeBegin = static_cast< Int_t >(sigMin - d->ui->HorizontalSlider_FramesRange->minimum() + .5 * d->ui->SliderWidget_TimeFrameStep->value());
+    Int_t timeEnd = static_cast< Int_t >(sigMax - d->ui->HorizontalSlider_FramesRange->minimum());
+    scanTitle.Form("B: Time from %d ms to %d ms", timeBegin, timeEnd);
+    title.Form("time_%d", timeBegin);
+  }
+  else
+  {
+    cam->processDataCounts(false, false, IntegratorType::A);
+    d->integratorProfile = IntegratorType::A;
+    Int_t timeBegin = static_cast< Int_t >(sigMin - d->ui->HorizontalSlider_FramesRange->minimum());
+    Int_t timeEnd = static_cast< Int_t >(sigMax - d->ui->HorizontalSlider_FramesRange->minimum() - .5 * d->ui->SliderWidget_TimeFrameStep->value());
+    scanTitle.Form("A: Time from %d ms to %d ms", timeBegin, timeEnd);
+    title.Form("time_%d", timeBegin);
+  }
+
+  qDebug() << "Step: " << step << ",Integrator profile: " << ((d->integratorProfile == IntegratorType::A) ? 'A' : 'B');
 
   cam->updateProfiles(d->graphVerticalProfile.get(), d->graphHorizontalProfile.get(), false);
   cam->updateProfiles2D(d->histPseudo2D.get(), nullptr);
@@ -1383,6 +1651,8 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
     d->padVerticalProfile->cd();
     d->padVerticalProfile->Clear();
     d->graphVerticalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_VERTICAL, false));
+//    d->processBeamPathProfile(d->graphVerticalProfile.get());
+
     d->graphVerticalProfile->SetLineColor(kRed);
     d->graphVerticalProfile->SetLineWidth(2);
     d->graphVerticalProfile->SetMarkerColor(kBlue);
@@ -1395,6 +1665,8 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
     d->padHorizontalProfile->cd();
     d->padHorizontalProfile->Clear();
     d->graphHorizontalProfile.reset(cam->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false));
+//    d->processBeamPathProfile(d->graphHorizontalProfile.get());
+
     d->graphHorizontalProfile->SetLineColor(kRed);
     d->graphHorizontalProfile->SetLineWidth(2);
     d->graphHorizontalProfile->SetMarkerColor(kBlue);
@@ -1404,6 +1676,22 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
     d->padHorizontalProfile->Update();
   }
 
+  BeamProfileArray prof = d->getProfilesParameters(d->graphHorizontalProfile.get(), d->graphVerticalProfile.get());
+
+  if (d->fit2D)
+  {
+    d->padPseudo2D->GetListOfPrimitives()->Remove(d->fit2D.get());
+  }
+  Double_t xMin = prof[0];// - 3 * prof[2];
+  Double_t xMax = prof[0];// + 3 * prof[2];
+  Double_t yMin = prof[1];// - 3 * prof[3];
+  Double_t yMax = prof[1];// + 3 * prof[3];
+
+  int binMinX = d->getBinX(d->histPseudo2D.get(), xMin);
+  int binMaxX = d->getBinX(d->histPseudo2D.get(), xMax);
+  int binMinY = d->getBinY(d->histPseudo2D.get(), yMin);
+  int binMaxY = d->getBinY(d->histPseudo2D.get(), yMax);
+
   // update pseudo 2D histogram
   gStyle->SetPalette(kBird);
   d->padPseudo2D->cd();
@@ -1412,20 +1700,62 @@ void RootFileCameraProfilesDialog::updateProfileFrame()
     d->histPseudo2D->GetZaxis()->SetRangeUser(d->ui->RangeWidget_ChargeRange->minimumValue(),
       d->ui->RangeWidget_ChargeRange->maximumValue());
   }
-  cam->updateProfiles2D(d->histPseudo2D.get(), nullptr);
+/*
+  TH2* hist2 = cam->createProfile2D(false);
+  hist2->SetDirectory(nullptr);
+
+  cam->updateProfiles2D(hist2, nullptr);
+  d->histPseudo2D->Add(hist2);
+  delete hist2;
+*/
+  TH1* profileX = d->histPseudo2D->ProjectionX("projX", binMinY, binMaxY);
+  profileX->SetDirectory(nullptr);
+  profileX->SetLineColor(kRed);
+  profileX->SetLineWidth(2);
+  profileX->SetMarkerColor(kRed);
+  TH1* profileY = d->histPseudo2D->ProjectionY("projY", binMinX, binMaxX);
+  profileY->SetDirectory(nullptr);
+  profileY->SetLineColor(kBlue);
+  profileY->SetLineWidth(2);
+  profileY->SetMarkerColor(kBlue);
+
+  profileX->Scale(1. / Double_t(binMaxY - binMinY + 1));
+  profileY->Scale(1. / Double_t(binMaxX - binMinX + 1));
+
+  qDebug() << Q_FUNC_INFO << "Border: " << xMin << ' ' << xMax << ' ' << yMin << ' ' << yMax;
+///  d->fit2D.reset(new TF2("fitBeam", "xygaus", xMin, xMax, yMin, yMax));
+  Double_t constInt = d->histPseudo2D->GetMaximum();
+  Double_t fitBeamParams[5] = { constInt, prof[0], prof[2], prof[1], prof[3] };
+//  d->fit2D->SetParameters(fitBeamParams);
+
+///  d->fit2D->SetParLimits(0, 0.6 * constInt, 1.5 * constInt);
+//  d->fit2D->SetParLimits(1, 0.8 * prof[0], 1.2 * prof[0]);
+///  d->fit2D->SetParLimits(2, 0.8 * prof[2], 1.2 * prof[2]);
+//  d->fit2D->SetParLimits(3, 0.8 * prof[1], 1.2 * prof[1]);
+///  d->fit2D->SetParLimits(4, 0.8 * prof[3], 1.2 * prof[3]);
+
+//  d->histPseudo2D->Fit("fitBeam");
+//  qDebug() << Q_FUNC_INFO << "Coordinates: " << constInt << ' ' << prof[0] << ' ' << prof[1] << ' ' << prof[2] << ' ' << prof[3] \
+    << d->fit2D->GetParameter(0) << ' ' << d->fit2D->GetParameter(1) << ' ' << d->fit2D->GetParameter(2) << ' ' << d->fit2D->GetParameter(3) \
+    << d->fit2D->GetParameter(4);
+
   if (!d->ui->CheckBox_OffscreenProcess->isChecked())
   {
     d->padPseudo2D->Modified();
     d->padPseudo2D->Update();
+//    d->fit2D->Draw("same");
   }
 
-  QString titleString = QString::number(d->ui->HorizontalSlider_FramesRange->value());
-  std::string titleStdString = "frame_" + titleString.toStdString();
-//  d->rootFramesFile->cd();
-//  d->histPseudo2D->Write(titleStdString.c_str());
-  d->rootFramesFile->WriteTObject(d->histPseudo2D.get(), titleStdString.c_str());
+  d->rootFramesFile->WriteTObject(d->histPseudo2D.get(), title.Data());
+//  d->rootFramesFile->WriteTObject(profileX, title.Data());
+//  d->rootFramesFile->WriteTObject(profileY, title.Data());
+  delete profileX;
+  delete profileY;
 
-  d->ui->HorizontalSlider_FramesRange->setValue(d->ui->HorizontalSlider_FramesRange->value() + d->ui->SliderWidget_TimeFrameStep->value());
+  if (d->integratorProfile == IntegratorType::B)
+  {
+    d->ui->HorizontalSlider_FramesRange->setValue(d->ui->HorizontalSlider_FramesRange->value() + d->ui->SliderWidget_TimeFrameStep->value());
+  }
   d->timer->start();
 }
 
@@ -1438,7 +1768,7 @@ void RootFileCameraProfilesDialog::onPlayProfilesClicked()
   }
   else
   {
-    d->timer->setInterval(100);
+    d->timer->setInterval(10);
   }
   d->timer->start();
 
@@ -1452,12 +1782,15 @@ void RootFileCameraProfilesDialog::onPlayProfilesClicked()
 void RootFileCameraProfilesDialog::onCameraSpillsModelIndexClicked(const QModelIndex& index)
 {
   Q_D(RootFileCameraProfilesDialog);
+  QApplication::setOverrideCursor(Qt::WaitCursor);
+
   std::pair< TDirectory*, TTree* > dirSpillPair = d->cameraDirectorySpillsModel->getSpillData(index);
   TDirectory* dir = dirSpillPair.first;
   TTree* tree = dirSpillPair.second;
 
   if (!dir || !tree) // both pointers are valid
   {
+    QApplication::restoreOverrideCursor();
     return;
   }
 
@@ -1465,10 +1798,23 @@ void RootFileCameraProfilesDialog::onCameraSpillsModelIndexClicked(const QModelI
   AbstractCamera* cam = d->getCamera(camID);
   if (!cam) // camera ID is valid
   {
+    QApplication::restoreOverrideCursor();
     return;
   }
 
   d->cameraID = camID;
+  d->beamPathMap[camID] = QPair< TDirectory*, TTree* >(dirSpillPair.first, dirSpillPair.second);
+
+  if (cam->processExternalData(tree))
+  {
+    QString chipsStr = cam->getChipsAddresses();
+    d->ui->LineEdit_EnabledChips->setText(chipsStr);
+  }
+  else
+  {
+    emit logMessage("No chips available", d->cameraID, Qt::red);
+    d->ui->LineEdit_EnabledChips->setText("");
+  }
 
   d->padVerticalProfile->cd();
   d->padVerticalProfile->Clear();
@@ -1499,8 +1845,12 @@ void RootFileCameraProfilesDialog::onCameraSpillsModelIndexClicked(const QModelI
   h2D->SetDirectory(nullptr);
   d->histPseudo2D.reset(h2D);
   d->histPseudo2D->GetXaxis()->SetTitle("Horizontal profile, mm");
+  d->histPseudo2D->GetXaxis()->SetTitleOffset(1.3);
   d->histPseudo2D->GetYaxis()->SetTitle("Vertical profile, mm");
   d->histPseudo2D->Draw("COLZ");
+  d->reversePseudo2dAxisX();
+  d->padPseudo2D->Modified();
+  d->padPseudo2D->Update();
 
   d->padScanning2D->cd();
   h2D = cam->createProfile2D(false);
@@ -1514,17 +1864,11 @@ void RootFileCameraProfilesDialog::onCameraSpillsModelIndexClicked(const QModelI
   d->histScanning2D->GetYaxis()->SetTitle("Vertical profile, mm");
   d->histScanning2D->Draw("COLZ");
   d->updateScanningBorders();
+  d->reverseScanning2dAxisX();
+  d->padScanning2D->Modified();
+  d->padScanning2D->Update();
 
-  if (cam->processExternalData(tree))
-  {
-    QString chipsStr = cam->getChipsAddresses();
-    d->ui->LineEdit_EnabledChips->setText(chipsStr);
-  }
-  else
-  {
-    emit logMessage("No chips available", d->cameraID, Qt::red);
-    d->ui->LineEdit_EnabledChips->setText("");
-  }
+  QApplication::restoreOverrideCursor();
 }
 
 void RootFileCameraProfilesDialog::onCalculateHomogenousClicked()
@@ -1562,18 +1906,7 @@ void RootFileCameraProfilesDialog::onProcessSpillsClicked()
     return;
   }
 
-//  TH2* h2DInt = cam->createProfile2D(false);
-//  h2DInt->SetDirectory(nullptr);
-//  h2DInt->SetTitle("Radiographic film isocenter int");
-//  h2DInt->GetXaxis()->SetTitle("Horizontal profile, mm");
-//  h2DInt->GetYaxis()->SetTitle("Vertical profile, mm");
-
   d->cameraID = camID;
-
-  int pedMin = static_cast< int >(d->ui->RangeWidget_Pedestal->minimumValue());
-  int pedMax = static_cast< int >(d->ui->RangeWidget_Pedestal->maximumValue());
-  int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
-//  int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
 
   if (d->histScanning2D)
   {
@@ -1583,11 +1916,9 @@ void RootFileCameraProfilesDialog::onProcessSpillsClicked()
   TH2* histSpills = cam->createProfile2D();
   histSpills->SetDirectory(nullptr);
 
-//  d->histScanning2D.reset(hist);
-
+  int spills = 0;
   for (const QModelIndex& index : indexList)
   {
-//    qDebug() << Q_FUNC_INFO << index;
     dirSpillPair = d->cameraDirectorySpillsModel->getSpillData(index);
     dir = dirSpillPair.first;
     tree = dirSpillPair.second;
@@ -1596,56 +1927,14 @@ void RootFileCameraProfilesDialog::onProcessSpillsClicked()
     {
       continue;
     }
-/*
-    if (cam->processExternalData(tree))
-    {
-      cam->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
-      cam->processDataCounts();
-      TH2* h2D = cam->createProfile2D(false);
-      h2D->SetDirectory(nullptr);
-      cam->updateProfiles2D(h2D, nullptr);
-      d->histScanning2D->Add(h2D);
-      delete h2D;
-    }
-*/
-/*
-    const double time = 900.;
-    const double step = 30.;
-    const int steps = time / step;
-    for (int j = 0; j < steps; ++j)
-    {
-      int sigBegin = sigMin + (j * step);
-      int sigEnd = sigBegin + step;
-      cam->setPedestalSignalGate(pedMin, pedMax, sigBegin, sigEnd);
-      cam->processDataCounts();
-      TH2* cam2Hist2 = cam->createProfile2D();
-      cam->updateProfiles2D(cam2Hist2, nullptr);
-      d->histScanning2D->Add(cam2Hist2);
-      delete cam2Hist2;
-    }
-*/
 
     if (cam->processExternalData(tree))
     {
-      std::unique_ptr< TH2 > histSpill(cam->createProfile2D());
-      histSpill->SetDirectory(nullptr);
-
-      const double time = 900.;
-      const double step = d->ui->SliderWidget_TimeFrameStep->value();
-      const int steps = time / step;
-      for (int j = 0; j < steps; ++j)
-      {
-        int sigBegin = sigMin + (j * step);
-        int sigEnd = sigBegin + step;
-        cam->setPedestalSignalGate(pedMin, pedMax, sigBegin, sigEnd);
-        cam->processDataCounts();
-        std::unique_ptr< TH2 > cam2Hist2(cam->createProfile2D());
-        cam2Hist2->SetDirectory(nullptr);
-        cam->updateProfiles2D(cam2Hist2.get(), nullptr);
-        histSpill->Add(cam2Hist2.get());
-      }
-      histSpill->Scale(1. / Double_t(steps));
-      histSpills->Add(histSpill.get());
+      CameraProfiles profs(cam);
+      // pedestal signal gate time MUST be defined beforehand
+      TH2* histSpill = profs.createAverageTimeStepProfile2D(d->ui->SliderWidget_TimeFrameStep->value());
+      histSpills->Add(histSpill);
+      delete histSpill;
     }
   }
   Double_t max = histSpills->GetMaximum();
@@ -1656,7 +1945,9 @@ void RootFileCameraProfilesDialog::onProcessSpillsClicked()
   d->padScanning2D->cd();
   d->histScanning2D.reset(histSpills);
   d->histScanning2D->Draw("COLZ");
+  d->reverseScanning2dAxisX();
   d->padScanning2D->Modified();
+  d->padScanning2D->Update();
 
   d->padScanningProfiles->cd();
   if (d->histScanningHorizontalProfile)
@@ -1667,34 +1958,36 @@ void RootFileCameraProfilesDialog::onProcessSpillsClicked()
   {
     d->padScanningProfiles->GetListOfPrimitives()->Remove(d->histScanningVerticalProfile.get());
   }
-  double posMinX = d->ui->RangeWidget_ScanHomoHorizontal->minimumValue();
-  double posMaxX = d->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
+  double posMinX = -1. * d->ui->RangeWidget_ScanHomoHorizontal->minimumValue();
+  double posMaxX = -1. * d->ui->RangeWidget_ScanHomoHorizontal->maximumValue();
 
   double posMinY = d->ui->RangeWidget_ScanHomoVertical->minimumValue();
   double posMaxY = d->ui->RangeWidget_ScanHomoVertical->maximumValue();
   int binMinX = d->getBinX(d->histScanning2D.get(), posMinX);
   int binMaxX = d->getBinX(d->histScanning2D.get(), posMaxX);
-  int binMinY = d->getBinX(d->histScanning2D.get(), posMinY);
-  int binMaxY = d->getBinX(d->histScanning2D.get(), posMaxY);
+  int binMinY = d->getBinY(d->histScanning2D.get(), posMinY);
+  int binMaxY = d->getBinY(d->histScanning2D.get(), posMaxY);
+
+  std::pair< double, double > hValue = d->homogenousValue();
+  TString title;
+  title.Form("D1 = %3.0f %, D2 = %3.0f %", 100 * hValue.first, 100 * hValue.second);
+  d->histScanning2D->SetTitle(title.Data());
 
 //  qDebug() << Q_FUNC_INFO << "X min" << binMinX << "X max" << binMaxX << "Y min" << binMinY <<"Y max" << binMaxY;
   TH1* profileX = d->histScanning2D->ProjectionX("_projX", binMinY, binMaxY);
   profileX->SetDirectory(nullptr);
   profileX->SetLineColor(kRed);
   profileX->SetLineWidth(2);
-//  profileX->SetMarkerStyle(21);
-//  profileX->SetMarkerSize(1.3);
-  profileX->SetMarkerColor(kRed);
-  TH1* profileY = d->histScanning2D->ProjectionY("_projY", binMinX, binMaxX);
+  // reverse profile X
+  CameraProfiles::ReverseProfileValues(profileX);
+
+  TH1* profileY = d->histScanning2D->ProjectionY("_projY", binMaxX, binMinX);
   profileY->SetDirectory(nullptr);
   profileY->SetLineColor(kBlue);
   profileY->SetLineWidth(2);
-//  profileY->SetMarkerStyle(21);
-//  profileY->SetMarkerSize(1.3);
-  profileY->SetMarkerColor(kBlue);
 
   profileX->Scale(1. / Double_t(binMaxY - binMinY + 1));
-  profileY->Scale(1. / Double_t(binMaxX - binMinX + 1));
+  profileY->Scale(1. / Double_t(binMinX - binMaxX + 1));
   Double_t maxX = profileX->GetMaximum();
   Double_t maxY = profileY->GetMaximum();
   d->histScanningHorizontalProfile.reset(profileX);
@@ -1704,35 +1997,111 @@ void RootFileCameraProfilesDialog::onProcessSpillsClicked()
 
   if (maxX > maxY)
   {
-    d->histScanningHorizontalProfile->Draw("PL");
+    d->histScanningHorizontalProfile->Draw("hist");
     d->histScanningHorizontalProfile->SetTitle("Mean profile");
     d->histScanningHorizontalProfile->GetXaxis()->SetTitle("Position (mm)");
     d->histScanningHorizontalProfile->GetYaxis()->SetTitle("Intensity (%)");
 
-    d->histScanningVerticalProfile->Draw("SAME");
+    d->histScanningVerticalProfile->Draw("hist SAME");
   }
   else
   {
-    d->histScanningVerticalProfile->Draw("PL");
+    d->histScanningVerticalProfile->Draw("hist");
     d->histScanningVerticalProfile->SetTitle("Mean profile");
     d->histScanningVerticalProfile->GetXaxis()->SetTitle("Position (mm)");
     d->histScanningVerticalProfile->GetYaxis()->SetTitle("Intensity (%)");
-    d->histScanningHorizontalProfile->Draw("SAME");
+    d->histScanningHorizontalProfile->Draw("hist SAME");
   }
 
   if (d->legendScanningProfiles)
   {
     d->padScanningProfiles->GetListOfPrimitives()->Remove(d->legendScanningProfiles.get());
   }
-  d->legendScanningProfiles.reset(new TLegend(0.05,0.9,0.35,1.0));
+  d->legendScanningProfiles.reset(new TLegend(0.8,0.9,0.9,1.0));
 //  d->legendScanningProfiles->SetHeader("Mean scanning profiles","C"); // option "C" allows to center the header
-  d->legendScanningProfiles->AddEntry(d->histScanningVerticalProfile.get(),"Vertical","lp");
-  d->legendScanningProfiles->AddEntry(d->histScanningHorizontalProfile.get(),"Horizontal","lp");
+  d->legendScanningProfiles->AddEntry(d->histScanningVerticalProfile.get(),"V","lp");
+  d->legendScanningProfiles->AddEntry(d->histScanningHorizontalProfile.get(),"H","lp");
   d->legendScanningProfiles->Draw();
 
   d->padScanningProfiles->Modified();
   d->padScanningProfiles->Update();
   d->updateScanningBorders();
+}
+
+void RootFileCameraProfilesDialog::onProcessBeamPathClicked()
+{
+  Q_D(RootFileCameraProfilesDialog);
+
+  int pedMin = static_cast< int >(d->ui->RangeWidget_Pedestal->minimumValue());
+  int pedMax = static_cast< int >(d->ui->RangeWidget_Pedestal->maximumValue());
+  int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
+  int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
+  int integrTime = static_cast< int >(d->ui->SliderWidget_TimeFrameStep->value());
+
+  QString camera1 = d->ui->ComboBox_Camera1->currentText();
+  QString camera2 = d->ui->ComboBox_Camera2->currentText();
+  auto camera1MapIter = d->beamPathMap.find(camera1);
+  auto camera2MapIter = d->beamPathMap.find(camera2);
+  if (camera1MapIter != d->beamPathMap.end() && camera2MapIter != d->beamPathMap.end())
+  {
+    QPair< TDirectory*, TTree* > cam1DirTree{ nullptr, nullptr };
+    QPair< TDirectory*, TTree* > cam2DirTree{ nullptr, nullptr };
+    cam1DirTree = d->beamPathMap[camera1];
+    cam2DirTree = d->beamPathMap[camera2];
+    if (cam1DirTree.first && cam1DirTree.second && cam2DirTree.first && cam2DirTree.second)
+    {
+      QString cam1Name = QString(cam1DirTree.second->GetName()).right(15);
+      QString cam2Name = QString(cam2DirTree.second->GetName()).right(15);
+      QDateTime dt1 = QDateTime::fromString(cam1Name, "ddMMyyyy_hhmmss");
+      QDateTime dt2 = QDateTime::fromString(cam2Name, "ddMMyyyy_hhmmss");
+
+      d->ui->Label_BeamPath->setText("Beam path data is valid");
+
+      TGraph* beginHorizontalGraph = nullptr;
+      TGraph* endHorizontalGraph = nullptr;
+      TGraph* beginVerticalGraph = nullptr;
+      TGraph* endVerticalGraph = nullptr;
+
+      AbstractCamera* cam1 = d->getCamera(camera1);
+      cam1->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
+      if (cam1->processExternalData(cam1DirTree.second))
+      {
+        cam1->processDataCounts(false, false, IntegratorType::AB, ProfileRepresentationType::CHARGE);
+        beginHorizontalGraph = cam1->createProfile(CameraProfileType::PROFILE_HORIZONTAL);
+        beginVerticalGraph = cam1->createProfile(CameraProfileType::PROFILE_VERTICAL);
+      }
+
+      AbstractCamera* cam2 = d->getCamera(camera2);
+      cam2->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
+      if (cam2->processExternalData(cam2DirTree.second))
+      {
+        cam2->processDataCounts(false, false, IntegratorType::AB, ProfileRepresentationType::CHARGE);
+        endHorizontalGraph = cam2->createProfile(CameraProfileType::PROFILE_HORIZONTAL);
+        endVerticalGraph = cam2->createProfile(CameraProfileType::PROFILE_VERTICAL);
+      }
+      d->ui->RootCanvas_BeamPath->updateProfiles(beginHorizontalGraph, beginVerticalGraph,
+        endHorizontalGraph, endVerticalGraph);
+      d->ui->RootCanvas_BeamPath->updateBeamPathTables(cam1, cam2, dt1, dt2, integrTime);
+    }
+    else
+    {
+      d->ui->Label_BeamPath->setText("Beam path data is invalid");
+    }
+    return;
+  }
+  d->ui->Label_BeamPath->setText("Beam path data is unknown");
+}
+
+void RootFileCameraProfilesDialog::addBeamProfilesToServer(std::shared_ptr< THttpServer > server)
+{
+  Q_D(RootFileCameraProfilesDialog);
+  if (!server)
+  {
+    return;
+  }
+  d->httpServer = server;
+  server->Register("/", d->padPseudo2D.get());
+  server->SetItemField("/", "_monitoring", "10");
 }
 
 QT_END_NAMESPACE

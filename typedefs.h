@@ -61,7 +61,9 @@ typedef boost::accumulators::accumulator_set< \
 > MeanDispAccumSet;
 
 typedef std::pair< int, int > ChipChannelPair;
+typedef std::pair< double, double > PedestalMeanSigmaPair;
 typedef std::map< ChipChannelPair, double > ChipChannelCalibrationMap;
+typedef std::map< ChipChannelPair, PedestalMeanSigmaPair > ChipChannelPedestalMap;
 typedef std::map< int, std::vector< int > > ChipBrokenChannelsMap;
 typedef std::array< ChipChannelPair, CHANNELS_PER_PLANE > ChipChannelArray;
 typedef std::map< int, std::array< std::vector< int >, CHANNELS_PER_CHIP > > ChipChannelsCountsMap;
@@ -105,6 +107,38 @@ enum IntegratorType : int {
   B,
   AB,
   IntegratorType_Last
+};
+
+/**
+ * @brief Beam axis and strip orientation for two coordinate PPIC
+ *
+ *           +Y (Up)
+ *
+ *            |           (X) Beam into the screen (along)
+ *            |
+ *  +X <------+------ -X
+ * (Left)     |     (Right)
+ *            |
+ *           -Y (Down)
+ *
+ * [+Z points into the chamber face, away from you]
+ **************************************************
+ *                   [ TOP ]
+ *             Strip N (Horizontal)
+ *                      =
+ *                      =
+ * [ LEFT ]  Strip N ||||||| Strip 1  [ RIGHT ]
+ *             (Vertical strips)
+ *                      =
+ *                      =
+ *             Strip 1 (Horizontal)
+ *                 [ BOTTOM ]
+ *
+ */
+enum BeamChamberFaceOrientationType : int {
+  Across = 0,
+  Along = 1,
+  BeamChamberFaceOrientationType_Last
 };
 
 enum AdcTimeType : int {
@@ -198,6 +232,7 @@ struct AcquisitionParameters {
   }
 };
 
+typedef std::array< int, 4 > PedestalSignalGateArray;
 typedef std::array< double, 4 > BeamProfileArray;
 typedef std::pair< BeamProfileArray, BeamProfileArray > BeamPathPair;
 typedef std::map< double, BeamPathPair > BeamPathMap;

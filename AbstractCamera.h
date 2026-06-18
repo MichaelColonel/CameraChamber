@@ -71,8 +71,6 @@ public:
   virtual ~AbstractCamera();
   bool connect();
   void disconnect();
-  void setProfilesProcessingBusyFlag(bool busyFlag);
-  bool getProfilesProcessingBusyFlag() const;
   bool isDeviceAlreadyConnected(const QString& otherPort);
   bool isDeviceAlreadyConnected();
 
@@ -87,6 +85,8 @@ public:
   void setPedestalSignalGate(int pedMin, int pedMax, int sigMin, int sigMax);
   void getPedestalSignalGate(int& pedMin, int& pedMax, int& sigMin, int& sigMax) const;
   void getPedestalSignalGate(std::array< int, 4 >& pedSigGateArray) const;
+  void setBeamChamberFaceOrientation(BeamChamberFaceOrientationType type = BeamChamberFaceOrientationType::Along);
+  BeamChamberFaceOrientationType getBeamChamberFaceOrientation() const;
 
   // set ROOT directory to save spill data trees
   void setRootDirectory(TDirectory* dir);
@@ -95,10 +95,12 @@ public:
   bool getAdcData(int chip, int channel, std::vector< int >& adcData,
     AdcTimeType dataType = AdcTimeType::INTEGRATOR_AB);
 
-  virtual TGraph* createProfile(CameraProfileType profileType, bool withErrors = false);
+  virtual TGraph* createProfile(CameraProfileType profileType, bool withErrors = false) = 0;
   virtual void updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool withErrors) = 0; // update profiles
   virtual TH2* createProfile2D(bool integral = false) = 0;
   virtual void updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D) = 0; // update profile histograms
+//  virtual TH2* createAverageTimeStepProfile2D(int timeStepMs) = 0;
+//  virtual void updateAverageTimeStepProfile2D(TH2* pseudo2D, int timeStepMs) = 0;
 
   bool processExternalData(TTree* rootFileTree);
   int getChipsEnabledCode() const;
@@ -135,6 +137,9 @@ public:
     ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE);
   bool loadSettings(QSettings* settings);
   bool saveSettings(QSettings* settings);
+
+  void getVerticalProfileChips(std::vector< int >& vertProfChipsVector) const;
+  void getHorizontalProfileChips(std::vector< int >& horizProfChipsVector) const;
 
 public slots:
   void onCommandPortDataReady();

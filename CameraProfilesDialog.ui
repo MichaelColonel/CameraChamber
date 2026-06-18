@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1063</width>
-    <height>678</height>
+    <width>992</width>
+    <height>705</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,7 +26,7 @@
       <string>Table of statistic information of channel pedestals and signals</string>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tabChannelGraph">
       <attribute name="title">
@@ -217,6 +217,28 @@
        <item row="1" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
+          <widget class="QGroupBox" name="groupBox_3">
+           <property name="title">
+            <string>Acquisition</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_8">
+            <item row="0" column="0">
+             <widget class="QLabel" name="Label_AcquisitionIndicator">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="pixmap">
+               <pixmap resource="ProfileCamera2D.qrc">:/indicators/icons/gray.svg</pixmap>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
           <widget class="QGroupBox" name="groupBox">
            <property name="title">
             <string>Pedestal</string>
@@ -274,7 +296,7 @@
                <double>2000.000000000000000</double>
               </property>
               <property name="minimumValue">
-               <double>250.000000000000000</double>
+               <double>99.000000000000000</double>
               </property>
               <property name="maximumValue">
                <double>1150.000000000000000</double>
@@ -312,7 +334,7 @@
        <string>Profiles</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_6">
-       <item row="2" column="0">
+       <item row="1" column="0">
         <layout class="QVBoxLayout" name="verticalLayout">
          <item>
           <widget class="TCanvasWidget" name="RootCanvas_VerticalProfile" native="true">
@@ -336,75 +358,6 @@
          </item>
         </layout>
        </item>
-       <item row="0" column="0">
-        <layout class="QGridLayout" name="gridLayout_7">
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Vertical:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0">
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Horizontal:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="ctkRangeWidget" name="RangeWidget_HomoHorizontal">
-           <property name="decimals">
-            <number>0</number>
-           </property>
-           <property name="minimum">
-            <double>-87.000000000000000</double>
-           </property>
-           <property name="maximum">
-            <double>87.000000000000000</double>
-           </property>
-           <property name="minimumValue">
-            <double>-60.000000000000000</double>
-           </property>
-           <property name="maximumValue">
-            <double>60.000000000000000</double>
-           </property>
-           <property name="suffix">
-            <string> mm</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="ctkRangeWidget" name="RangeWidget_HomoVertical">
-           <property name="decimals">
-            <number>0</number>
-           </property>
-           <property name="minimum">
-            <double>-87.000000000000000</double>
-           </property>
-           <property name="maximum">
-            <double>87.000000000000000</double>
-           </property>
-           <property name="minimumValue">
-            <double>-60.000000000000000</double>
-           </property>
-           <property name="maximumValue">
-            <double>60.000000000000000</double>
-           </property>
-           <property name="suffix">
-            <string> mm</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="2" rowspan="2">
-          <widget class="QPushButton" name="PushButton_ResetIntegration">
-           <property name="text">
-            <string>Reset integration</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="tabPseudo2d">
@@ -412,6 +365,13 @@
        <string>Pseudo 2D</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
+       <item row="3" column="0">
+        <widget class="QPushButton" name="PushButton_ResetIntegral2D">
+         <property name="text">
+          <string>Reset integral 2D</string>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
@@ -488,11 +448,34 @@
         </layout>
        </item>
        <item row="2" column="0">
-        <widget class="QPushButton" name="PushButton_ResetIntegral2D">
-         <property name="text">
-          <string>Reset integral 2D</string>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Spills of integration:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="ctkSliderWidget" name="SliderWidget_SpillsForIntegration">
+           <property name="decimals">
+            <number>0</number>
+           </property>
+           <property name="minimum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>20.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>4.000000000000000</double>
+           </property>
+           <property name="prefix">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>
@@ -538,7 +521,9 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="ProfileCamera2D.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>buttonBox</sender>

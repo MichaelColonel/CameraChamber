@@ -38,6 +38,7 @@ public:
     ProfileRepresentationType profileType = ProfileRepresentationType::CHARGE) override;
   TH2* createProfile2D(bool integral = false) override;
   void updateProfiles2D(TH2* pseudo2D = nullptr, TH2* integPseudo2D = nullptr) override;
+  TGraph* createProfile(CameraProfileType profileType, bool withErrors = false) override;
   void updateProfiles(TGraph* vertProfile = nullptr, TGraph* horizProfile = nullptr, bool withErrors = false) override;
 
 protected:

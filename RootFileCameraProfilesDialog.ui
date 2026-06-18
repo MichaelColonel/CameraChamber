@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>966</width>
-    <height>935</height>
+    <width>1472</width>
+    <height>768</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,7 +23,14 @@
    <bool>true</bool>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="2" column="0" colspan="3">
+   <item row="1" column="0">
+    <widget class="QPushButton" name="PushButton_ProcessSpills">
+     <property name="text">
+      <string>Process spills</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="4">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -52,25 +59,109 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QPushButton" name="PushButton_ProcessSpills">
-     <property name="text">
-      <string>Process spills</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1" rowspan="2">
+   <item row="0" column="2" rowspan="2">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
       <number>0</number>
      </property>
      <widget class="QWidget" name="tabProfiles">
       <attribute name="title">
-       <string>Profiles</string>
+       <string>Time graphs</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
+       <item row="2" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QGroupBox" name="groupBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="title">
+            <string>Pedestal</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_9">
+            <item row="0" column="0">
+             <widget class="ctkRangeWidget" name="RangeWidget_Pedestal">
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="singleStep">
+               <double>2.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>2000.000000000000000</double>
+              </property>
+              <property name="maximumValue">
+               <double>0.000000000000000</double>
+              </property>
+              <property name="suffix">
+               <string> ms</string>
+              </property>
+              <property name="autoSpinBoxWidth">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupBox_2">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="title">
+            <string>Signal</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_10">
+            <item row="0" column="0">
+             <widget class="ctkRangeWidget" name="RangeWidget_Signal">
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="singleStep">
+               <double>2.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>2000.000000000000000</double>
+              </property>
+              <property name="maximumValue">
+               <double>0.000000000000000</double>
+              </property>
+              <property name="suffix">
+               <string> ms</string>
+              </property>
+              <property name="autoSpinBoxWidth">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="PushButton_UpdateProfiles">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Update profiles</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="0" column="0">
-        <layout class="QGridLayout" name="gridLayout_2">
+        <layout class="QGridLayout" name="gridLayout_12">
          <item row="1" column="0">
           <widget class="QLabel" name="label_14">
            <property name="sizePolicy">
@@ -97,21 +188,8 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="3" rowspan="3">
-          <widget class="QPushButton" name="PushButton_UpdateChannelGraph">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>Update graph</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1" colspan="2">
-          <widget class="ctkSliderWidget" name="SliderWidget_Chip">
+         <item row="1" column="1">
+          <widget class="ctkSliderWidget" name="SliderWidget_Channel">
            <property name="decimals">
             <number>0</number>
            </property>
@@ -119,41 +197,9 @@
             <double>1.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>12.000000000000000</double>
+            <double>32.000000000000000</double>
            </property>
           </widget>
-         </item>
-         <item row="9" column="0" colspan="4">
-          <layout class="QHBoxLayout" name="horizontalLayout_3">
-           <item>
-            <widget class="QSlider" name="HorizontalSlider_FramesRange">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="PushButton_ClearProfiles2D">
-             <property name="text">
-              <string>Clear</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="PushButton_PlayProfiles2D">
-             <property name="text">
-              <string>Play</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="CheckBox_OffscreenProcess">
-             <property name="text">
-              <string>Offscreen</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
          </item>
          <item row="2" column="0">
           <widget class="QLabel" name="label_35">
@@ -168,140 +214,15 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1" colspan="2">
+         <item row="2" column="1">
           <widget class="QLineEdit" name="LineEdit_EnabledChips">
            <property name="readOnly">
             <bool>true</bool>
            </property>
           </widget>
          </item>
-         <item row="4" column="0" colspan="4">
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-           <item>
-            <widget class="QGroupBox" name="groupBox">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="title">
-              <string>Pedestal</string>
-             </property>
-             <layout class="QGridLayout" name="gridLayout_9">
-              <item row="0" column="0">
-               <widget class="ctkRangeWidget" name="RangeWidget_Pedestal">
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-                <property name="singleStep">
-                 <double>2.000000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>2000.000000000000000</double>
-                </property>
-                <property name="maximumValue">
-                 <double>0.000000000000000</double>
-                </property>
-                <property name="suffix">
-                 <string> ms</string>
-                </property>
-                <property name="autoSpinBoxWidth">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_2">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="title">
-              <string>Signal</string>
-             </property>
-             <layout class="QGridLayout" name="gridLayout_10">
-              <item row="0" column="0">
-               <widget class="ctkRangeWidget" name="RangeWidget_Signal">
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-                <property name="singleStep">
-                 <double>2.000000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>2000.000000000000000</double>
-                </property>
-                <property name="maximumValue">
-                 <double>0.000000000000000</double>
-                </property>
-                <property name="suffix">
-                 <string> ms</string>
-                </property>
-                <property name="autoSpinBoxWidth">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="PushButton_UpdateProfiles">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>Update profiles</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="5" column="0" colspan="4">
-          <layout class="QHBoxLayout" name="horizontalLayout_6">
-           <item>
-            <widget class="TCanvasWidget" name="RootCanvas_HorizontalProfile" native="true">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="TCanvasWidget" name="RootCanvas_VerticalProfile" native="true">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="TCanvasWidget" name="RootCanvas_Profiles2D" native="true">
-             <property name="minimumSize">
-              <size>
-               <width>250</width>
-               <height>250</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="1" column="1" colspan="2">
-          <widget class="ctkSliderWidget" name="SliderWidget_Channel">
+         <item row="0" column="1">
+          <widget class="ctkSliderWidget" name="SliderWidget_Chip">
            <property name="decimals">
             <number>0</number>
            </property>
@@ -309,103 +230,236 @@
             <double>1.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>32.000000000000000</double>
+            <double>12.000000000000000</double>
            </property>
           </widget>
          </item>
-         <item row="10" column="0" colspan="4">
-          <widget class="ctkCollapsibleButton" name="CollapsibleButton">
+         <item row="0" column="2" rowspan="3">
+          <widget class="QPushButton" name="PushButton_UpdateChannelGraph">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Frame parameters</string>
+            <string>Update graph</string>
            </property>
-           <layout class="QVBoxLayout" name="verticalLayout_2">
-            <item>
-             <layout class="QGridLayout" name="gridLayout_3">
-              <item row="1" column="1">
-               <widget class="ctkSliderWidget" name="SliderWidget_TimeFrameStep">
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-                <property name="value">
-                 <double>10.000000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="ctkSliderWidget" name="SliderWidget_TimeFrameMargin">
-                <property name="decimals">
-                 <number>0</number>
-                </property>
-                <property name="value">
-                 <double>10.000000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QCheckBox" name="CheckBox_ChargeRange">
-                <property name="text">
-                 <string>Range:</string>
-                </property>
-                <property name="checked">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_2">
-                <property name="text">
-                 <string>Step:</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="ctkRangeWidget" name="RangeWidget_ChargeRange">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="minimum">
-                 <double>-10.000000000000000</double>
-                </property>
-                <property name="suffix">
-                 <string> pC</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label">
-                <property name="text">
-                 <string>Margin:</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
           </widget>
          </item>
-         <item row="3" column="0" colspan="4">
-          <widget class="TCanvasWidget" name="RootCanvas_ChannelGraph" native="true">
+        </layout>
+       </item>
+       <item row="1" column="0">
+        <widget class="TCanvasWidget" name="RootCanvas_ChannelGraph" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>250</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="TCanvasWidget" name="RootCanvas_SignalIntensityTimeGraph" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>250</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>Profiles</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="1" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QSlider" name="HorizontalSlider_FramesRange">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="PushButton_ClearProfiles2D">
+           <property name="text">
+            <string>Clear</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="PushButton_PlayProfiles2D">
+           <property name="text">
+            <string>Play</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="CheckBox_OffscreenProcess">
+           <property name="text">
+            <string>Offscreen</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="TCanvasWidget" name="RootCanvas_HorizontalProfile" native="true">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
            <property name="minimumSize">
             <size>
-             <width>0</width>
-             <height>250</height>
+             <width>400</width>
+             <height>400</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="TCanvasWidget" name="RootCanvas_VerticalProfile" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>400</width>
+             <height>400</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="TCanvasWidget" name="RootCanvas_Profiles2D" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>400</width>
+             <height>400</height>
             </size>
            </property>
           </widget>
          </item>
         </layout>
+       </item>
+       <item row="2" column="0">
+        <widget class="ctkCollapsibleButton" name="CollapsibleButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Frame parameters</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <layout class="QGridLayout" name="gridLayout_3">
+            <item row="1" column="1">
+             <widget class="ctkSliderWidget" name="SliderWidget_TimeFrameStep">
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="value">
+               <double>10.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="ctkSliderWidget" name="SliderWidget_TimeFrameMargin">
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="value">
+               <double>10.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QCheckBox" name="CheckBox_ChargeRange">
+              <property name="text">
+               <string>Range:</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>Step:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="ctkRangeWidget" name="RangeWidget_ChargeRange">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimum">
+               <double>-10.000000000000000</double>
+              </property>
+              <property name="suffix">
+               <string> pC</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label">
+              <property name="text">
+               <string>Margin:</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
@@ -426,42 +480,17 @@
       <layout class="QGridLayout" name="gridLayout_6">
        <item row="0" column="0">
         <layout class="QGridLayout" name="gridLayout_7">
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_6">
-           <property name="toolTip">
-            <string>Homogeneous</string>
-           </property>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_4">
            <property name="text">
-            <string>D:</string>
+            <string>Vertical (Y):</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="ctkRangeWidget" name="RangeWidget_ScanHomoVertical">
-           <property name="decimals">
-            <number>0</number>
-           </property>
-           <property name="minimum">
-            <double>-100.000000000000000</double>
-           </property>
-           <property name="maximum">
-            <double>100.000000000000000</double>
-           </property>
-           <property name="minimumValue">
-            <double>-86.000000000000000</double>
-           </property>
-           <property name="maximumValue">
-            <double>86.000000000000000</double>
-           </property>
-           <property name="suffix">
-            <string> mm</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <widget class="QPushButton" name="PushButton_ResetScanning">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_5">
            <property name="text">
-            <string>Reset</string>
+            <string>Horizontal (X):</string>
            </property>
           </widget>
          </item>
@@ -487,43 +516,51 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
-          <widget class="QLabel" name="Label_Homogeneous">
-           <property name="text">
-            <string/>
+         <item row="1" column="1">
+          <widget class="ctkRangeWidget" name="RangeWidget_ScanHomoVertical">
+           <property name="decimals">
+            <number>0</number>
+           </property>
+           <property name="minimum">
+            <double>-100.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>100.000000000000000</double>
+           </property>
+           <property name="minimumValue">
+            <double>-86.000000000000000</double>
+           </property>
+           <property name="maximumValue">
+            <double>86.000000000000000</double>
+           </property>
+           <property name="suffix">
+            <string> mm</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_4">
+         <item row="2" column="0" colspan="2">
+          <widget class="QPushButton" name="PushButton_CalculateHomogenous">
            <property name="text">
-            <string>Vertical (Y):</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0">
-          <widget class="QLabel" name="label_5">
-           <property name="text">
-            <string>Horizontal (X):</string>
+            <string>Calculate Homogeneous</string>
            </property>
           </widget>
          </item>
         </layout>
        </item>
        <item row="1" column="0">
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <item>
+        <layout class="QGridLayout" name="gridLayout_13">
+         <item row="0" column="0" rowspan="2">
           <widget class="TCanvasWidget" name="RootCanvas_Scanning2D" native="true">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
            <property name="minimumSize">
             <size>
-             <width>0</width>
-             <height>0</height>
+             <width>300</width>
+             <height>300</height>
             </size>
            </property>
            <property name="sizeIncrement">
@@ -534,13 +571,83 @@
            </property>
           </widget>
          </item>
-         <item>
+         <item row="0" column="1" rowspan="2">
           <widget class="TCanvasWidget" name="RootCanvas_ScanningProfiles" native="true">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>600</width>
+             <height>100</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="0">
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::MinimumExpanding</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_2">
+      <attribute name="title">
+       <string>BeamPath</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_11">
+       <item row="0" column="0">
+        <layout class="QGridLayout" name="gridLayout_8">
+         <item row="1" column="1">
+          <widget class="QComboBox" name="ComboBox_Camera2"/>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="ComboBox_Camera1"/>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>Camera-1:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Camera-2:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0" colspan="2">
+          <widget class="TBeamPathCanvasWidget" name="RootCanvas_BeamPath" native="true"/>
+         </item>
+         <item row="2" column="1">
+          <widget class="QPushButton" name="PushButton_ProcessBeamPath">
+           <property name="text">
+            <string>Process</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="Label_BeamPath">
+           <property name="text">
+            <string/>
            </property>
           </widget>
          </item>
@@ -573,6 +680,12 @@
    <class>TCanvasWidget</class>
    <extends>QWidget</extends>
    <header>TCanvasWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>TBeamPathCanvasWidget</class>
+   <extends>QWidget</extends>
+   <header>TBeamPathCanvasWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

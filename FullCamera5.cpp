@@ -50,7 +50,7 @@ FullCamera5Private::~FullCamera5Private()
 
 FullCamera5::FullCamera5(const AbstractCamera::CameraDeviceData& data, QObject *parent)
   :
-  FullCamera5(data, parent),
+  FullCamera4(data, parent),
   d_ptr(new FullCamera5Private(*this))
 {
   Q_D(FullCamera5);
@@ -137,7 +137,8 @@ void FullCamera5::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool
     std::reverse(vertProfDataCopy.begin(), vertProfDataCopy.end());
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+      vertProfile->SetPoint(i, Double_t(vertProfDataCopy[i]), Double_t(vertProfStrips[i] - halfSizeVert));
+///      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
     }
   }
 
