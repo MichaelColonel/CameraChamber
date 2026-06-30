@@ -42,21 +42,28 @@ class TReverseXaxisCanvasWidget : public TCanvasWidget {
 public:
   TReverseXaxisCanvasWidget(QWidget *parent = nullptr);
   ~TReverseXaxisCanvasWidget() override;
+  void setGridPad(TPad*);
+  TPad* getGridPad() const;
+  /// Remove diagram T* from top grid pad
+  template<class T> void removeDiagram(T*);
+  /// Draw diagram T* in top grid pad
   template<class T> void drawDiagram(T*);
+  /// Update reversed X-axis for diagram T
   template<class T> void updateDiagram(T*);
 
 protected:
+  std::unique_ptr< TPad > gridPad;
   std::unique_ptr< TGaxis > reversedXaxis;
 };
 
 template<class T> void TReverseXaxisCanvasWidget::drawDiagram(T* tnamedDiagram)
 {
-  TPad* pad = this->getPad();
-  if (pad)
+  if (this->gridPad)
   {
-    pad->cd();
+    this->gridPad->cd();
     if (typeid(T) == typeid(TGraph))
     {
+      this->gridPad->Clear();
       tnamedDiagram->Draw();
     }
     else if (typeid(T) == typeid(TH1))
@@ -65,7 +72,7 @@ template<class T> void TReverseXaxisCanvasWidget::drawDiagram(T* tnamedDiagram)
     }
     else if (typeid(T) == typeid(TH2))
     {
-      tnamedDiagram->Draw();
+      tnamedDiagram->Draw("COLZ");
     }
     else
     {
@@ -76,32 +83,52 @@ template<class T> void TReverseXaxisCanvasWidget::drawDiagram(T* tnamedDiagram)
 
 template<class T> void TReverseXaxisCanvasWidget::updateDiagram(T* tnamedDiagram)
 {
-  TPad* pad = this->getPad();
-  if (!pad || !tnamedDiagram)
+  if (!this->gridPad || !tnamedDiagram)
   {
     return;
   }
-  pad->cd();
+  this->gridPad->cd();
   // Remove the current axis
   tnamedDiagram->GetXaxis()->SetLabelOffset(999);
   tnamedDiagram->GetXaxis()->SetTickLength(0);
 
   // Redraw the new axis
-  pad->Update();
+  this->gridPad->Update();
   if (this->reversedXaxis)
   {
-    pad->GetListOfPrimitives()->Remove(this->reversedXaxis.get());
+    this->gridPad->GetListOfPrimitives()->Remove(this->reversedXaxis.get());
   }
-  TGaxis *newaxis = new TGaxis(pad->GetUxmax(),
-    pad->GetUymin(),
-    pad->GetUxmin(),
-    pad->GetUymin(),
+  TGaxis *newaxis = new TGaxis(this->gridPad->GetUxmax(),
+    this->gridPad->GetUymin(),
+    this->gridPad->GetUxmin(),
+    this->gridPad->GetUymin(),
     tnamedDiagram->GetXaxis()->GetXmin(),
     tnamedDiagram->GetXaxis()->GetXmax(),
     510, "-");
   this->reversedXaxis.reset(newaxis);
   this->reversedXaxis->SetLabelOffset(-0.01);
   this->reversedXaxis->Draw();
+
+  this->gridPad->Modified();
+  this->gridPad->Update();
+}
+
+
+template<class T> void TReverseXaxisCanvasWidget::removeDiagram(T* tnamedDiagram)
+{
+  if (!this->gridPad)
+  {
+    return;
+  }
+  this->gridPad->cd();
+  if (tnamedDiagram)
+  {
+    this->gridPad->GetListOfPrimitives()->Remove(tnamedDiagram);
+  }
+  if (this->reversedXaxis)
+  {
+    this->gridPad->GetListOfPrimitives()->Remove(this->reversedXaxis.get());
+  }
 }
 
 QT_END_NAMESPACE

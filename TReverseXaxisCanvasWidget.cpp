@@ -29,6 +29,8 @@
 
 #include "TReverseXaxisCanvasWidget.h"
 
+#include <TCanvas.h>
+
 QT_BEGIN_NAMESPACE
 
 TReverseXaxisCanvasWidget::TReverseXaxisCanvasWidget(QWidget *parent)
@@ -41,6 +43,21 @@ TReverseXaxisCanvasWidget::TReverseXaxisCanvasWidget(QWidget *parent)
 TReverseXaxisCanvasWidget::~TReverseXaxisCanvasWidget()
 {
 }
+
+void TReverseXaxisCanvasWidget::setGridPad(TPad* newGridPad)
+{
+  TCanvas* canvas = this->getCanvas();
+  canvas->cd();
+  this->gridPad.reset(newGridPad);
+//  this->gridPad->SetGrid();
+  this->gridPad->Draw();
+}
+
+TPad* TReverseXaxisCanvasWidget::getGridPad() const
+{
+  return this->gridPad.get();
+}
+
 
 QT_END_NAMESPACE
 

@@ -544,8 +544,8 @@ void Camera2::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool wit
     double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
-      vertProfile->SetPoint(i, Double_t(vertProfDataCopy[i]), Double_t(vertProfStrips[i] - halfSizeVert));
-///      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+///      vertProfile->SetPoint(i, Double_t(vertProfDataCopy[i]), Double_t(vertProfStrips[i] - halfSizeVert));
+      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
     }
   }
   if (horizProfile)

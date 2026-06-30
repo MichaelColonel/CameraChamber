@@ -43,6 +43,7 @@ public:
     CameraProfileType profileType, ProfileRepresentationType representationType,
     IntegratorType integrType = IntegratorType::AB);
   TLatex* createBeamPathTable(int timeStepMs, int totalTimeMs, QDateTime& spillDateTime);
+  BeamProfileMap createBeamProfileMap(int timeStepMs, int totalTimeMs);
 
   static int GetBinX(TH2* h2, double posX);
   static int GetBinY(TH2* h2, double posY);

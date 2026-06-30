@@ -31,20 +31,22 @@ class BeamPathTableModel : public QAbstractTableModel
 {
   Q_OBJECT
 public:
-  static constexpr int NOF_HEADERS = 3;
+  static constexpr int NOF_HEADERS = 5;
   BeamPathTableModel(QObject *parent = nullptr);
-  void setBeamPath(const BeamPathMap& newBeamPathMap);
+  void setBeamProfile(const BeamProfileMap& newBeamProfileMap);
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   int columnCount(const QModelIndex &parent = QModelIndex()) const override;
   QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 protected:
   QString headerAt(int offset) const;
-  BeamPathMap beamMap;
+  BeamProfileMap beamProfileMap;
   const QStringList tableHeadersList{
     "Time, ms",
-    "IC1 / Wall",
-    "IC2 / Isocenter"
+    "X, mm",
+    "Y, mm",
+    "Dx, mm",
+    "Dy, mm"
   };
 };
 

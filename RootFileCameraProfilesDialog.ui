@@ -43,14 +43,14 @@
    <item row="0" column="0">
     <widget class="QListView" name="ListView_CameraSpills">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
      <property name="minimumSize">
       <size>
-       <width>200</width>
+       <width>300</width>
        <height>0</height>
       </size>
      </property>
@@ -323,7 +323,7 @@
        <item row="0" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
-          <widget class="TCanvasWidget" name="RootCanvas_HorizontalProfile" native="true">
+          <widget class="TReverseXaxisCanvasWidget" name="RootCanvas_HorizontalProfile" native="true">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -355,7 +355,7 @@
           </widget>
          </item>
          <item>
-          <widget class="TCanvasWidget" name="RootCanvas_Profiles2D" native="true">
+          <widget class="TReverseXaxisCanvasWidget" name="RootCanvas_Profiles2D" native="true">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -549,8 +549,24 @@
        </item>
        <item row="1" column="0">
         <layout class="QGridLayout" name="gridLayout_13">
-         <item row="0" column="0" rowspan="2">
-          <widget class="TCanvasWidget" name="RootCanvas_Scanning2D" native="true">
+         <item row="0" column="2" rowspan="2">
+          <widget class="TCanvasWidget" name="RootCanvas_ScanningProfiles" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>600</width>
+             <height>100</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1" rowspan="2">
+          <widget class="TCanvasWidget" name="RootCanvas_ScanningIntegral2D" native="true">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -563,26 +579,20 @@
              <height>300</height>
             </size>
            </property>
-           <property name="sizeIncrement">
-            <size>
-             <width>10</width>
-             <height>10</height>
-            </size>
-           </property>
           </widget>
          </item>
-         <item row="0" column="1" rowspan="2">
-          <widget class="TCanvasWidget" name="RootCanvas_ScanningProfiles" native="true">
+         <item row="0" column="0" rowspan="2">
+          <widget class="TReverseXaxisCanvasWidget" name="RootCanvas_ScanningCurrent2D" native="true">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
            <property name="minimumSize">
             <size>
-             <width>600</width>
-             <height>100</height>
+             <width>300</width>
+             <height>300</height>
             </size>
            </property>
           </widget>
@@ -609,13 +619,40 @@
      </widget>
      <widget class="QWidget" name="tab_2">
       <attribute name="title">
-       <string>BeamPath</string>
+       <string>Beam path</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_11">
        <item row="0" column="0">
         <layout class="QGridLayout" name="gridLayout_8">
          <item row="1" column="1">
           <widget class="QComboBox" name="ComboBox_Camera2"/>
+         </item>
+         <item row="3" column="1">
+          <widget class="ctkSliderWidget" name="SliderWidget_BeamPathIntegrationTime">
+           <property name="decimals">
+            <number>0</number>
+           </property>
+           <property name="minimum">
+            <double>10.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>100.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QPushButton" name="PushButton_ProcessBeamPath">
+           <property name="text">
+            <string>Process</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Camera-2:</string>
+           </property>
+          </widget>
          </item>
          <item row="0" column="1">
           <widget class="QComboBox" name="ComboBox_Camera1"/>
@@ -627,27 +664,71 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Camera-2:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="0" colspan="2">
-          <widget class="TBeamPathCanvasWidget" name="RootCanvas_BeamPath" native="true"/>
-         </item>
-         <item row="2" column="1">
-          <widget class="QPushButton" name="PushButton_ProcessBeamPath">
-           <property name="text">
-            <string>Process</string>
-           </property>
-          </widget>
-         </item>
          <item row="2" column="0">
           <widget class="QLabel" name="Label_BeamPath">
            <property name="text">
             <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Integration time:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0" colspan="2">
+          <widget class="TBeamPathCanvasWidget" name="RootCanvas_BeamPath" native="true"/>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_4">
+      <attribute name="title">
+       <string>Beam path tables</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_15">
+       <item row="0" column="0">
+        <layout class="QGridLayout" name="gridLayout_14">
+         <item row="0" column="1">
+          <widget class="QGroupBox" name="groupBox_3">
+           <property name="title">
+            <string>Camera before K1</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_16">
+            <item row="0" column="0">
+             <widget class="QTableView" name="TableView_BeamProfileCamera1"/>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QGroupBox" name="groupBox_4">
+           <property name="title">
+            <string>Camera in Isocenter</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_17">
+            <item row="0" column="0">
+             <widget class="QTableView" name="TableView_BeamProfileCamera2"/>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="TBeamTimeCanvasWidget" name="RootCanvas_BeamTime" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>300</height>
+            </size>
            </property>
           </widget>
          </item>
@@ -686,6 +767,18 @@
    <class>TBeamPathCanvasWidget</class>
    <extends>QWidget</extends>
    <header>TBeamPathCanvasWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>TReverseXaxisCanvasWidget</class>
+   <extends>QWidget</extends>
+   <header>TReverseXaxisCanvasWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>TBeamTimeCanvasWidget</class>
+   <extends>QWidget</extends>
+   <header>TBeamTimeCanvasWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -336,6 +336,8 @@ AbstractCamera::AbstractCamera(const CameraDeviceData& data, QObject *parent)
 AbstractCamera::~AbstractCamera()
 {
   Q_D(AbstractCamera);
+
+  this->disconnect();
 }
 
 bool AbstractCamera::connect()

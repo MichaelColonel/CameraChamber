@@ -272,10 +272,14 @@ MainWindow::closeEvent(QCloseEvent* event)
       {
         camera->saveSettings(&settings);
         camera->disconnect();
+        delete camera;
+        camera = nullptr;
       }
       if (dialog)
       {
         dialog->close();
+        delete dialog;
+        dialog = nullptr;
       }
     }
     if (this->rootFile && this->rootFile->IsOpen())

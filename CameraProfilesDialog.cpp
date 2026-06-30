@@ -80,9 +80,6 @@ public:
   std::unique_ptr< TGraph > graphVerticalProfile;
   std::unique_ptr< TPad > padVerticalProfile;
 
-  std::unique_ptr< TPad > padPseudo2D;
-  std::unique_ptr< TPad > padPseudoIntegral2D;
-
   std::unique_ptr< TLine > linePedBegin;
   std::unique_ptr< TLine > linePedEnd;
   std::unique_ptr< TLine > lineSigBegin;
@@ -96,8 +93,7 @@ public:
   std::unique_ptr< TH2 > histPseudoIntegral2D;
   std::unique_ptr< TH2 > histPseudoIntegralNorm2D;
 
-  int IntegrationCount{ 0 };
-  const int NumberOfIntegralSpills{ 10 };
+  UInt_t IntegrationCount{ 0 };
 };
 
 CameraProfilesDialogPrivate::CameraProfilesDialogPrivate(CameraProfilesDialog &object)
@@ -424,6 +420,9 @@ CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceDat
   hist->SetFillStyle(3001);
   hist->Draw("SAME");
 
+  d->ui->RootCanvas_Integrated2D->setGridPad(new TPad("pScanningIntegrated2D", "Grid", 0., 0., 1., 1.));
+  d->ui->RootCanvas_Current2D->setGridPad(new TPad("pScanningCurrent2D", "Grid", 0., 0., 1., 1.));
+
   QObject::connect(d->ui->PushButton_UpdateChannelGraph, SIGNAL(clicked()),
     this, SLOT(onUpdateGraphClicked()));
   QObject::connect(d->ui->PushButton_UpdateProfiles, SIGNAL(clicked()),
@@ -438,9 +437,6 @@ CameraProfilesDialog::CameraProfilesDialog(const AbstractCamera::CameraDeviceDat
     this, SLOT(onSignalBeginChanged(double)));
   QObject::connect(d->ui->RangeWidget_Signal, SIGNAL(maximumValueChanged(double)),
     this, SLOT(onSignalEndChanged(double)));
-
-//  QObject::connect(d->ui->PushButton_ResetIntegration, SIGNAL(clicked()),
-//    this, SLOT(onResetIntegrationClicked()));
 
   {
     QSignalBlocker block(d->ui->RangeWidget_Signal);
@@ -466,11 +462,20 @@ CameraProfilesDialog::~CameraProfilesDialog()
     {
       server->Unregister(d->padVerticalProfile.get());
     }
-    if (d->padPseudo2D)
+    if (TPad* pad = d->ui->RootCanvas_Current2D->getGridPad())
     {
-      server->Unregister(d->padPseudo2D.get());
+      server->Unregister(pad);
+    }
+    if (TPad* pad = d->ui->RootCanvas_Integrated2D->getGridPad())
+    {
+      server->Unregister(pad);
     }
   }
+
+///  d->ui->RootCanvas_Current2D->removeDiagram(d->histPseudo2D.get());
+///  d->ui->RootCanvas_Integrated2D->removeDiagram(d->histPseudoIntegralNorm2D.get());
+  d->ui->RootCanvas_Current2D->getGridPad()->Clear();
+  d->ui->RootCanvas_Integrated2D->getGridPad()->Clear();
 
   if (d->padChannel)
   {
@@ -500,8 +505,6 @@ CameraProfilesDialog::~CameraProfilesDialog()
   d->padHist->Clear();
   d->padHorizontalProfile->Clear();
   d->padVerticalProfile->Clear();
-  d->padPseudo2D->Clear();
-  d->padPseudoIntegral2D->Clear();
 }
 
 void CameraProfilesDialog::setCameraDevice(AbstractCamera* cam)
@@ -547,33 +550,37 @@ void CameraProfilesDialog::setCameraDevice(AbstractCamera* cam)
   d->graphHorizontalProfile->SetTitle("Horizontal profile (vertical strips);Strip position (mm);Charge (pC)");
   d->graphHorizontalProfile->Draw("L");
 
-  canvas = d->ui->RootCanvas_Current2D->getCanvas();
-  canvas->cd();
-  d->padPseudo2D = std::unique_ptr< TPad >(new TPad("pPs2D", "Grid", 0., 0., 1., 1.));
-  d->padPseudo2D->SetGrid();
-  d->padPseudo2D->Draw();
-  d->padPseudo2D->cd();
+  d->ui->RootCanvas_Current2D->setGridPad(new TPad("pPs2D", "Grid", 0., 0., 1., 1.));
+  d->ui->RootCanvas_Integrated2D->setGridPad(new TPad("pIntPs2D", "Grid", 0., 0., 1., 1.));
+
+  // update Current profile
+  TString titleCurrent;
+  titleCurrent.Form("Current 2D");
+
   TH2* hist = d->camera->createProfile2D(false);
   hist->SetDirectory(nullptr);
+  hist->SetTitle(titleCurrent.Data());
+  d->ui->RootCanvas_Current2D->getGridPad()->cd();
   d->histPseudo2D.reset(hist);
   d->histPseudo2D->GetXaxis()->SetTitle("Horizontal profile, mm");
   d->histPseudo2D->GetYaxis()->SetTitle("Vertical profile, mm");
-  d->histPseudo2D->Draw("COLZ");
+  d->ui->RootCanvas_Current2D->drawDiagram(d->histPseudo2D.get());
+//  d->ui->RootCanvas_Current2D->updateDiagram(d->histPseudo2D.get());
 
-  canvas = d->ui->RootCanvas_Integrated2D->getCanvas();
-  canvas->cd();
-  d->padPseudoIntegral2D = std::unique_ptr< TPad >(new TPad("pPsInt2D", "Grid", 0., 0., 1., 1.));
-  d->padPseudoIntegral2D->SetGrid();
-  d->padPseudoIntegral2D->Draw();
-  d->padPseudoIntegral2D->cd();
+  // update newly normalized profile
+  TString titleIntegrated;
+  UInt_t numberOfIntegralSpills = static_cast< UInt_t >(d->ui->SliderWidget_SpillsForIntegration->value());
+  titleIntegrated.Form("Integrated 2D [%d of %d]", d->IntegrationCount, numberOfIntegralSpills);
+
   hist = d->camera->createProfile2D(true);
   hist->SetDirectory(nullptr);
-  hist->SetTitle("Pseudo integral 2D Distribution");
-
+  hist->SetTitle(titleIntegrated.Data());
+  d->ui->RootCanvas_Integrated2D->getGridPad()->cd();
   d->histPseudoIntegralNorm2D.reset(hist);
   d->histPseudoIntegralNorm2D->GetXaxis()->SetTitle("Horizontal profile, mm");
   d->histPseudoIntegralNorm2D->GetYaxis()->SetTitle("Vertical profile, mm");
-  d->histPseudoIntegralNorm2D->Draw("COLZ");
+  d->ui->RootCanvas_Integrated2D->drawDiagram(d->histPseudoIntegralNorm2D.get());
+//  d->ui->RootCanvas_Integrated2D->updateDiagram(d->histPseudoIntegralNorm2D.get());
 
   hist = d->camera->createProfile2D(true);
   hist->SetDirectory(nullptr);
@@ -786,6 +793,20 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   int sigMin = static_cast< int >(d->ui->RangeWidget_Signal->minimumValue());
   int sigMax = static_cast< int >(d->ui->RangeWidget_Signal->maximumValue());
 
+  TPad* pad = d->ui->RootCanvas_Integrated2D->getGridPad();
+  if (pad)
+  {
+    pad->GetListOfPrimitives()->Remove(d->histPseudoIntegralNorm2D.get());
+  }
+
+  UInt_t numberOfIntegralSpills = static_cast< UInt_t >(d->ui->SliderWidget_SpillsForIntegration->value());
+  if (d->IntegrationCount >= numberOfIntegralSpills)
+  {
+    d->histPseudoIntegral2D->Reset();
+    d->histPseudoIntegralNorm2D->Reset();
+    d->IntegrationCount = 0;
+  }
+
   std::map< ChipChannelPair, ChannelInfoPair > infoMap;
   d->camera->setPedestalSignalGate(pedMin, pedMax, sigMin, sigMax);
   d->camera->processDataCounts();
@@ -797,7 +818,20 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
     return;
   }
   d->camera->updateProfiles(d->graphVerticalProfile.get(), d->graphHorizontalProfile.get(), false);
-  d->camera->updateProfiles2D(d->histPseudo2D.get(), d->histPseudoIntegral2D.get());
+  d->camera->updateProfiles2D(d->histPseudo2D.get(), nullptr);
+  d->histPseudoIntegral2D->Add(d->histPseudo2D.get());
+  d->IntegrationCount++;
+  if (TH2* cloned = dynamic_cast< TH2* >(d->histPseudoIntegral2D->Clone()))
+  {
+    d->histPseudoIntegralNorm2D.reset(cloned);
+    TString clonedName;
+    clonedName.Form("%s_cloned", d->histPseudoIntegral2D->GetName());
+    d->histPseudoIntegralNorm2D->SetName(clonedName.Data());
+    if (d->IntegrationCount)
+    {
+      d->histPseudoIntegralNorm2D->Scale(1. / (d->IntegrationCount));
+    }
+  }
 
   TCanvas* canvas = d->ui->RootCanvas_VerticalProfile->getCanvas();
   canvas->cd();
@@ -834,27 +868,27 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   d->padHorizontalProfile->Modified();
   d->padHorizontalProfile->Update();
 
-  canvas = d->ui->RootCanvas_Current2D->getCanvas();
-  canvas->cd();
-  d->padPseudo2D->cd();
   if (d->ui->CheckBox_ManualChargeRange->isChecked())
   {
     d->histPseudo2D->GetZaxis()->SetRangeUser(d->ui->RangeWidget_ChargeRange->minimumValue(),
       d->ui->RangeWidget_ChargeRange->maximumValue());
   }
-  d->padPseudo2D->Modified();
-  d->padPseudo2D->Update();
 
-  canvas = d->ui->RootCanvas_Integrated2D->getCanvas();
-  canvas->cd();
-  d->padPseudoIntegral2D->cd();
-  if (d->IntegrationCount >= d->NumberOfIntegralSpills)
-  {
-    d->histPseudoIntegral2D->Reset();
-    d->histPseudoIntegralNorm2D->Reset();
-  }
-  d->padPseudoIntegral2D->Modified();
-  d->padPseudoIntegral2D->Update();
+  // update Current profile
+  TString titleCurrent;
+  titleCurrent.Form("Current 2D");
+  d->histPseudo2D->SetTitle(titleCurrent.Data());
+  d->ui->RootCanvas_Current2D->updateDiagram(d->histPseudo2D.get());
+
+  // update newly normalized profile
+  TString titleIntegrated;
+  titleIntegrated.Form("Integrated 2D [%d of %d]", d->IntegrationCount, numberOfIntegralSpills);
+  d->histPseudoIntegralNorm2D->SetTitle(titleIntegrated.Data());
+  d->histPseudoIntegralNorm2D->GetXaxis()->SetTitle("Horizontal profile, mm");
+  d->histPseudoIntegralNorm2D->GetXaxis()->SetTitleOffset(1.3);
+  d->histPseudoIntegralNorm2D->GetYaxis()->SetTitle("Vertical profile, mm");
+  d->ui->RootCanvas_Integrated2D->drawDiagram(d->histPseudoIntegralNorm2D.get());
+  d->ui->RootCanvas_Integrated2D->updateDiagram(d->histPseudoIntegralNorm2D.get());
 
   emit profilesUpdated(d->camera->getCameraData().ID);
   d->chipChannelInfoModel->setChipChannelInfo(infoMap);
@@ -893,27 +927,21 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
   }
 }
 
-void CameraProfilesDialog::onResetIntegrationClicked()
-{
-  Q_D(CameraProfilesDialog);
-
-  d->graphHorizontalProfile->Clear();
-  d->graphVerticalProfile->Clear();
-  d->histPseudo2D->Reset();
-  d->histPseudoIntegral2D->Reset();
-  d->IntegrationCount = 0;
-}
-
 void CameraProfilesDialog::onResetIntegralPseudo2dClicked()
 {
   Q_D(CameraProfilesDialog);
-  d->histPseudoIntegral2D->Reset();
-  d->padPseudoIntegral2D->Modified();
-  d->padPseudoIntegral2D->Update();
 
-  d->histPseudo2D->Reset();
-  d->padPseudo2D->Modified();
-  d->padPseudo2D->Update();
+  d->histPseudoIntegralNorm2D->Reset();
+  d->IntegrationCount = 0;
+
+  // update newly normalized profile
+  TString titleIntegrated;
+  UInt_t numberOfIntegralSpills = static_cast< UInt_t >(d->ui->SliderWidget_SpillsForIntegration->value());
+  titleIntegrated.Form("Integrated 2D [%d of %d]", d->IntegrationCount, numberOfIntegralSpills);
+  d->histPseudoIntegralNorm2D->SetTitle(titleIntegrated.Data());
+  TPad* pad = d->ui->RootCanvas_Integrated2D->getGridPad();
+  pad->Modified();
+  pad->Update();
 }
 
 void CameraProfilesDialog::addBeamProfilesToServer(std::shared_ptr< THttpServer > server)
@@ -938,9 +966,11 @@ void CameraProfilesDialog::addBeamProfilesToServer(std::shared_ptr< THttpServer 
 //  server->Register("/", d->padPseudo2D.get());
   QByteArray bytesStr = QByteArray(1, '/') + cameraID.toLatin1();
   const char* id_str = bytesStr.data();
-  server->Register(id_str, d->padHorizontalProfile.get());
-  server->Register(id_str, d->padVerticalProfile.get());
-  server->Register(id_str, d->padPseudo2D.get());
+///  server->Register(id_str, d->padHorizontalProfile.get());
+///  server->Register(id_str, d->padVerticalProfile.get());
+///  server->Register(id_str, d->ui->RootCanvas_Current2D->getGridPad());
+///  server->Register(id_str, d->ui->RootCanvas_Integrated2D->getGridPad());
+//  server->Register(id_str, d->padPseudo2D.get());
 //  server->Register(id_str, d->padPseudoIntegral2D.get());
 
 //  server->SetItemField(id_str, "_layout", "grid2x2");

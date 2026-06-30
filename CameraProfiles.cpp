@@ -459,13 +459,14 @@ TLatex* CameraProfiles::createBeamPathTable(int timeStepMs, int totalSteps, QDat
   //  constexpr int steps = 7;
   //  constexpr std::array< double, steps > pos{.7, .65, .6, .55, .5, .45, .4};
 
+
   TLatex* latexTable = new TLatex();
   QString msg = QObject::tr("Время вывода: %1").arg(spillDateTime.toString("hh:mm:ss"));
   std::string msgBytes = msg.toStdString();
   const char* str = msgBytes.data();
 
   latexTable->DrawLatex(.2, 0.95, str);
-  latexTable->SetTextSize(0.05);
+  latexTable->SetTextSize(0.03);
   latexTable->SetTextAlign(13);  //align at top
   latexTable->DrawLatex(.0, .9, "Время, (мс)");
   latexTable->DrawLatex(.3, .9, "X");
@@ -480,10 +481,10 @@ TLatex* CameraProfiles::createBeamPathTable(int timeStepMs, int totalSteps, QDat
   latexTable->DrawLatex(.9,.85, "     ");
 
   int offset = d->pedestalSignalGate[2];
-  latexTable->SetTextSize(0.04);
+  latexTable->SetTextSize(0.05);
   for (int step = 0; step < totalSteps; ++step)
   {
-    int sigBegin = offset + (step * stepInterval);
+    int sigBegin = offset + (step * timeStepMs);
     int sigEnd = sigBegin + timeStepMs;
     d->camera->setPedestalSignalGate(d->pedestalSignalGate[0], d->pedestalSignalGate[1], sigBegin, sigEnd);
     d->camera->processDataCounts();
@@ -500,7 +501,7 @@ TLatex* CameraProfiles::createBeamPathTable(int timeStepMs, int totalSteps, QDat
     delete profileV;
     delete profileH;
 
-    QString integrTime = QString::number((step + 1) * stepInterval);
+    QString integrTime = QString::number((step + 1) * timeStepMs);
     QString val1 = QObject::tr("%1").arg(-1. * pBegin[0], 5, 'f', 1, QChar(' '));
     QString val2 = QObject::tr("%1").arg(pBegin[1], 5, 'f', 1, QChar(' '));
     QString val3 = QObject::tr("%1").arg(6. * pBegin[2], 5, 'f', 1, QChar(' '));
@@ -524,6 +525,44 @@ TLatex* CameraProfiles::createBeamPathTable(int timeStepMs, int totalSteps, QDat
     }
   }
   return latexTable;
+}
+
+BeamProfileMap CameraProfiles::createBeamProfileMap(int timeStepMs, int totalSteps)
+{
+  Q_D(CameraProfiles);
+
+  BeamProfileMap beamProfileMap;
+
+  int offset = d->pedestalSignalGate[2];
+  for (int step = 0; step < totalSteps; ++step)
+  {
+    int sigBegin = offset + (step * timeStepMs);
+    int sigEnd = sigBegin + timeStepMs;
+    d->camera->setPedestalSignalGate(d->pedestalSignalGate[0], d->pedestalSignalGate[1], sigBegin, sigEnd);
+    d->camera->processDataCounts();
+    TGraph* profileV = d->camera->createProfile(CameraProfileType::PROFILE_VERTICAL, false);
+    TGraph* profileH = d->camera->createProfile(CameraProfileType::PROFILE_HORIZONTAL, false);
+
+    CameraProfiles::ProcessBeamPathProfile(profileV);
+    CameraProfiles::ProcessBeamPathProfile(profileH);
+    CameraProfiles::ReverseProfileValues(profileH);
+
+    BeamProfileArray pBegin = CameraProfiles::GetProfilesParameters(profileH, profileV);
+    bool profilesAreWithBeam = !(CheckNoBeamProfile(profileH) || CheckNoBeamProfile(profileV));
+
+    delete profileV;
+    delete profileH;
+
+    if (pBegin[2] >= 0. && pBegin[3] >= 0. && profilesAreWithBeam)
+    {
+      beamProfileMap[sigBegin - offset] = pBegin;
+    }
+    else
+    {
+      beamProfileMap[sigBegin - offset] = { 0., 0., -1., -1.};
+    }
+  }
+  return beamProfileMap;
 }
 
 TGraph* CameraProfiles::HistToGraph(TH1* hist)

@@ -70,6 +70,7 @@ public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow() override;
 
+public slots:
   Q_INVOKABLE void log(const QString &text, const QString &context, QColor color);
   void log(const QString &text, QColor color = Qt::black);
 

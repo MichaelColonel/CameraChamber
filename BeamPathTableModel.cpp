@@ -26,7 +26,7 @@ BeamPathTableModel::BeamPathTableModel(QObject *parent) : QAbstractTableModel(pa
 
 int BeamPathTableModel::rowCount(const QModelIndex &) const
 {
-  return this->beamMap.size();
+  return this->beamProfileMap.size();
 }
 
 int BeamPathTableModel::columnCount(const QModelIndex &) const
@@ -46,7 +46,7 @@ QVariant BeamPathTableModel::data(const QModelIndex& index, int role) const
   }
   if (role == Qt::DisplayRole)
   {
-    if (index.row() >= this->beamMap.size())
+    if (index.row() >= this->beamProfileMap.size())
     {
       return QVariant();
     }
@@ -55,14 +55,14 @@ QVariant BeamPathTableModel::data(const QModelIndex& index, int role) const
       return QVariant();
     }
     double time = -1.;
-    BeamPathPair pair{ { 0., 0., -1.}, { 0., 0., -1.} };
+    BeamProfileArray prof{ 0., 0., -1., -1.};
     int i = 0;
-    for (auto iter = this->beamMap.begin(); iter != this->beamMap.end(); ++iter, ++i)
+    for (auto iter = this->beamProfileMap.begin(); iter != this->beamProfileMap.end(); ++iter, ++i)
     {
       if (i == index.row())
       {
         time = iter->first;
-        pair = iter->second;
+        prof = iter->second;
       }
     }
     QVariant res;
@@ -73,25 +73,49 @@ QVariant BeamPathTableModel::data(const QModelIndex& index, int role) const
       break;
     case 1:
       {
-        if (pair.first[2] < 0)
+        if (prof[2] < 0)
         {
           res = tr("No beam");
         }
         else
         {
-          res = QObject::tr("%1, %2, %3").arg(pair.first[0]).arg(pair.first[1]).arg(pair.first[2]); // pos begin
+          res = QObject::tr("%1").arg(-1. * prof[0], 5, 'f', 1, QChar(' ')); // position X
         }
       }
       break;
     case 2:
       {
-        if (pair.second[2] < 0)
+        if (prof[2] < 0)
         {
           res = tr("No beam");
         }
         else
         {
-          res = QObject::tr("%1, %2, %3").arg(pair.second[0]).arg(pair.second[1]).arg(pair.second[2]); // pos end
+          res = QObject::tr("%1").arg(prof[1], 5, 'f', 1, QChar(' ')); // position Y
+        }
+      }
+      break;
+    case 3:
+      {
+        if (prof[2] < 0)
+        {
+          res = tr("No beam");
+        }
+        else
+        {
+          res = QObject::tr("%1").arg(6. * prof[2], 5, 'f', 1, QChar(' ')); // Diameter Dx (== 6sigma)
+        }
+      }
+      break;
+    case 4:
+      {
+        if (prof[2] < 0)
+        {
+          res = tr("No beam");
+        }
+        else
+        {
+          res = QObject::tr("%1").arg(6. * prof[3], 5, 'f', 1, QChar(' ')); // Diameter Dy (== 6sigma)
         }
       }
       break;
@@ -122,9 +146,9 @@ QString BeamPathTableModel::headerAt(int offset) const
   return QString();
 }
 
-void BeamPathTableModel::setBeamPath(const BeamPathMap& newBeamPathMap)
+void BeamPathTableModel::setBeamProfile(const BeamProfileMap& newBeamProfileMap)
 {
   this->beginResetModel();
-  this->beamMap = newBeamPathMap;
+  this->beamProfileMap = newBeamProfileMap;
   this->endResetModel();
 }

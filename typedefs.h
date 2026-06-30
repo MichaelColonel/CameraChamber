@@ -235,4 +235,5 @@ struct AcquisitionParameters {
 typedef std::array< int, 4 > PedestalSignalGateArray;
 typedef std::array< double, 4 > BeamProfileArray;
 typedef std::pair< BeamProfileArray, BeamProfileArray > BeamPathPair;
+typedef std::map< double, BeamProfileArray > BeamProfileMap;
 typedef std::map< double, BeamPathPair > BeamPathMap;

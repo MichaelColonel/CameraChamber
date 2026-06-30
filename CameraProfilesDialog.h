@@ -50,7 +50,6 @@ public Q_SLOTS:
   void onSignalBeginChanged(double pos);
   void onSignalEndChanged(double pos);
   void onResetIntegralPseudo2dClicked();
-  void onResetIntegrationClicked();
 
 Q_SIGNALS:
   void profilesUpdated();

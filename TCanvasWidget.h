@@ -47,7 +47,6 @@ public:
 
   /// returns canvas shown in the widget
   TCanvas* getCanvas() const { return rootCanvas; }
-  TPad* getGridPad() const;
   TPad* getPad(int subPadNumber = 0) const;
 
 signals:

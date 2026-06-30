@@ -177,7 +177,7 @@ void TBeamPathCanvasWidget::updateProfiles(TGraph* cam1HorizProfile, TGraph* cam
   d->beginHorizontalProfileGraph.reset(cam1HorizProfile);
   d->beginHorizontalProfileGraph->SetLineColor(kBlue);
   d->beginHorizontalProfileGraph->SetLineWidth(2);
-  d->beginHorizontalProfileGraph->SetTitle("Horizontal profile;Strip position (mm);Charge (pC)");
+  d->beginHorizontalProfileGraph->SetTitle("Горизонтальный профиль;Положение стрипа (mm);Заряд (пКл)");
   d->beginHorizontalProfileGraph->Draw("AL");
   TGaxis* newaxis = d->reverseHorizontalXaxis(padHorizProfileBegin, cam1HorizProfile, d->beginReverseHorizXaxis.get());
   if (newaxis)
@@ -197,7 +197,7 @@ void TBeamPathCanvasWidget::updateProfiles(TGraph* cam1HorizProfile, TGraph* cam
   d->beginVerticalProfileGraph.reset(cam1VertProfile);
   d->beginVerticalProfileGraph->SetLineColor(kRed);
   d->beginVerticalProfileGraph->SetLineWidth(2);
-  d->beginVerticalProfileGraph->SetTitle("Vertical profile;Strip position (mm);Charge (pC)");
+  d->beginVerticalProfileGraph->SetTitle("Вертикальный профиль;Положение стрипа (mm);Заряд (пКл)");
   d->beginVerticalProfileGraph->Draw("AL");
   padVerticalProfileBegin->Modified();
   padVerticalProfileBegin->Update();
@@ -212,7 +212,7 @@ void TBeamPathCanvasWidget::updateProfiles(TGraph* cam1HorizProfile, TGraph* cam
   d->endHorizontalProfileGraph.reset(cam2HorizProfile);
   d->endHorizontalProfileGraph->SetLineColor(kBlue);
   d->endHorizontalProfileGraph->SetLineWidth(2);
-  d->endHorizontalProfileGraph->SetTitle("Horizontal profile;Strip position (mm);Charge (pC)");
+  d->endHorizontalProfileGraph->SetTitle("Горизонтальный профиль;Положение стрипа (mm);Заряд (пКл)");
   d->endHorizontalProfileGraph->Draw("AL");
   newaxis = d->reverseHorizontalXaxis(padHorizProfileEnd, cam2HorizProfile, d->endReverseHorizXaxis.get());
   if (newaxis)
@@ -232,7 +232,7 @@ void TBeamPathCanvasWidget::updateProfiles(TGraph* cam1HorizProfile, TGraph* cam
   d->endVerticalProfileGraph.reset(cam2VertProfile);
   d->endVerticalProfileGraph->SetLineColor(kRed);
   d->endVerticalProfileGraph->SetLineWidth(2);
-  d->endVerticalProfileGraph->SetTitle("Vertical profile;Strip position (mm);Charge (pC)");
+  d->endVerticalProfileGraph->SetTitle("Вертикальный профиль;Положение стрипа (mm);Заряд (пКл)");
   d->endVerticalProfileGraph->Draw("AL");
   padVerticalProfileEnd->Modified();
   padVerticalProfileEnd->Update();
@@ -255,7 +255,7 @@ void TBeamPathCanvasWidget::updateBeamPathTables(AbstractCamera* cam1, AbstractC
   CameraProfiles beginProfs(cam1);
   PedestalSignalGateArray arr;
   cam1->getPedestalSignalGate(arr);
-  int totalStepsMs = (arr[3] - arr[2]) / 100;
+  int totalStepsMs = (arr[3] - arr[2]) / intergTime;
   TLatex* beginTableLatex = beginProfs.createBeamPathTable(intergTime, totalStepsMs, cam1DateTime);
   if (beginTableLatex)
   {
