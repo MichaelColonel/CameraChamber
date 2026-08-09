@@ -397,7 +397,7 @@ bool AbstractCamera::connect()
 void AbstractCamera::disconnect()
 {
   Q_D(AbstractCamera);
-  bool connected = true;
+  bool disconnected = false;
 
   if (d->commandPort->isOpen())
   {
@@ -407,6 +407,7 @@ void AbstractCamera::disconnect()
       this, SLOT(onCommandPortBytesWritten(qint64)));
     QObject::disconnect(d->commandPort.data(), SIGNAL(errorOccurred(QSerialPort::SerialPortError)),
       this, SLOT(onCommandPortError(QSerialPort::SerialPortError)));
+    disconnected = d->commandPort->flush();
     d->commandPort->close();
   }
   else
@@ -419,6 +420,7 @@ void AbstractCamera::disconnect()
       this, SLOT(onDataPortDataReady()));
     QObject::disconnect(d->dataPort.data(), SIGNAL(errorOccurred(QSerialPort::SerialPortError)),
       this, SLOT(onDataPortError(QSerialPort::SerialPortError)));
+    disconnected &= d->dataPort->flush();
     d->dataPort->close();
   }
   else
@@ -426,9 +428,9 @@ void AbstractCamera::disconnect()
   }
 
   d->dataNumber = 1;
-  d->cameraData = AbstractCamera::CameraDeviceData();
-  connected = false;
-  Q_UNUSED(connected);
+  if (disconnected)
+  {
+  }
 }
 
 bool AbstractCamera::isDeviceAlreadyConnected()
@@ -464,6 +466,12 @@ bool AbstractCamera::isInitiationListEmpty() const
 {
   Q_D(const AbstractCamera);
   return d->initiateCommandsList.isEmpty();
+}
+
+bool AbstractCamera::isAcquisitionActive() const
+{
+  Q_D(const AbstractCamera);
+  return d->acquisitionFlag;
 }
 
 void AbstractCamera::onCommandPortDataReady()
@@ -1567,6 +1575,12 @@ int AbstractCamera::getAdcSamples() const
 {
   Q_D(const AbstractCamera);
   return d->cameraResponse.AdcSamples;
+}
+
+bool AbstractCamera::getExternalStartState() const
+{
+  Q_D(const AbstractCamera);
+  return d->cameraResponse.ExternalStartState;
 }
 
 const std::vector< int >& AbstractCamera::getChipsAddressesVector() const

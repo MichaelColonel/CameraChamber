@@ -75,6 +75,7 @@ public:
   bool isDeviceAlreadyConnected();
 
   bool isInitiationListEmpty() const;
+  bool isAcquisitionActive() const;
   QString getCommandPortError() const;
   QString getDataPortError() const;
   CameraDeviceData getCameraData() const;
@@ -108,6 +109,7 @@ public:
   int getCapacityCode() const;
   int getAdcResolutionMode() const;
   int getAdcSamples() const;
+  bool getExternalStartState() const;
   bool getChipChannelInfo(int chip, int channel, ChannelInfoPair& info);
   void getChipChannelInfo(std::map< ChipChannelPair, ChannelInfoPair >& infoMap);
   bool getOnceTimeExternalStartFlag() const;
