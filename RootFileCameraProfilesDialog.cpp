@@ -200,11 +200,18 @@ RootFileCameraProfilesDialogPrivate::RootFileCameraProfilesDialogPrivate(RootFil
 {
   QSettings settings("ProfileCamera2D", "configure");
   QStringList camerasID = CameraUtils::getCameraIDs();
-  int i = 1;
+//  int i = 1;
   for (const QString& cameraID : camerasID)
   {
     AbstractCamera::CameraDeviceData data;
-    if (cameraID == "Camera2")
+    if (cameraID == "Camera1")
+    {
+      data = CameraUtils::getFullCameraData(1);
+      AbstractCamera* fullCamera = new FullCamera(data, &object);
+      this->camerasMap.insert(data.ID, fullCamera);
+      fullCamera->loadSettings(&settings);
+    }
+    else if (cameraID == "Camera2")
     {
       data = CameraUtils::getPartialCamera2Data();
       AbstractCamera* camera = new Camera2(data, &object);
@@ -213,40 +220,40 @@ RootFileCameraProfilesDialogPrivate::RootFileCameraProfilesDialogPrivate(RootFil
     }
     else if (cameraID == "Camera3")
     {
-      data = CameraUtils::getFullCameraData(i);
+      data = CameraUtils::getFullCameraData(3);
       AbstractCamera* camera = new FullCamera3(data, &object);
       this->camerasMap.insert(data.ID, camera);
       camera->loadSettings(&settings);
     }
     else if (cameraID == "Camera4")
     {
-      data = CameraUtils::getFullCameraData(i);
+      data = CameraUtils::getFullCameraData(4);
       AbstractCamera* camera = new FullCamera4(data, &object);
       this->camerasMap.insert(data.ID, camera);
       camera->loadSettings(&settings);
     }
     else if (cameraID == "Camera5")
     {
-      data = CameraUtils::getFullCameraData(i);
+      data = CameraUtils::getFullCameraData(5);
       AbstractCamera* camera = new FullCamera5(data, &object);
       this->camerasMap.insert(data.ID, camera);
       camera->loadSettings(&settings);
     }
     else if (cameraID == "Camera6")
     {
-      data = CameraUtils::getFullCameraData(i);
+      data = CameraUtils::getFullCameraData(6);
       AbstractCamera* camera = new FullCamera6(data, &object);
       this->camerasMap.insert(data.ID, camera);
       camera->loadSettings(&settings);
     }
     else
     {
-      data = CameraUtils::getFullCameraData(i);
+      data = CameraUtils::getFullCameraData(1);
       AbstractCamera* fullCamera = new FullCamera(data, &object);
       this->camerasMap.insert(data.ID, fullCamera);
       fullCamera->loadSettings(&settings);
     }
-    ++i;
+//    ++i;
   }
 }
 
