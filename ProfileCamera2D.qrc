@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/indicators">
+        <file>icons/green.svg</file>
+        <file>icons/red.svg</file>
+        <file>icons/gray.svg</file>
+        <file>icons/red.png</file>
+        <file>icons/green.png</file>
+        <file>icons/gray.png</file>
+    </qresource>
+</RCC>
