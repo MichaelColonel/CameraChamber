@@ -817,6 +817,15 @@ void CameraProfilesDialog::onUpdateProfilesClicked()
     emit logMessage("Camera data is empty", "", Qt::red);
     return;
   }
+  if (d->graphVerticalProfile.get())
+  {
+    qDebug() << Q_FUNC_INFO << "Vertical profile is OK";
+  }
+  if (d->graphHorizontalProfile.get())
+  {
+    qDebug() << Q_FUNC_INFO << "Horizontal profile is OK";
+  }
+
   d->camera->updateProfiles(d->graphVerticalProfile.get(), d->graphHorizontalProfile.get(), false);
   d->camera->updateProfiles2D(d->histPseudo2D.get(), nullptr);
   d->histPseudoIntegral2D->Add(d->histPseudo2D.get());

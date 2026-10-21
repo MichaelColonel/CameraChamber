@@ -88,6 +88,8 @@ template<class T> void TReverseXaxisCanvasWidget::updateDiagram(T* tnamedDiagram
     return;
   }
   this->gridPad->cd();
+  tnamedDiagram->Draw();
+/*
   // Remove the current axis
   tnamedDiagram->GetXaxis()->SetLabelOffset(999);
   tnamedDiagram->GetXaxis()->SetTickLength(0);
@@ -108,7 +110,7 @@ template<class T> void TReverseXaxisCanvasWidget::updateDiagram(T* tnamedDiagram
   this->reversedXaxis.reset(newaxis);
   this->reversedXaxis->SetLabelOffset(-0.01);
   this->reversedXaxis->Draw();
-
+*/
   this->gridPad->Modified();
   this->gridPad->Update();
 }

@@ -116,38 +116,38 @@ public:
   const QByteArray WriteCapacitiesCommand = QByteArray("G\0\0", AbstractCamera::BUFFER_SIZE); // write DDC232 configuration register
   const QByteArray ListChipsEnabledCommand = QByteArray("L\0\0", AbstractCamera::BUFFER_SIZE); // list of chips enabled
   static constexpr std::array< double, CHANNELS_PER_CHIP > ADC_CALIBRATION_RESISTORS{
-    1.932,
-    1.910,
-    1.950,
-    1.941,
-    1.939,
-    1.953,
-    1.943,
-    1.931,
-    1.950,
-    1.960,
-    1.960,
-    1.940,
-    1.943,
-    1.934,
-    1.933,
-    1.950,
-    1.939,
-    1.931,
-    1.939,
-    1.930,
-    1.947,
-    1.930,
-    1.926,
-    1.945,
-    1.915,
-    1.939,
-    1.954,
-    1.940,
-    1.938,
-    1.954,
-    1.947,
-    1.941
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
   };
   static constexpr double LOCAL_DBL_EPSILON = 0.0001;
   static constexpr double LOCAL_DBL_EPSILON2 = 1.E-08;
@@ -1960,8 +1960,8 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       info.SigSumA = boost::accumulators::sum(statSigA);
       info.SigSumB = boost::accumulators::sum(statSigB);
 
-      double signalA = (info.SigSumA - info.SigCountA * info.PedMeanA);
-      double signalB = (info.SigSumB - info.SigCountB * info.PedMeanB);
+      double signalA = info.SigMeanA;//(info.SigSumA - info.SigCountA * info.PedMeanA);
+      double signalB = info.SigMeanB;//(info.SigSumB - info.SigCountB * info.PedMeanB);
       double signalNoAmp = (signalA + signalB) / 2.;
       double signal = refAmpl * signalNoAmp / currAmpl;
       switch (integType)
@@ -1980,11 +1980,12 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
         info.SignalNoAmp = signalNoAmp;
         break;
       }
-
+/*
       double pedVarianceA = info.PedMom2A - info.PedMeanA * info.PedMeanA;
       double pedVarianceB = info.PedMom2B - info.PedMeanB * info.PedMeanB;
       double pedSigDiffA = std::abs(info.SigMeanA - info.PedMeanA);
       double pedSigDiffB = std::abs(info.SigMeanB - info.PedMeanB);
+
       if (std::abs(currAmpl) < d->LOCAL_DBL_EPSILON)
       {
         info.Signal = d->LOCAL_DBL_EPSILON2;
@@ -2000,7 +2001,7 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
         info.Signal = d->LOCAL_DBL_EPSILON2;
         info.SignalNoAmp = d->LOCAL_DBL_EPSILON2;
       }
-
+*/
       infoCalib.PedMeanA = boost::accumulators::mean(statCalibPedA);
       infoCalib.PedMeanB = boost::accumulators::mean(statCalibPedB);
       infoCalib.PedMom2A = boost::accumulators::moment< 2 >(statCalibPedA);
@@ -2014,8 +2015,8 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       infoCalib.SigMom2A = boost::accumulators::moment< 2 >(statCalibSigA);
       infoCalib.SigMom2B = boost::accumulators::moment< 2 >(statCalibSigB);
 
-      signalA = (infoCalib.SigSumA - infoCalib.SigCountA * infoCalib.PedMeanA);
-      signalB = (infoCalib.SigSumB - infoCalib.SigCountB * infoCalib.PedMeanB);
+      signalA = infoCalib.SigMeanA;//(infoCalib.SigSumA - infoCalib.SigCountA * infoCalib.PedMeanA);
+      signalB = infoCalib.SigMeanB;//(infoCalib.SigSumB - infoCalib.SigCountB * infoCalib.PedMeanB);
       signalNoAmp = (signalA + signalB) / 2.;
       signal = refAmpl * signalNoAmp / currAmpl;
 
@@ -2035,7 +2036,7 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
         infoCalib.SignalNoAmp = signalNoAmp;
         break;
       }
-
+/*
       pedVarianceA = infoCalib.PedMom2A - infoCalib.PedMeanA * infoCalib.PedMeanA;
       pedVarianceB = infoCalib.PedMom2B - infoCalib.PedMeanB * infoCalib.PedMeanB;
       pedSigDiffA = std::abs(infoCalib.SigMeanA - infoCalib.PedMeanA);
@@ -2055,7 +2056,7 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
         infoCalib.Signal = d->LOCAL_DBL_EPSILON2;
         infoCalib.SignalNoAmp = d->LOCAL_DBL_EPSILON2;
       }
-
+*/
       d->chipChannelInfoMap[curr] = std::make_pair(info, infoCalib);
     }
   }

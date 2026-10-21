@@ -26,7 +26,7 @@
       <string>Table of statistic information of channel pedestals and signals</string>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tabChannelGraph">
       <attribute name="title">
@@ -228,7 +228,7 @@
                <string/>
               </property>
               <property name="pixmap">
-               <pixmap>:/indicators/icons/gray.svg</pixmap>
+               <pixmap resource="ProfileCamera2D.qrc">:/indicators/icons/gray.svg</pixmap>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
@@ -540,7 +540,9 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="ProfileCamera2D.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>buttonBox</sender>

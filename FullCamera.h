@@ -30,7 +30,7 @@ class FullCamera : public AbstractCamera
   Q_OBJECT
 public:
   // Vertically oriented strips => horizontal profile
-  static constexpr int PROFILE_STRIPS = CHANNELS_PER_PLANE;
+  static constexpr int PROFILE_STRIPS = 256;
   explicit FullCamera(const AbstractCamera::CameraDeviceData& data, QObject* parent = nullptr);
   ~FullCamera() override;
 public:

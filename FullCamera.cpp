@@ -68,6 +68,11 @@ std::vector< int > FullCameraPrivate::getProfileBrokenChipChannelsStrips(CameraP
     {
       return;
     }
+    for (size_t j = 0; j < chipStripMask.size(); ++j)
+    {
+      formStripMask[j] = chipStripMask[j];
+    }
+/*
     const size_t half = chipStripMask.size() / 2;
     for (size_t i = 0, j = 0; j < chipStripMask.size(); )
     {
@@ -75,6 +80,7 @@ std::vector< int > FullCameraPrivate::getProfileBrokenChipChannelsStrips(CameraP
       formStripMask[j++] = chipStripMask[i];
       i++;
     }
+*/
   };
 
   const std::vector< ChipChannelPair >& vertChipChannels = q->getVerticalProfileChipChannelStrips();
@@ -229,12 +235,9 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
     {
       return;
     }
-    const size_t half = chipStripMask.size() / 2;
-    for (size_t i = 0, j = 0; j < chipStripMask.size(); )
+    for (size_t j = 0; j < chipStripMask.size(); ++j)
     {
-      formStripMask[j++] = chipStripMask[half + i];
-      formStripMask[j++] = chipStripMask[i];
-      i++;
+      formStripMask[j] = chipStripMask[j];
     }
   };
 
@@ -459,7 +462,8 @@ void FullCamera::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool 
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
 ///      vertProfile->SetPoint(i, Double_t(vertProfDataCopy[i]), Double_t(vertProfStrips[i] - halfSizeVert));
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+////      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+      vertProfile->SetPoint(i, Double_t(i), Double_t(vertProfDataCopy[i]));
     }
   }
 
@@ -468,7 +472,8 @@ void FullCamera::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool 
     double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
     for (Int_t i = 0; i < horizProfData.size(); ++i)
     {
-      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfData[i]));
+///      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfData[i]));
+      horizProfile->SetPoint(i, Double_t(i), Double_t(horizProfData[i]));
     }
   }
 }

@@ -85,10 +85,15 @@ TGraph* FullCamera6::createProfile(CameraProfileType profileType, bool withError
       {
         profile = new TGraph(vertProfData.size());
       }
-      double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
+//      double halfSizeVert = *std::max_element(vertProfStrips.begin(), vertProfStrips.end()) / 2.;
+//      for (Int_t i = 0; i < vertProfData.size(); ++i)
+//      {
+//        profile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfData[i]));
+//      }
       for (Int_t i = 0; i < vertProfData.size(); ++i)
       {
-        profile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfData[i]));
+        profile->SetPoint(i, Double_t(i), Double_t(vertProfData[i]));
+        qDebug() << Q_FUNC_INFO << "Vertical profile:" << i << Double_t(vertProfData[i]);
       }
     }
     break;
@@ -102,10 +107,15 @@ TGraph* FullCamera6::createProfile(CameraProfileType profileType, bool withError
       {
         profile = new TGraph(horizProfData.size());
       }
-      double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
+//      double halfSizeHoriz = *std::max_element(horizProfStrips.begin(), horizProfStrips.end()) / 2.;
+//      for (Int_t i = 0; i < horizProfData.size(); ++i)
+//      {
+//        profile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfData[i]));
+//      }
       for (Int_t i = 0; i < horizProfData.size(); ++i)
       {
-        profile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfData[i]));
+        profile->SetPoint(i, Double_t(i), Double_t(horizProfData[i]));
+        qDebug() << Q_FUNC_INFO << "Horizontal profile:" << i << Double_t(horizProfData[i]);
       }
     }
     break;
@@ -140,7 +150,9 @@ void FullCamera6::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool
     for (Int_t i = 0; i < vertProfData.size(); ++i)
     {
 ///      vertProfile->SetPoint(i, Double_t(vertProfDataCopy[i]), Double_t(vertProfStrips[i] - halfSizeVert));
-      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+///      vertProfile->SetPoint(i, Double_t(vertProfStrips[i] - halfSizeVert), Double_t(vertProfDataCopy[i]));
+      vertProfile->SetPoint(i, Double_t(i), Double_t(vertProfDataCopy[i]));
+//      qDebug() << Q_FUNC_INFO << "Vertical profile:" << i << Double_t(vertProfDataCopy[i]);
     }
   }
 
@@ -151,7 +163,9 @@ void FullCamera6::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool
     std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
     for (Int_t i = 0; i < horizProfData.size(); ++i)
     {
-      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfDataCopy[i]));
+///      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfDataCopy[i]));
+      horizProfile->SetPoint(i, Double_t(i), Double_t(horizProfDataCopy[i]));
+//      qDebug() << Q_FUNC_INFO << "Horizontal profile:" << i << Double_t(horizProfDataCopy[i]);
     }
   }
 }
