@@ -256,6 +256,23 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
   formChipStrip(vertChipChannels, VerticalProfileChipChannels); // vertical profile
   formChipStrip(horizChipChannels, HorizontalProfileChipChannels); // horizontal profile
 
+  for (auto vertChip : vertChipChannels)
+  {
+//    qDebug() << Q_FUNC_INFO << "Vertical chip:" << vertChip;
+  }
+  for (auto vertChipChannel : VerticalProfileChipChannels)
+  {
+//    qDebug() << Q_FUNC_INFO << "Vertical profile chip-channel:" << vertChipChannel;
+  }
+
+  for (auto horizChip : horizChipChannels)
+  {
+//    qDebug() << Q_FUNC_INFO << "Horizontal chip:" << horizChip;
+  }
+  for (auto horizChipChannel : HorizontalProfileChipChannels)
+  {
+//    qDebug() << Q_FUNC_INFO << "Horizontal profile chip-channel:" << horizChipChannel;
+  }
   double IntegralAdcSignalToCharge = AbstractCamera::CAPACITY_RANGE[this->getCapacityCode()];
   if (this->getAdcResolutionMode() == ADC_16_BIT)
   {
@@ -277,9 +294,12 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
   // to reconstruct vertical and horizontal profile
   std::vector< double >& vertProf = this->getVerticalProfile();
   std::vector< double >& horizProf = this->getHorizontalProfile();
+  int verticalPos = 0;
+  int horizontalPos = 0;
   for (const auto& chipChannelInfoPair : infoMap)
   {
     const ChipChannelPair& chipChannelPair = chipChannelInfoPair.first;
+    qDebug() << Q_FUNC_INFO << "ChipChannelPair:" << chipChannelPair;
     const ChannelInfoPair& channelInfoPair = chipChannelInfoPair.second;
     const ChannelInfo& calibInfo = channelInfoPair.second;
 //    const ChannelInfo& info = channelInfoPair.first;
@@ -289,7 +309,9 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       auto iterPos = std::find(chipStripMask.begin(), chipStripMask.end(), chipChannelPair);
       if (iterPos != chipStripMask.end())
       {
-        return static_cast< int >(iterPos - chipStripMask.begin());
+        int res = static_cast< int >(iterPos - chipStripMask.begin());
+//        qDebug() << Q_FUNC_INFO << iterPos->first << iterPos->second << res;
+        return res;
       }
       return -1;
     };
@@ -309,10 +331,12 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       if (!splitData)
       {
         chipStrip = findChipChannelArray(VerticalProfileChipChannels);
+//        qDebug() << Q_FUNC_INFO << "Horizontal strips array (Vertical profile): " << chipStrip;
       }
       else
       {
         chipStrip = findChipChannelVector(vertChipChannels);
+//        qDebug() << Q_FUNC_INFO << "Horizontal strips vector (Vertical profile): " << chipStrip;
       }
       // fill vertical profile
       double v = calibInfo.Signal;
@@ -345,7 +369,8 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
           v = calibInfo.Signal;
           break;
         }
-        vertProf[chipStrip] = v;
+//        qDebug() << Q_FUNC_INFO << "Vertical profile:" << chipStrip << v << verticalPos;
+        vertProf[verticalPos++] = v;
       }
     }
     else if (std::find(std::begin(horizProfChips), std::end(horizProfChips), chipChannelPair.first) != horizProfChips.end())
@@ -353,10 +378,18 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       if (!splitData)
       {
         chipStrip = findChipChannelArray(HorizontalProfileChipChannels);
+        auto it = std::find(HorizontalProfileChipChannels.begin(), HorizontalProfileChipChannels.end(), chipChannelPair);
+        if (it != HorizontalProfileChipChannels.end())
+        {
+          int res = it - HorizontalProfileChipChannels.begin();
+          qDebug() << Q_FUNC_INFO << "Res" << res << horizontalPos++;
+        }
+//        qDebug() << Q_FUNC_INFO << "Vertical strips array (Horizontal profile): " << chipStrip;
       }
       else
       {
         chipStrip = findChipChannelVector(horizChipChannels);
+//        qDebug() << Q_FUNC_INFO << "Vertical strips vector (Horizontal profile): " << chipStrip;
       }
       // fill horizontal profile
       double v = calibInfo.Signal;
@@ -389,7 +422,8 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
           v = calibInfo.Signal;
           break;
         }
-        horizProf[chipStrip] = v;
+//        qDebug() << Q_FUNC_INFO << "Horizontal profile:" << chipStrip << v << horizontalPos;
+        horizProf[horizontalPos] = v;
       }
     }
   }

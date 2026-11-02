@@ -2058,6 +2058,7 @@ void AbstractCamera::processDataCounts(bool fullChipCalibration, bool splitData,
       }
 */
       d->chipChannelInfoMap[curr] = std::make_pair(info, infoCalib);
+//      qDebug() << Q_FUNC_INFO << "Map data:" << curr << info.Signal << infoCalib.Signal;
     }
   }
 }
