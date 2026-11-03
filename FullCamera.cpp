@@ -382,7 +382,7 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
         if (it != HorizontalProfileChipChannels.end())
         {
           int res = it - HorizontalProfileChipChannels.begin();
-          qDebug() << Q_FUNC_INFO << "Res" << res << horizontalPos++;
+          qDebug() << Q_FUNC_INFO << "Res" << res << horizontalPos;
         }
 //        qDebug() << Q_FUNC_INFO << "Vertical strips array (Horizontal profile): " << chipStrip;
       }
@@ -423,7 +423,7 @@ void FullCamera::processDataCounts(bool fullChipCalibration, bool splitData,
           break;
         }
 //        qDebug() << Q_FUNC_INFO << "Horizontal profile:" << chipStrip << v << horizontalPos;
-        horizProf[horizontalPos] = v;
+        horizProf[horizontalPos++] = v;
       }
     }
   }

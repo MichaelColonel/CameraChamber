@@ -34,6 +34,7 @@ public:
 public:
   TGraph* createProfile(CameraProfileType profileType, bool withErrors = false) override;
   void updateProfiles(TGraph* vertProfile = nullptr, TGraph* horizProfile = nullptr, bool withErrors = false) override;
+  void updateProfiles2D(TH2* pseudo2D = nullptr, TH2* integPseudo2D = nullptr) override; // for pixel camera
 
 protected:
   QScopedPointer< FullCamera6Private > d_ptr;

@@ -30,6 +30,28 @@
 
 QT_BEGIN_NAMESPACE
 
+namespace {
+
+constexpr std::array< int, 16 > RowP{ 49,	50,	51,	52,	53,	54,	55,	56,	217,	218,	219,	220,	221,	222,	223,	224 };
+constexpr std::array< int, 16 > RowO{ 57,	58,	59,	60,	61,	62,	63,	64,	209,	210,	211,	212,	213,	214,	215,	216 };
+constexpr std::array< int, 16 > RowN{ 33,	34,	35,	36,	37,	38,	39,	40,	201,	202,	203,	204,	205,	206,	207,	208 };
+constexpr std::array< int, 16 > RowM{ 41,	42,	43,	44,	45,	46,	47,	48,	193,	194,	195,	196,	197,	198,	199,	200 };
+constexpr std::array< int, 16 > RowL{ 81,	82,	83,	84,	85,	86,	87,	88,	185,	186,	187,	188,	189,	190,	191,	192 };
+constexpr std::array< int, 16 > RowK{ 89,	90,	91,	92,	93,	94,	95,	96,	177,	178,	179,	180,	181,	182,	183,	184 };
+constexpr std::array< int, 16 > RowJ{ 65,	66,	67,	68,	69,	70,	71,	72,	169,	170,	171,	172,	173,	174,	175,	176 };
+constexpr std::array< int, 16 > RowI{ 73,	74,	75,	76,	77,	78,	79,	80,	161,	162,	163,	164,	165,	166,	167,	168 };
+constexpr std::array< int, 16 > RowH{ 9,	10,	11,	12,	13,	14,	15,	16,	225,	226,	227,	228,	229,	230,	231,	232 };
+constexpr std::array< int, 16 > RowG{ 1,	2,	3,	4,	5,	6,	7,	8,	233,	234,	235,	236,	237,	238,	239,	240 };
+constexpr std::array< int, 16 > RowF{ 25,	26,	27,	28,	29,	30,	31,	32,	241,	242,	243,	244,	245,	246,	247,	248 };
+constexpr std::array< int, 16 > RowE{ 17,	18,	19,	20,	21,	22,	23,	24,	249,	250,	251,	252,	253,	254,	255,	256 };
+constexpr std::array< int, 16 > RowD{ 105,	106,	107,	108,	109,	110,	111,	112,	129,	130,	131,	132,	133,	134,	135,	136 };
+constexpr std::array< int, 16 > RowC{ 97,	98,	99,	100,	101,	102,	103,	104,	137,	138,	139,	140,	141,	142,	143,	144 };
+constexpr std::array< int, 16 > RowB{ 121,	122,	123,	124,	125,	126,	127,	128,	145,	146,	147,	148,	149,	150,	151,	152 };
+constexpr std::array< int, 16 > RowA{ 113,	114,	115,	116,	117,	118,	119,	120,	153,	154,	155,	156,	157,	158,	159,	160 };
+
+constexpr std::array< std::array< int, 16 >, 16 > MATRIX{ RowA, RowB, RowC, RowD, RowE, RowF, RowG, RowH, RowI, RowJ, RowK, RowL, RowM, RowN, RowO, RowP };
+}
+
 class FullCamera6Private
 {
   Q_DECLARE_PUBLIC(FullCamera6);
@@ -166,6 +188,37 @@ void FullCamera6::updateProfiles(TGraph* vertProfile, TGraph* horizProfile, bool
 ///      horizProfile->SetPoint(i, Double_t(horizProfStrips[i] - halfSizeHoriz), Double_t(horizProfDataCopy[i]));
       horizProfile->SetPoint(i, Double_t(i), Double_t(horizProfDataCopy[i]));
 //      qDebug() << Q_FUNC_INFO << "Horizontal profile:" << i << Double_t(horizProfDataCopy[i]);
+    }
+  }
+}
+
+void FullCamera6::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
+{
+  Q_D(FullCamera6);
+
+  if (!pseudo2D && !integPseudo2D)
+  {
+    return;
+  }
+//  const std::vector< double >& vertProfData = this->getVerticalProfile();
+  const std::vector< double >& horizProfData = this->getHorizontalProfile();
+
+//  std::vector< double > horizProfDataCopy(horizProfData);
+///  std::reverse(horizProfDataCopy.begin(), horizProfDataCopy.end());
+  if (pseudo2D)
+  {
+    pseudo2D->Reset();
+    for (Int_t column = 0; column < 16; ++column)
+    {
+      Double_t centerX = pseudo2D->GetXaxis()->GetBinCenter(column + 1);
+      const std::array< int, 16 >& rowArray = MATRIX[column];
+      for (Int_t row = 0; row < 16; ++row)
+      {
+        Double_t centerY = pseudo2D->GetYaxis()->GetBinCenter(row + 1);
+        int horizProfileIndex = rowArray[row];
+        double pixelValue = horizProfData[horizProfileIndex - 1];
+        pseudo2D->Fill(centerX, centerY, pixelValue);
+      }
     }
   }
 }
