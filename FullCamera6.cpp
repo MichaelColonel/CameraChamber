@@ -211,13 +211,13 @@ void FullCamera6::updateProfiles2D(TH2* pseudo2D, TH2* integPseudo2D)
     for (Int_t column = 0; column < 16; ++column)
     {
       Double_t centerX = pseudo2D->GetXaxis()->GetBinCenter(column + 1);
-      const std::array< int, 16 >& rowArray = MATRIX[column];
+      const std::array< int, 16 >& rowArray = MATRIX[15 - column];
       for (Int_t row = 0; row < 16; ++row)
       {
         Double_t centerY = pseudo2D->GetYaxis()->GetBinCenter(row + 1);
         int horizProfileIndex = rowArray[row];
         double pixelValue = horizProfData[horizProfileIndex - 1];
-        pseudo2D->Fill(centerX, centerY, pixelValue);
+        pseudo2D->Fill(centerY, centerX, pixelValue);
       }
     }
   }
